@@ -1,3 +1,5 @@
+## 배포 하기 전, 각자 작업 내역이 문제없이 머지되는지 확인하기 위한 브랜치!!
+---
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
