@@ -55,6 +55,12 @@ export default {
         "secondary-container": "#dce0e7",
         "on-secondary-fixed-variant": "#42474d"
       },
+      borderRadius: {
+        DEFAULT: "0.125rem",
+        lg: "0.25rem",
+        xl: "0.5rem",
+        full: "0.75rem",
+      },
       fontFamily: {
         headline: ["Space Grotesk", "sans-serif"],
         body: ["Inter", "sans-serif"],
