@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getWeather } from '../api/weatherApi';
+import { getWeather, getLocationName } from '../api/weatherApi';
 import { getWeatherRecommendations } from '../api/travelApi';
 
 const TRENDING_THEMES = [
@@ -18,7 +18,7 @@ const Home = () => {
     label: 'Loading...', 
     icon: 'cloud', 
     keyword: '여행',
-    location: 'Seoul, KR' 
+    location: 'Detecting Location...' 
   });
   const [recommendation, setRecommendation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,13 +42,38 @@ const Home = () => {
     if (e && loading) return;
     
     setLoading(true);
+
+    const getPosition = () => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 8000,
+          enableHighAccuracy: true
+        });
+      });
+    };
+
     try {
-      const weatherData = await getWeather();
+      // 기본값: 서울
+      let lat = 37.5665;
+      let lon = 126.9780;
+      let locationName = 'Seoul, KR';
+
+      try {
+        const pos = await getPosition();
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        // 위치 이름을 좌표 기반으로 실시간 획득
+        locationName = await getLocationName(lat, lon);
+      } catch (posError) {
+        console.warn("Geolocation failed or denied, using default (Seoul):", posError.message);
+      }
+
+      const weatherData = await getWeather(lat, lon);
       if (weatherData) {
-        setWeather({ ...weatherData, location: 'Seoul, KR' });
+        setWeather({ ...weatherData, location: locationName });
         await fetchTravelData(weatherData.keyword);
       } else {
-        setWeather(prev => ({ ...prev, label: 'Offline', location: 'Seoul, KR' }));
+        setWeather(prev => ({ ...prev, label: 'Offline', location: locationName }));
       }
     } catch (error) {
       console.error("Refresh Error:", error);

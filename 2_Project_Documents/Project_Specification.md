@@ -22,21 +22,20 @@
 - **APIs**: 
     - 한국관광공사 관광사진정보서비스 (PhotoGalleryService1)
     - Open-Meteo API (실시간 날씨 정보)
+    - Nominatim API (무료 역지오코딩/지역명 변환)
 - **Linting**: ESLint 9.39.4
 
 ---
 
 ## 2. 시스템 상세 설계
 
-### 2.1 레이아웃 및 라우팅 구조
-- **App Layout**: `App.jsx`를 최상위 레이아웃으로 사용하며 사이드바, 헤더, 푸터를 고정함.
-- **Nested Routing**: `react-router-dom`의 `<Outlet />`을 활용하여 페이지 전환 시 공통 요소를 재렌더링하지 않고 컨텐츠만 교체.
-    - `/`: `Home.jsx` (날씨 및 랜덤 추천)
-    - `/explore`: `TravelPic.jsx` (여행지 탐색 및 필터링)
+### 2.1 레이아웃 및 라우팅 구조 (동일)
+*(중략)*
 
-### 2.2 실시간 날씨 및 추천 시스템
-- **Weather Service**: `weatherApi.js`를 통해 좌표 기반 날씨 정보를 받아오며, 상태 코드에 따라 '풍경', '산책', '박물관' 등의 키워드로 매핑.
-- **Random Recommendation**: 현재 날씨 키워드에 최적화된 여행지 데이터를 관광공사 API에서 랜덤으로 추출하여 메인 Hero 섹션에 노출.
+### 2.2 실시간 날씨 및 위치 기반 추천 시스템
+- **Location Service**: 브라우저 Geolocation API를 통해 사용자 좌표를 획득하고, `Nominatim` 서비스를 통해 실제 지역명으로 변환.
+- **Weather Service**: 획득된 좌표를 `weatherApi.js`로 전달하여 현지 실시간 날씨 정보 획득.
+- **Random Recommendation**: 현지 날씨 키워드에 최적화된 여행지 데이터를 관광공사 API에서 랜덤으로 추출하여 메인 Hero 섹션에 노출.
 
 ### 2.3 관광 정보 시스템 (Tourist Information)
 - **실시간 데이터 페칭**: `useCallback` 기반의 비동기 함수로 한국관광공사 API 호출 최적화.

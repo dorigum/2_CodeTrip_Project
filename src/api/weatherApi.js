@@ -27,6 +27,32 @@ export const getWeather = async (lat = 37.5665, lon = 126.9780) => {
   }
 };
 
+export const getLocationName = async (lat, lon) => {
+  try {
+    // Nominatim 오픈 API 사용 (무료 역지오코딩)
+    const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+      params: {
+        lat,
+        lon,
+        format: 'json',
+        addressdetails: 1,
+      },
+      headers: {
+        'Accept-Language': 'ko-KR', // 한국어로 지역명 가져오기
+      }
+    });
+    
+    const addr = response.data.address;
+    // 도시명 또는 구 단위 정보 추출
+    const city = addr.city || addr.town || addr.village || addr.city_district || 'Unknown';
+    const country = addr.country || '';
+    return `${city}, ${country}`;
+  } catch (error) {
+    console.error('Geocoding Error:', error);
+    return 'Current Location';
+  }
+};
+
 const parseWeatherCode = (code) => {
   if (code <= 3) return { label: 'Sunny', icon: 'sunny', keyword: '풍경' };
   if (code <= 48) return { label: 'Cloudy', icon: 'cloud', keyword: '산책' };
