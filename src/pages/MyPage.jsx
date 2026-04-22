@@ -41,7 +41,8 @@ const WISH_LIST = [
 ];
 
 const MyPage = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
+
   const [sortBy, setSortBy] = useState('CREATED'); // CREATED, TITLE, MODIFIED
 
   const sortedWishList = useMemo(() => {

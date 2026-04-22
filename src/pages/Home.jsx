@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getWeather, getLocationName } from '../api/weatherApi';
-import { getPhotoList, getFestivalList, getThemePhotos, getCityBasedPlaces } from '../api/travelApi';
+import { getPhotoList, getFestivalList, getCityBasedPlaces } from '../api/travelApi';
 
 const MOCK_HERO = [
   { galContentId: 'm1', galTitle: '감성 여행', galPhotographyLocation: '대한민국', galWebImageUrl: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?q=80&w=2070' },
