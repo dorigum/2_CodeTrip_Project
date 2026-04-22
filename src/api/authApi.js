@@ -20,6 +20,7 @@ const authApi = {
       const response = await axios.post(`${API_URL}/login`, credentials);
       return response.data;
     } catch (error) {
+      console.error('Login API Error:', error.response?.data || error.message);
       throw error.response?.data || { message: 'Login failed' };
     }
   }

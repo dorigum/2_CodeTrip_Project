@@ -9,7 +9,11 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'codetrip_secret_key';
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Database Connection Pool
@@ -53,22 +57,21 @@ initDB();
 // 1. Sign Up
 app.post('/api/signup', async (req, res) => {
   const { email, password, name } = req.body;
+  console.log('Signup Attempt:', { email, name });
   try {
-    // Check if user exists
     const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     if (existing.length > 0) return res.status(400).json({ message: 'Email already registered' });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert user
     await pool.query(
       'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
       [email, hashedPassword, name]
     );
 
+    console.log('Signup Success:', email);
     res.status(201).json({ message: 'Account created successfully' });
   } catch (err) {
+    console.error('Signup Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -84,7 +87,6 @@ app.post('/api/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
 
-    // Generate Token
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
 
     res.json({
@@ -102,6 +104,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Board Routes ---
+
 app.get('/api/boards', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM boards ORDER BY created_at DESC');
@@ -111,7 +114,6 @@ app.get('/api/boards', async (req, res) => {
   }
 });
 
-// 2. Get One Board
 app.get('/api/boards/:id', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM boards WHERE id = ?', [req.params.id]);
@@ -122,7 +124,6 @@ app.get('/api/boards/:id', async (req, res) => {
   }
 });
 
-// 3. Create Board
 app.post('/api/boards', async (req, res) => {
   const { title, content, author } = req.body;
   try {
@@ -136,7 +137,6 @@ app.post('/api/boards', async (req, res) => {
   }
 });
 
-// 4. Update Board
 app.put('/api/boards/:id', async (req, res) => {
   const { title, content } = req.body;
   try {
@@ -150,7 +150,6 @@ app.put('/api/boards/:id', async (req, res) => {
   }
 });
 
-// 5. Delete Board
 app.delete('/api/boards/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM boards WHERE id = ?', [req.params.id]);
