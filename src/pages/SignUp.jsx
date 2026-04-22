@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import authApi from '../api/authApi';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -8,6 +9,8 @@ const SignUp = () => {
     password: '',
     confirmPassword: ''
   });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -15,15 +18,29 @@ const SignUp = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
-    // TODO: 백엔드 API 연동 시 가입 처리
-    alert('Account created successfully! Please sign in.');
-    navigate('/login');
+
+    try {
+      setIsLoading(true);
+      await authApi.signup({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name
+      });
+      alert('Account created successfully! Please sign in.');
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Signup failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -37,7 +54,15 @@ const SignUp = () => {
           <p className="text-on-secondary-container mt-2 font-label text-sm uppercase tracking-widest">// Register New Developer</p>
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-bold rounded flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ... 필드 부분은 동일 ... */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-primary ml-1 uppercase tracking-tighter">Full Name</label>
             <div className="relative">

@@ -1,10 +1,13 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const JWT_SECRET = process.env.JWT_SECRET || 'codetrip_secret_key';
 
 app.use(cors());
 app.use(express.json());
@@ -20,18 +23,85 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Test connection
-pool.getConnection()
-  .then(conn => {
-    console.log('✅ Database connected successfully to EC2');
+// Initialize Database Tables
+const initDB = async () => {
+  try {
+    const conn = await pool.getConnection();
+    console.log('✅ Database connected successfully');
+    
+    // Create users table if not exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        profile_img VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Users table initialized');
     conn.release();
-  })
-  .catch(err => {
-    console.error('❌ Database connection failed:', err.message);
-  });
+  } catch (err) {
+    console.error('❌ Database initialization failed:', err.message);
+  }
+};
+initDB();
 
-// Routes
-// 1. Get All Boards
+// --- Auth Routes ---
+
+// 1. Sign Up
+app.post('/api/signup', async (req, res) => {
+  const { email, password, name } = req.body;
+  try {
+    // Check if user exists
+    const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (existing.length > 0) return res.status(400).json({ message: 'Email already registered' });
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert user
+    await pool.query(
+      'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
+      [email, hashedPassword, name]
+    );
+
+    res.status(201).json({ message: 'Account created successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Login
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (users.length === 0) return res.status(401).json({ message: 'Invalid email or password' });
+
+    const user = users[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
+
+    // Generate Token
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        profileImg: user.profile_img
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Board Routes ---
 app.get('/api/boards', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM boards ORDER BY created_at DESC');

@@ -5,6 +5,26 @@
 
 ---
 
+## 2026.04.22 변경 사항 — 회원가입 및 로그인 API 연동 (Full-stack Integration)
+
+### 백엔드 인증 시스템 구축 (`server/index.js`)
+
+- **비밀번호 암호화**: `bcrypt` 라이브러리를 도입하여 사용자 비밀번호를 해싱(Hashing) 후 안전하게 저장하도록 구현.
+- **JWT 인증 도입**: 로그인 성공 시 `jsonwebtoken`을 활용하여 액세스 토큰을 발급하고 세션 기반 인증 체계 구축.
+- **자동 테이블 초기화**: 서버 구동 시 MySQL에 `users` 테이블이 없을 경우 자동으로 생성하는 초기화 로직(`initDB`) 추가.
+- **인증 엔드포인트 구현**: 
+    - `POST /api/signup`: 이메일 중복 체크 및 신규 유저 생성.
+    - `POST /api/login`: 자격 증명 확인 및 JWT 토큰 반환.
+
+### 프론트엔드 API 연동 및 UI 고도화
+
+- **인증 API 모듈 생성 (`src/api/authApi.js`)**: Axios를 활용한 `signup`, `login` 비동기 통신 함수 규격화.
+- **SignUp 페이지 연동**: 폼 데이터를 서버로 전송하고 처리 결과(성공/실패)에 따른 사용자 피드백(Alert, Error Message) 구현.
+- **Login 페이지 연동**: Zustand 스토어(`useAuthStore`)와 연동하여 로그인 성공 시 유저 정보를 전역 상태로 저장하고 토큰을 `localStorage`에 기록.
+- **상태 처리**: 로딩 상태(`isLoading`) 및 에러 상태(`error`) 처리를 통해 사용자 경험(UX) 개선.
+
+---
+
 ## 2026.04.22 변경 사항 — 전역 상태 관리 라이브러리 Zustand 도입 및 아키텍처 리팩토링
 
 ### 상태 관리 시스템 고도화 (Zustand 도입)

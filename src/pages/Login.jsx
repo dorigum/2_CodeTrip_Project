@@ -1,26 +1,34 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import useAuthStore from '../store/useAuthStore';
+import authApi from '../api/authApi';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAuth();
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: 백엔드 API 연동 시 fetch/axios 호출로 변경
-    // 우선 테스트를 위한 임시 로그인 처리
-    const mockUser = {
-      id: 1,
-      name: 'CodeTripper',
-      email: email,
-      profileImg: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100'
-    };
+    setError('');
     
-    login(mockUser);
-    navigate('/');
+    try {
+      setIsLoading(true);
+      const data = await authApi.login({ email, password });
+      
+      // Store token and user data in Zustand + LocalStorage
+      login(data.user);
+      localStorage.setItem('trip_token', data.token);
+      
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,6 +41,13 @@ const Login = () => {
           <h2 className="text-3xl font-headline font-bold text-on-background">Welcome Back</h2>
           <p className="text-on-secondary-container mt-2 font-label text-sm uppercase tracking-widest">// Authenticate System</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-bold rounded flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1.5">
