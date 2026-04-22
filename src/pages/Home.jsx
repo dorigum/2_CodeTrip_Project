@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getWeather, getLocationName } from '../api/weatherApi';
 import { getWeatherRecommendations } from '../api/travelApi';
@@ -10,50 +10,64 @@ const TRENDING_THEMES = [
   { icon: 'architecture', title: 'Brutalist Berlin', desc: 'Raw textures, bold geometry, and heavy history.' },
 ];
 
-const DEFAULT_HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBHaFWKTXoD7mJHtN6tIrJmnpnMFWJjFPTS9MgR8lmh91I36OqBte6ugLBWy2uxDaBZ7cziElo7-fOV4ywo5_aykN5rdTdikFJiaDfWYJGzUIbz71v1ny99j_GePWZT7Fk876GNd_Tt7_Ut-XXiURKv3_Go54hEZrpmKqdylp294PBexkkRza7YNEbxF6FJ5V_FcOsLOatcwW0PHnTV27mffa_yiHCiHOSNDJa1S9lfzBD5t9uJxwdI_-PnsvajgWdrDzYfr6R9wI-g';
+// 백업 이미지 정보 (API 실패 대비)
+const BACKUP_TOP_IMAGES = [
+  { galContentId: 'b1', galTitle: '푸른 바다의 전설', galPhotographyLocation: '제주도 서귀포시', galWebImageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=2094&auto=format&fit=crop' },
+  { galContentId: 'b2', galTitle: '고즈넉한 고궁', galPhotographyLocation: '서울특별시 종로구', galWebImageUrl: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?q=80&w=2070&auto=format&fit=crop' },
+  { galContentId: 'b3', galTitle: '눈 덮인 산등성이', galPhotographyLocation: '강원도 평창군', galWebImageUrl: 'https://images.unsplash.com/photo-1621360841013-c7683c659ec6?q=80&w=1932&auto=format&fit=crop' },
+  { galContentId: 'b4', galTitle: '밤이 빛나는 도시', galPhotographyLocation: '부산광역시 해운대구', galWebImageUrl: 'https://images.unsplash.com/photo-1610448721566-47369c768e70?q=80&w=2070&auto=format&fit=crop' },
+  { galContentId: 'b5', galTitle: '황금빛 들판', galPhotographyLocation: '전라남도 순천시', galWebImageUrl: 'https://images.unsplash.com/photo-1582996269871-dad1e4adbbc7?q=80&w=2066&auto=format&fit=crop' }
+];
+
+const DEFAULT_TOP_IMG = BACKUP_TOP_IMAGES[0].galWebImageUrl;
 
 const Home = () => {
   const [weather, setWeather] = useState({ 
-    temp: 24, 
-    label: 'Loading...', 
-    icon: 'cloud', 
-    keywords: ['여행'],
-    location: 'Detecting Location...' 
+    temp: 24, label: 'Loading...', icon: 'cloud', keywords: ['여행'], location: 'Seoul, KR' 
   });
-  const [recommendation, setRecommendation] = useState(null);
+  
+  // MainTopImg 상태 관리
+  const [topImgList, setTopImgList] = useState([]);
+  const [topImgIndex, setTopImgIndex] = useState(0);
+  const [weatherRecommendation, setWeatherRecommendation] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingWeatherRec, setRefreshingWeatherRec] = useState(false);
+  
+  const topImgTimerRef = useRef(null);
 
-  const fetchTravelData = async (keywords) => {
-    if (refreshing) return;
-    setRefreshing(true);
+  // 상단 MainTopImg 이미지 묶음 가져오기
+  const fetchTopImgBatch = useCallback(async () => {
     try {
-      const travelData = await getWeatherRecommendations(keywords);
-      if (travelData) {
-        setRecommendation(travelData);
+      const dataList = await getWeatherRecommendations(null); 
+      if (dataList && dataList.length > 0) {
+        setTopImgList(dataList);
+        setTopImgIndex(0);
+      } else {
+        setTopImgList(BACKUP_TOP_IMAGES);
       }
-    } finally {
-      setRefreshing(false);
+    } catch (e) {
+      setTopImgList(BACKUP_TOP_IMAGES);
     }
-  };
+  }, []);
 
-  const handleRefreshAll = async (e) => {
+  const fetchWeatherRecData = useCallback(async (keywords) => {
+    setRefreshingWeatherRec(true);
+    const data = await getWeatherRecommendations(keywords);
+    if (data) setWeatherRecommendation(data);
+    setRefreshingWeatherRec(false);
+  }, []);
+
+  const handleRefreshAll = useCallback(async (e) => {
     if (e) e.stopPropagation();
-    if (e && loading) return;
-    
     setLoading(true);
 
     const getPosition = () => {
       return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 8000,
-          enableHighAccuracy: true
-        });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
       });
     };
 
     try {
-      // 기본값: 서울
       let lat = 37.5665;
       let lon = 126.9780;
       let locationName = 'Seoul, KR';
@@ -62,157 +76,200 @@ const Home = () => {
         const pos = await getPosition();
         lat = pos.coords.latitude;
         lon = pos.coords.longitude;
-        // 위치 이름을 좌표 기반으로 실시간 획득
         locationName = await getLocationName(lat, lon);
       } catch (posError) {
-        console.warn("Geolocation failed or denied, using default (Seoul):", posError.message);
+        console.warn("Geolocation skipped.");
       }
 
       const weatherData = await getWeather(lat, lon);
       if (weatherData) {
         setWeather({ ...weatherData, location: locationName });
-        await fetchTravelData(weatherData.keywords);
+        await Promise.all([
+          fetchWeatherRecData(weatherData.keywords),
+          fetchTopImgBatch()
+        ]);
       } else {
-        setWeather(prev => ({ ...prev, label: 'Offline', location: locationName, keywords: ['여행'] }));
+        await fetchTopImgBatch();
       }
     } catch (error) {
       console.error("Refresh Error:", error);
+      await fetchTopImgBatch();
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchTopImgBatch, fetchWeatherRecData]);
 
   useEffect(() => {
     handleRefreshAll();
-  }, []);
+  }, [handleRefreshAll]);
+
+  // 자동 슬라이더 타이머 (MainTopImg용)
+  useEffect(() => {
+    if (topImgList.length === 0) return;
+    topImgTimerRef.current = setInterval(() => {
+      setTopImgIndex((prev) => {
+        if (prev >= topImgList.length - 1) {
+          fetchTopImgBatch(); 
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 5000);
+    return () => clearInterval(topImgTimerRef.current);
+  }, [topImgList, fetchTopImgBatch]);
+
+  const currentTopImg = topImgList[topImgIndex] || null;
 
   return (
     <div className="p-6 lg:p-10 space-y-12 pb-20 md:pb-12">
-      {/* Hero Section */}
-      <section className="relative w-full aspect-[21/9] rounded-xl overflow-hidden shadow-lg bg-surface-container-high">
-        {recommendation ? (
-          <img
-            alt={recommendation.galTitle}
-            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-            src={recommendation.galWebImageUrl}
-            key={recommendation.galContentId}
-          />
-        ) : (
-          <img
-            alt="Default Hero"
-            className="absolute inset-0 w-full h-full object-cover"
-            src={DEFAULT_HERO_IMG}
-          />
-        )}
+      {/* MainTopImg Section */}
+      <section className="relative w-full aspect-[21/6] rounded-xl overflow-hidden shadow-lg bg-surface-container-high">
+        <img
+          alt={currentTopImg?.galTitle || "Inspiring Destination"}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out"
+          src={currentTopImg ? `${currentTopImg.galWebImageUrl}?t=${currentTopImg.galContentId}` : DEFAULT_TOP_IMG}
+          key={currentTopImg?.galContentId || 'default'}
+        />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent flex items-center px-12">
-          <div className="max-w-2xl space-y-4">
-            <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 text-white font-label text-xs uppercase tracking-widest rounded-lg">
-              Status: {loading || refreshing ? 'Syncing...' : 'System Optimal'}
+          <div className="max-w-2xl flex flex-col justify-center space-y-3">
+            
+            <div className="inline-block self-start px-2 py-0.5 bg-white/10 backdrop-blur-md border border-white/20 text-white font-label text-[10px] uppercase tracking-widest rounded">
+              Status: {topImgList.length > 0 ? 'Live Feed' : 'Syncing...'}
             </div>
-            <h1 className="text-5xl lg:text-7xl font-headline font-bold text-white leading-tight drop-shadow-md">
-              {recommendation ? recommendation.galTitle : 'Welcome to Terminal'}
-              <span className="text-primary-container">.</span>
-            </h1>
-            <p className="text-white/90 text-lg max-w-md font-body leading-relaxed opacity-90 drop-shadow-sm">
-              {recommendation 
-                ? `${recommendation.galPhotographyLocation}에서 새로운 영감을 컴파일하세요.`
-                : 'Your journey is the ultimate algorithm. Compile your next adventure with precision and logic.'}
-            </p>
-            <div className="pt-4 flex gap-4">
+
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-headline font-bold text-white drop-shadow-md">
+                Code_Trip:
+              </h1>
+              <p className="text-white/90 text-lg lg:text-xl font-body drop-shadow-sm font-medium">
+                당신의 새로운 영감을 컴파일해보세요!
+              </p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md border-l-2 border-primary py-1.5 px-3 inline-block rounded-r transition-all duration-500">
+               <p className="text-[9px] font-mono text-white/60 font-bold uppercase tracking-tighter mb-0.5">// Currently Rendering</p>
+               <div className="flex items-baseline gap-2">
+                 <h2 className="text-sm lg:text-base font-headline font-bold text-white">
+                   {currentTopImg?.galTitle || '동화 같은 풍경'}
+                 </h2>
+                 <span className="text-[10px] text-white/50 font-mono italic">
+                   @ {currentTopImg?.galPhotographyLocation || '대한민국'}
+                 </span>
+               </div>
+            </div>
+
+            <div className="pt-1">
               <Link
                 to="/explore"
-                className="px-6 py-3 bg-primary-container text-on-primary-container font-headline font-bold rounded-lg hover:brightness-110 transition-all flex items-center gap-2"
+                className="px-6 py-2.5 bg-white/15 backdrop-blur-lg border border-white/30 text-primary font-headline font-bold rounded-full hover:bg-white/25 transition-all inline-flex items-center gap-2 text-sm shadow-xl hover:scale-105 active:scale-95"
               >
-                <span className="material-symbols-outlined text-lg">terminal</span>
-                DETAILS_VIEW
+                <span className="material-symbols-outlined text-base">explore</span>
+                EXPLORE_NOW
               </Link>
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  fetchTravelData(weather.keywords);
-                }}
-                disabled={refreshing || loading}
-                className="px-6 py-3 bg-surface-container-lowest/10 backdrop-blur-md border border-surface-container-lowest/20 text-surface-container-lowest font-headline font-bold rounded-lg hover:bg-surface-container-lowest/20 transition-all flex items-center gap-2 disabled:opacity-50 z-10"
-              >
-                <span className={`material-symbols-outlined text-lg ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
-                RANDOM_PICK
-              </button>
             </div>
+
           </div>
         </div>
       </section>
 
       {/* Bento Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weather Widget */}
-        <div className="lg:col-span-1 bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between shadow-[0_20px_40px_rgba(25,28,30,0.03)] border border-outline-variant/10 relative overflow-hidden">
-          {loading && (
-            <div className="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
-               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
-          <div className="space-y-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="font-label text-xs uppercase tracking-widest text-primary font-bold">{weather.location}</p>
-                <h3 className="font-headline text-2xl font-bold">Local Env</h3>
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between shadow-[0_20px_40px_rgba(25,28,30,0.03)] border border-outline-variant/10 relative overflow-hidden">
+            {loading && (
+              <div className="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
-              <button 
-                onClick={handleRefreshAll}
-                className="w-12 h-12 bg-primary-container/10 flex items-center justify-center rounded-lg text-primary hover:bg-primary-container/20 transition-all cursor-pointer group/icon"
-                title="Refresh Weather"
-              >
-                <span className={`material-symbols-outlined text-3xl ${loading ? 'animate-spin' : 'group-hover/icon:rotate-90 transition-transform duration-300'}`}>
-                  {weather.icon}
-                </span>
-              </button>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-6xl font-headline font-bold text-on-surface">{weather.temp}°</span>
-              <span className="text-xl font-label text-on-secondary-container uppercase">{weather.label}</span>
-            </div>
-            <div className="p-4 bg-surface-container-low rounded-lg border-l-4 border-primary">
-              <p className="text-xs font-label syntax-comment mb-2">// Recommendation Logic</p>
-              <p className="text-sm font-body text-on-surface leading-relaxed">
-                {weather.label === 'Rainy' || weather.label === 'Heavy Rain'
-                  ? '비가 오네요. 따뜻한 카페나 실내 박물관은 어떨까요?'
-                  : `${weather.keywords?.join(', ')} 테마의 여행지를 추천해 드립니다.`}
-              </p>
+            )}
+            <div className="space-y-6">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <p className="font-label text-xs uppercase tracking-widest text-primary font-bold">{weather.location}</p>
+                  <h3 className="font-headline text-2xl font-bold">Local Env</h3>
+                </div>
+                <button 
+                  onClick={handleRefreshAll}
+                  className="w-12 h-12 bg-primary-container/10 flex items-center justify-center rounded-lg text-primary hover:bg-primary-container/20 transition-all cursor-pointer group/icon"
+                >
+                  <span className={`material-symbols-outlined text-3xl transition-transform duration-500 ${loading ? 'animate-spin' : 'group-hover/icon:rotate-90'}`}>
+                    {weather.icon}
+                  </span>
+                </button>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-6xl font-headline font-bold text-on-surface">{weather.temp}°</span>
+                <span className="text-xl font-label text-on-secondary-container uppercase">{weather.label}</span>
+              </div>
+              <div className="p-4 bg-surface-container-low rounded-lg border-l-4 border-primary">
+                <p className="text-xs font-label syntax-comment mb-2">// Recommendation Logic</p>
+                <p className="text-sm font-body text-on-surface leading-relaxed italic">
+                  "{weather.keywords?.join(', ')}" 테마의 장소를 추천합니다.
+                </p>
+              </div>
             </div>
           </div>
-          <Link
-            to="/explore"
-            className="mt-8 w-full py-4 bg-on-background text-surface-container-lowest font-label text-sm font-bold rounded-lg flex items-center justify-center gap-3 hover:bg-primary transition-colors group-hover:shadow-lg"
-          >
-            <span className="material-symbols-outlined text-lg">explore</span>
-            Explore More
-          </Link>
+
+          {/* Weather Rec Card */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-[0_20px_40px_rgba(25,28,30,0.03)] border border-outline-variant/10 overflow-hidden flex flex-col group relative">
+            {(loading || refreshingWeatherRec) && (
+              <div className="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            <div className="relative h-48 overflow-hidden bg-surface-container-high">
+              <img 
+                src={weatherRecommendation?.galWebImageUrl || BACKUP_TOP_IMAGES[1].galWebImageUrl} 
+                alt={weatherRecommendation?.galTitle}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                key={weatherRecommendation?.galContentId}
+              />
+              <div className="absolute top-4 right-4">
+                <button 
+                  onClick={() => fetchWeatherRecData(weather.keywords)}
+                  className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all z-30"
+                >
+                  <span className={`material-symbols-outlined text-sm ${refreshingWeatherRec ? 'animate-spin' : ''}`}>refresh</span>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                   <span className="material-symbols-outlined text-primary text-sm">auto_awesome</span>
+                   <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">Recommended For You</span>
+                </div>
+                <h4 className="font-headline font-bold text-lg text-on-surface line-clamp-1">
+                  {weatherRecommendation?.galTitle || 'Discovery Pending...'}
+                </h4>
+                <p className="text-xs text-on-secondary-container mt-1 line-clamp-1">
+                  {weatherRecommendation?.galPhotographyLocation || 'Various Locations'}
+                </p>
+              </div>
+              <button className="mt-4 w-full py-2 bg-surface-container-high hover:bg-primary hover:text-on-primary transition-all rounded-lg text-xs font-bold font-label">
+                DETAILS_VIEW
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Trending Themes */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-headline text-2xl font-bold">
-              Trending <span className="text-primary">Themes</span>
-            </h2>
-            <Link to="/explore" className="text-sm font-label text-primary hover:underline underline-offset-4">
-              VIEW_ALL
-            </Link>
+        <div className="lg:col-span-1 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="font-headline text-xl font-bold">Trending Themes</h2>
+            <Link to="/explore" className="text-[10px] font-bold text-primary hover:underline">VIEW_ALL</Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {TRENDING_THEMES.map((theme) => (
+          <div className="space-y-3">
+            {TRENDING_THEMES.slice(0, 3).map((theme) => (
               <div
                 key={theme.title}
-                className="bg-surface-container-low p-6 rounded-xl hover:bg-surface-container-highest transition-all cursor-pointer group"
+                className="bg-surface-container-low p-4 rounded-xl hover:bg-surface-container-highest transition-all cursor-pointer group flex items-center gap-4"
               >
-                <div className="flex gap-4 items-start">
-                  <div className="p-3 bg-surface-container-lowest rounded-lg group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
-                    <span className="material-symbols-outlined">{theme.icon}</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline font-bold text-lg">{theme.title}</h4>
-                    <p className="text-sm text-on-secondary-container font-body mt-1">{theme.desc}</p>
-                  </div>
+                <div className="p-2 bg-surface-container-lowest rounded-lg group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+                  <span className="material-symbols-outlined text-lg">{theme.icon}</span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-headline font-bold text-sm truncate">{theme.title}</h4>
+                  <p className="text-[10px] text-on-secondary-container font-body truncate">{theme.desc}</p>
                 </div>
               </div>
             ))}
