@@ -17,18 +17,18 @@ const Home = () => {
     temp: 24, 
     label: 'Loading...', 
     icon: 'cloud', 
-    keyword: '여행',
+    keywords: ['여행'],
     location: 'Detecting Location...' 
   });
   const [recommendation, setRecommendation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchTravelData = async (keyword) => {
+  const fetchTravelData = async (keywords) => {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const travelData = await getWeatherRecommendations(keyword);
+      const travelData = await getWeatherRecommendations(keywords);
       if (travelData) {
         setRecommendation(travelData);
       }
@@ -71,9 +71,9 @@ const Home = () => {
       const weatherData = await getWeather(lat, lon);
       if (weatherData) {
         setWeather({ ...weatherData, location: locationName });
-        await fetchTravelData(weatherData.keyword);
+        await fetchTravelData(weatherData.keywords);
       } else {
-        setWeather(prev => ({ ...prev, label: 'Offline', location: locationName }));
+        setWeather(prev => ({ ...prev, label: 'Offline', location: locationName, keywords: ['여행'] }));
       }
     } catch (error) {
       console.error("Refresh Error:", error);
@@ -104,16 +104,16 @@ const Home = () => {
             src={DEFAULT_HERO_IMG}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-on-background/70 via-on-background/30 to-transparent flex items-center px-12">
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent flex items-center px-12">
           <div className="max-w-2xl space-y-4">
-            <div className="inline-block px-3 py-1 bg-primary-container/20 backdrop-blur-md border border-primary-container/30 text-primary-fixed font-label text-xs uppercase tracking-widest rounded-lg">
+            <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 text-white font-label text-xs uppercase tracking-widest rounded-lg">
               Status: {loading || refreshing ? 'Syncing...' : 'System Optimal'}
             </div>
-            <h1 className="text-5xl lg:text-7xl font-headline font-bold text-surface-container-lowest leading-tight">
+            <h1 className="text-5xl lg:text-7xl font-headline font-bold text-white leading-tight drop-shadow-md">
               {recommendation ? recommendation.galTitle : 'Welcome to Terminal'}
               <span className="text-primary-container">.</span>
             </h1>
-            <p className="text-surface-container-highest text-lg max-w-md font-body leading-relaxed opacity-90">
+            <p className="text-white/90 text-lg max-w-md font-body leading-relaxed opacity-90 drop-shadow-sm">
               {recommendation 
                 ? `${recommendation.galPhotographyLocation}에서 새로운 영감을 컴파일하세요.`
                 : 'Your journey is the ultimate algorithm. Compile your next adventure with precision and logic.'}
@@ -129,7 +129,7 @@ const Home = () => {
               <button 
                 onClick={(e) => {
                   e.preventDefault();
-                  fetchTravelData(weather.keyword);
+                  fetchTravelData(weather.keywords);
                 }}
                 disabled={refreshing || loading}
                 className="px-6 py-3 bg-surface-container-lowest/10 backdrop-blur-md border border-surface-container-lowest/20 text-surface-container-lowest font-headline font-bold rounded-lg hover:bg-surface-container-lowest/20 transition-all flex items-center gap-2 disabled:opacity-50 z-10"
@@ -175,8 +175,8 @@ const Home = () => {
               <p className="text-xs font-label syntax-comment mb-2">// Recommendation Logic</p>
               <p className="text-sm font-body text-on-surface leading-relaxed">
                 {weather.label === 'Rainy' || weather.label === 'Heavy Rain'
-                  ? '비가 오네요. 차분한 분위기의 실내 장소는 어떨까요?'
-                  : `${weather.keyword} 테마의 여행지를 추천해 드립니다.`}
+                  ? '비가 오네요. 따뜻한 카페나 실내 박물관은 어떨까요?'
+                  : `${weather.keywords?.join(', ')} 테마의 여행지를 추천해 드립니다.`}
               </p>
             </div>
           </div>

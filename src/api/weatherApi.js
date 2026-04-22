@@ -54,10 +54,10 @@ export const getLocationName = async (lat, lon) => {
 };
 
 const parseWeatherCode = (code) => {
-  if (code <= 3) return { label: 'Sunny', icon: 'sunny', keyword: '풍경' };
-  if (code <= 48) return { label: 'Cloudy', icon: 'cloud', keyword: '산책' };
-  if (code <= 67) return { label: 'Rainy', icon: 'rainy', keyword: '박물관' };
-  if (code <= 77) return { label: 'Snowy', icon: 'ac_unit', keyword: '설경' };
-  if (code <= 82) return { label: 'Heavy Rain', icon: 'thunderstorm', keyword: '실내' };
-  return { label: 'Clear', icon: 'sunny', keyword: '여행' };
+  if (code <= 3) return { label: 'Sunny', icon: 'sunny', keywords: ['풍경', '바다', '야경', '카페'] };
+  if (code <= 48) return { label: 'Cloudy', icon: 'cloud', keywords: ['산책', '카페'] };
+  if (code <= 67) return { label: 'Rainy', icon: 'rainy', keywords: ['박물관', '카페', '실내'] };
+  if (code <= 77) return { label: 'Snowy', icon: 'ac_unit', keywords: ['설경', '카페'] };
+  if (code <= 82) return { label: 'Heavy Rain', icon: 'thunderstorm', keywords: ['박물관', '카페', '실내'] };
+  return { label: 'Clear', icon: 'sunny', keywords: ['여행', '카페'] };
 };

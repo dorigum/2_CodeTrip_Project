@@ -34,8 +34,8 @@
 
 ### 2.2 실시간 날씨 및 위치 기반 추천 시스템
 - **Location Service**: 브라우저 Geolocation API를 통해 사용자 좌표를 획득하고, `Nominatim` 서비스를 통해 실제 지역명으로 변환.
-- **Weather Service**: 획득된 좌표를 `weatherApi.js`로 전달하여 현지 실시간 날씨 정보 획득.
-- **Random Recommendation**: 현지 날씨 키워드에 최적화된 여행지 데이터를 관광공사 API에서 랜덤으로 추출하여 메인 Hero 섹션에 노출.
+- **Weather Service**: 획득된 좌표를 `weatherApi.js`로 전달하여 현지 실시간 날씨 정보 획득. 상태 코드에 따라 최적화된 **다중 키워드 배열** 매핑.
+- **Random Recommendation**: 매핑된 키워드 중 하나를 랜덤 선택하여 관광공사 API 검색. 결과가 없을 경우 대체 키워드로 재시도하는 안정성 확보. 메인 Hero 섹션에 고화질 이미지와 함께 노출.
 
 ### 2.3 관광 정보 시스템 (Tourist Information)
 - **실시간 데이터 페칭**: `useCallback` 기반의 비동기 함수로 한국관광공사 API 호출 최적화.
