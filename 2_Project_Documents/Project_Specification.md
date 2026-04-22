@@ -83,7 +83,17 @@
 - `flex-1 flex flex-col gap-3` 아이템 컨테이너 — 카드 전체 높이를 3개 아이템이 균등 분배
 - 각 아이템: `w-28` 세로 이미지(전체 높이 자동 맞춤) + 텍스트 영역 + chevron
 
-### 2.5 UI/UX 디자인 시스템
+### 2.6 사용자 인증 시스템 (Authentication)
+- **전역 상태 관리 (`AuthContext.jsx`)**:
+    - `isLoggedIn`, `user` 정보를 `Context API`로 관리하여 컴포넌트 트리 어디서든 접근 가능.
+    - 로그인/로그아웃 함수 및 로컬 스토리지를 활용한 세션 유지 로직 포함.
+- **로그인 페이지 (`Login.jsx`)**: 
+    - 이메일/비밀번호 기반 인증 UI.
+    - 브랜드 아이덴티티가 반영된 다크 모드 스타일 및 입력 필드 디자인.
+- **회원가입 페이지 (`SignUp.jsx`)**: 
+    - 사용자 기본 정보 입력 및 계정 생성 UI 구현.
+
+### 2.7 UI/UX 디자인 시스템
 - **Glassmorphism**: 헤더, 버튼(`EXPLORE_NOW`), 정보 카드 등에 반투명 블러 효과(`backdrop-blur`)를 적용하여 현대적인 비주얼 구현.
 - **Point Color**: 주요 액션 버튼(EXPLORE_NOW)에 청록색(Primary) 텍스트를 적용하여 브랜드 아이덴티티 및 가독성 확보.
 - **Code Vibe Style**: 데이터 표시 영역에 주석(`// Currently Rendering`) 스타일과 모노스페이스 폰트를 혼용하여 브랜드 정체성 강조.
