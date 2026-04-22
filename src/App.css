@@ -73,3 +73,21 @@
 .syntax-keyword { color: #b62034; }
 .syntax-comment { color: #5e6369; font-style: italic; }
 .syntax-function { color: #00b8d4; }
+
+/* Sidebar transition utilities */
+.sidebar-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-text-transition {
+  transition: opacity 0.2s ease-in-out, visibility 0.2s;
+}
+
+.collapsed-text {
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+}
