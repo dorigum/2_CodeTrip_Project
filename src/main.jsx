@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
 import Home from './pages/Home.jsx'
-import TravelList from './components/TravelPic.jsx'
+import Explore from './pages/Explore.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -12,7 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<App />}>
           <Route index element={<Home />} />
-          <Route path="explore" element={<TravelList />} />
+          <Route path="explore" element={<Explore />} />
         </Route>
       </Routes>
     </BrowserRouter>
