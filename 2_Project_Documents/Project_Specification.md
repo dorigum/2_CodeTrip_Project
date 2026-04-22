@@ -57,7 +57,28 @@
     - `/`: `Home.jsx` (MainTopImg 슬라이더 및 날씨 기반 다중 키워드 랜덤 추천)
     - `/explore`: `TravelPic.jsx` (여행지 탐색 및 필터링)
 
-### 2.2 실시간 날씨 및 위치 기반 추천 시스템
+### 2.1.1 네트워크 및 보안 최적화 (Network & Security)
+- **Vite Proxy (CORS 해결)**:
+  - 한국관광공사 API의 CORS 제한을 우회하기 위해 `vite.config.js`에서 프록시 서버 설정.
+  - 클라이언트에서 `/kto-tour-api`로 요청 시 서버 측에서 `https://apis.data.go.kr/B551011/KorService1`로 대리 호출 및 `changeOrigin: true` 적용.
+- **Axios Instance**:
+  - `axiosInstance.js`를 통해 베이스 URL 및 공통 헤더를 관리하여 코드 중복 제거 및 유지보수 용이성 확보.
+
+### 2.5 데이터베이스 설계 (Database Schema)
+
+시스템의 영속성을 보장하기 위해 설계된 MySQL 테이블 구조입니다.
+
+#### users (사용자 계정 테이블)
+| 컬럼명 | 타입 | 제약 조건 | 설명 |
+|---|---|---|---|
+| `id` | INT | PK, Auto Increment | 고유 식별자 |
+| `email` | VARCHAR(255) | NOT NULL, UNIQUE | 사용자 이메일 (로그인 ID) |
+| `password` | VARCHAR(255) | NOT NULL | 해싱된 비밀번호 (bcrypt) |
+| `name` | VARCHAR(100) | NOT NULL | 사용자 이름/닉네임 |
+| `profile_img` | VARCHAR(255) | | 프로필 이미지 URL |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 계정 생성 일시 |
+
+### 2.6 사용자 인증 시스템 (Authentication)
 - **Location Service**: 브라우저 Geolocation API를 통해 사용자 좌표를 획득하고, `Nominatim` 서비스를 통해 실제 지역명(`{ name, state }`)으로 변환.
   - `name`: 표시용 문자열 (예: `성남시, KR`)
   - `state`: 도/시명 (예: `경기도`) — KTO 지역 코드 매핑에 사용
@@ -175,6 +196,24 @@
 *최종 업데이트: 2026.04.22 변경 사항 (인증 시스템 API 연동 및 Zustand 리팩토링 완료)*
 
 ---
+
+## 3. 개발 환경 설정 (Environment Variables)
+
+프로젝트 구동을 위해 다음 환경 변수가 설정되어야 합니다.
+
+### Frontend (`.env`)
+- `VITE_GALLERY_API_KEY`: 한국관공공사 API 인증키 (Encoding/Decoding 확인 필요)
+
+### Backend (`server/.env`)
+- `DB_HOST`: 데이터베이스 호스트 주소 (로컬: `127.0.0.1`)
+- `DB_USER`: 데이터베이스 사용자명
+- `DB_PASSWORD`: 데이터베이스 비밀번호
+- `DB_NAME`: 사용할 데이터베이스명 (`codetrip`)
+- `JWT_SECRET`: JWT 서명용 비밀 키 (암호화 알고리즘에 사용)
+- `PORT`: Express 서버 포트 (기본값: `8080`)
+
+---
+
 ## 9. 향후 개발 계획
 
 ### 현시점 주요 과제
