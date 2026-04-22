@@ -1,13 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './App.css';
-
-const NAV_ITEMS = [
-  { icon: 'home', label: '// home', path: '/', active: true },
-  { icon: 'explore', label: '// explore', path: '/explore' },
-  { icon: 'bookmark', label: '// bookmarks', path: '#' },
-  { icon: 'settings', label: '// settings', path: '#' },
-];
+import SideBar from './components/Layout/SideBar';
 
 const TRENDING_THEMES = [
   { icon: 'coffee', title: 'Cyberpunk Tokyo', desc: 'High-contrast neon nights and synthesis of tradition.' },
@@ -16,41 +10,12 @@ const TRENDING_THEMES = [
   { icon: 'architecture', title: 'Brutalist Berlin', desc: 'Raw textures, bold geometry, and heavy history.' },
 ];
 
-const MOBILE_NAV = [
-  { icon: 'home', label: 'Home', active: true },
-  { icon: 'explore', label: 'Explore' },
-  { icon: 'bookmark', label: 'Saves' },
-  { icon: 'settings', label: 'Setup' },
-];
-
 const HERO_IMG = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBHaFWKTXoD7mJHtN6tIrJmnpnMFWJjFPTS9MgR8lmh91I36OqBte6ugLBWy2uxDaBZ7cziElo7-fOV4ywo5_aykN5rdTdikFJiaDfWYJGzUIbz71v1ny99j_GePWZT7Fk876GNd_Tt7_Ut-XXiURKv3_Go54hEZrpmKqdylp294PBexkkRza7YNEbxF6FJ5V_FcOsLOatcwW0PHnTV27mffa_yiHCiHOSNDJa1S9lfzBD5t9uJxwdI_-PnsvajgWdrDzYfr6R9wI-g';
 
 const App = () => {
   return (
     <div className="flex min-h-screen bg-background text-on-surface font-body">
-      {/* Side Navigation */}
-      <aside className="hidden md:flex flex-col py-8 gap-2 min-h-screen sticky top-0 left-0 w-64 bg-surface-container-low transition-all duration-200 shrink-0">
-        <div className="px-6 mb-8">
-          <div className="text-lg font-bold text-on-surface font-headline">The Solar Compiler</div>
-          <div className="text-[10px] uppercase tracking-widest text-on-secondary-container font-label opacity-60">v1.0.4-stable</div>
-        </div>
-        <nav className="flex flex-col gap-1 pr-4">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.label}
-              to={item.path}
-              className={`flex items-center gap-3 px-6 py-3 font-label text-sm transition-all duration-200 rounded-r-lg ${
-                item.active
-                  ? 'text-primary font-bold bg-surface-container-lowest'
-                  : 'text-on-secondary-container hover:bg-surface-container-high'
-              }`}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+      <SideBar />
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation */}
@@ -207,18 +172,6 @@ const App = () => {
         </footer>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-lowest glass-panel flex items-center justify-around z-50">
-        {MOBILE_NAV.map((item) => (
-          <button
-            key={item.label}
-            className={`flex flex-col items-center gap-1 ${item.active ? 'text-primary' : 'text-on-secondary-container'}`}
-          >
-            <span className="material-symbols-outlined">{item.icon}</span>
-            <span className={`text-[10px] font-label uppercase ${item.active ? 'font-bold' : ''}`}>{item.label}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 };
