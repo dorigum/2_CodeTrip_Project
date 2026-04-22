@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
@@ -83,47 +82,6 @@ const Explore = () => {
 
   return (
     <div className="bg-background text-on-surface font-body min-h-screen">
-      {/* Fixed Top Nav */}
-      <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-md shadow-sm flex justify-between items-center px-8 h-16">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="text-xl font-bold tracking-tighter text-on-surface font-headline">
-            Code Trip
-          </Link>
-          <nav className="hidden md:flex gap-6 items-center">
-            <Link to="/" className="text-on-secondary-container hover:text-primary font-label text-sm tracking-tight transition-colors">
-              Home
-            </Link>
-            <a className="text-primary font-semibold border-b-2 border-primary font-label text-sm tracking-tight cursor-pointer">
-              Explore
-            </a>
-            <a className="text-on-secondary-container hover:text-primary font-label text-sm tracking-tight transition-colors cursor-pointer">
-              Wishlist
-            </a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative hidden lg:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
-            <input
-              className="bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-              placeholder="Search Destinations..."
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors">
-            <span className="material-symbols-outlined text-on-surface-variant">terminal</span>
-          </button>
-          <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors">
-            <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-          </button>
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-1 ring-2 ring-primary/20">
-            <span className="material-symbols-outlined text-on-primary" style={{ fontSize: '18px' }}>person</span>
-          </div>
-        </div>
-      </header>
-
       {/* Page Body */}
       <main className="pt-24 pb-20 px-8 max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
 
@@ -337,29 +295,6 @@ const Explore = () => {
           </div>
         </aside>
       </main>
-
-      {/* Footer */}
-      <footer className="w-full border-t border-outline-variant/20 bg-inverse-surface flex flex-col md:flex-row justify-between items-center px-12 py-10 gap-6">
-        <div className="flex flex-col md:flex-row gap-8 items-center">
-          <div className="font-mono text-xs uppercase tracking-widest text-[#4ec9b0]">
-            // STATUS: 200 OK | Built with Syntactic Voyager v1.0.4
-          </div>
-          <nav className="flex gap-6">
-            {['Docs', 'Commit History', 'API Status', 'Privacy.sh'].map((link) => (
-              <a
-                key={link}
-                className="font-mono text-xs uppercase tracking-widest text-on-surface-variant hover:text-[#4ec9b0] transition-all hover:underline underline-offset-4 opacity-70 hover:opacity-100"
-                href="#"
-              >
-                {link}
-              </a>
-            ))}
-          </nav>
-        </div>
-        <div className="text-outline text-[10px] font-mono opacity-60">
-          © 2026 CODE_TRIP_INFRASTRUCTURE. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 };
