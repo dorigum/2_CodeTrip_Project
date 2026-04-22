@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import './App.css';
 import SideBar from './components/Layout/SideBar';
 import Header from './components/Layout/Header';
+import Footer from './components/Layout/Footer';
 
 const TRENDING_THEMES = [
   { icon: 'coffee', title: 'Cyberpunk Tokyo', desc: 'High-contrast neon nights and synthesis of tradition.' },
@@ -124,23 +125,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="flex justify-between px-10 w-full mt-auto py-4 bg-background border-t border-outline-variant/15">
-          <div className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70">
-            /* © 2026 Code Trip - System Status: Optimal */
-          </div>
-          <div className="flex gap-6">
-            {['Privacy', 'Security', 'Terms'].map((link) => (
-              <a
-                key={link}
-                className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
-                href="#"
-              >
-                {link}
-              </a>
-            ))}
-          </div>
-        </footer>
+        <Footer />
       </main>
 
     </div>
