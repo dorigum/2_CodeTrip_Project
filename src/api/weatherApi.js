@@ -1,0 +1,37 @@
+import axios from 'axios';
+
+// API 키가 필요 없는 Open-Meteo 사용
+const WEATHER_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
+
+export const getWeather = async (lat = 37.5665, lon = 126.9780) => {
+  try {
+    const response = await axios.get(WEATHER_BASE_URL, {
+      params: {
+        latitude: lat,
+        longitude: lon,
+        current_weather: true,
+        timezone: 'Asia/Seoul',
+      },
+    });
+    
+    const weather = response.data.current_weather;
+    return {
+      temp: Math.round(weather.temperature),
+      code: weather.weathercode,
+      // 날씨 코드에 따른 상태 텍스트 및 아이콘 매핑
+      ...parseWeatherCode(weather.weathercode)
+    };
+  } catch (error) {
+    console.error('Weather API Error:', error);
+    return null;
+  }
+};
+
+const parseWeatherCode = (code) => {
+  if (code <= 3) return { label: 'Sunny', icon: 'sunny', keyword: '풍경' };
+  if (code <= 48) return { label: 'Cloudy', icon: 'cloud', keyword: '산책' };
+  if (code <= 67) return { label: 'Rainy', icon: 'rainy', keyword: '박물관' };
+  if (code <= 77) return { label: 'Snowy', icon: 'ac_unit', keyword: '설경' };
+  if (code <= 82) return { label: 'Heavy Rain', icon: 'thunderstorm', keyword: '실내' };
+  return { label: 'Clear', icon: 'sunny', keyword: '여행' };
+};
