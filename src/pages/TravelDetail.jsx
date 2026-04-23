@@ -165,7 +165,7 @@ const TravelDetail = () => {
 
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
-              {images.slice(0, 4).map((img, i) => (
+              {images.map((img, i) => (
                 <img key={i} src={img.originimgurl || img.firstimage || img.smallimageurl} className="rounded-xl h-48 w-full object-cover border border-outline-variant/10 shadow-sm" alt="gallery" />
               ))}
             </div>
