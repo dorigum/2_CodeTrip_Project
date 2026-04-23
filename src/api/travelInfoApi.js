@@ -1,118 +1,90 @@
 import axios from 'axios';
 
-const API_URL = '/B551011/KorService2';
-const RAW_SERVICE_KEY = import.meta.env.VITE_TRAVEL_INFO_API_KEY || import.meta.env.VITE_GALLERY_API_KEY;
-const SERVICE_KEY = decodeURIComponent(RAW_SERVICE_KEY);
+const API_URL = '/B551011/KorService2'; 
+const SERVICE_KEY = import.meta.env.VITE_TRAVEL_INFO_API_KEY || import.meta.env.VITE_GALLERY_API_KEY;
 
-// 이미지 URL을 보안 프로토콜(https)로 변경하고 데이터 정규화
 const normalizeItems = (items) => {
-  const list = Array.isArray(items) ? items : items ? [items] : [];
+  if (!items) return [];
+  const list = Array.isArray(items) ? items : [items];
   return list.map(item => ({
     ...item,
-    // http://... 형태의 이미지를 https://...로 변경하여 차단 방지
     firstimage: item.firstimage?.replace('http://', 'https://'),
-    firstimage2: item.firstimage2?.replace('http://', 'https://')
+    originimgurl: item.originimgurl?.replace('http://', 'https://'),
+    smallimageurl: item.smallimageurl?.replace('http://', 'https://')
   }));
 };
 
+// 리스트 조회
 export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, areaCode } = {}) => {
   try {
-    const params = {
-      serviceKey: SERVICE_KEY,
-      numOfRows,
-      pageNo,
-      MobileOS: 'ETC',
-      MobileApp: 'CodeTrip',
-      _type: 'json',
-      arrange: 'O', // 제목순(O)으로 변경 (가장 무난함)
-    };
-
-    if (contentTypeId && contentTypeId !== '') params.contentTypeId = contentTypeId;
-    if (areaCode && areaCode !== '') params.areaCode = areaCode;
-
+    const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
+    if (contentTypeId) params.contentTypeId = contentTypeId;
+    if (areaCode) params.areaCode = areaCode;
     const response = await axios.get(`${API_URL}/areaBasedList2`, { params });
     const body = response.data?.response?.body;
-    const items = normalizeItems(body?.items?.item);
-
-    return { 
-      items: items, 
-      totalCount: Number(body?.totalCount || items.length) 
-    };
-  } catch (error) {
-    console.error('Travel API Fetch Error:', error);
-    return { items: [], totalCount: 0 };
-  }
+    return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
+  } catch (error) { return { items: [], totalCount: 0 }; }
 };
 
+// 지역 목록
 export const getRegions = async () => {
   try {
     const response = await axios.get(`${API_URL}/areaCode2`, {
-      params: {
-        serviceKey: SERVICE_KEY,
-        numOfRows: 20,
-        pageNo: 1,
-        MobileOS: 'ETC',
-        MobileApp: 'CodeTrip',
-        _type: 'json',
-      },
+      params: { serviceKey: SERVICE_KEY, numOfRows: 20, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const items = response.data?.response?.body?.items?.item || [];
     return Array.isArray(items) ? items : [items];
-  } catch (error) {
-    return [];
-  }
+  } catch (error) { return []; }
 };
 
+// 상세 공통 정보 (파라미터 완전 최소화)
 export const getDetailCommon = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailCommon2`, {
-      params: {
-        serviceKey: SERVICE_KEY,
-        contentId,
-        MobileOS: 'ETC',
-        MobileApp: 'CodeTrip',
-        _type: 'json',
-        defaultYN: 'Y',
-        firstImageYN: 'Y',
-        addrYN: 'Y',
-        mapinfoYN: 'Y',
-        overviewYN: 'Y',
-      },
+      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
-    const item = response.data?.response?.body?.items?.item;
+    const body = response.data?.response?.body;
+    if (!body || !body.items || !body.items.item) return null;
+    const item = body.items.item;
     const result = Array.isArray(item) ? item[0] : item;
-    if (result) result.firstimage = result.firstimage?.replace('http://', 'https://');
-    return result || null;
+    if (result && result.firstimage) result.firstimage = result.firstimage.replace('http://', 'https://');
+    return result;
   } catch (error) { return null; }
 };
 
+// 상세 소개 정보
 export const getDetailIntro = async (contentId, contentTypeId) => {
   try {
     const response = await axios.get(`${API_URL}/detailIntro2`, {
       params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
-    const item = response.data?.response?.body?.items?.item;
+    const body = response.data?.response?.body;
+    if (!body || !body.items || !body.items.item) return null;
+    const item = body.items.item;
     return Array.isArray(item) ? item[0] : item;
   } catch (error) { return null; }
 };
 
+// 상세 반복 정보
 export const getDetailInfo = async (contentId, contentTypeId) => {
   try {
     const response = await axios.get(`${API_URL}/detailInfo2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, numOfRows: 100, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
+      params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
-    const items = response.data?.response?.body?.items?.item || [];
+    const body = response.data?.response?.body;
+    const items = body?.items?.item || [];
     return { items: Array.isArray(items) ? items : [items] };
   } catch (error) { return { items: [] }; }
 };
 
+// 상세 이미지 정보
 export const getDetailImage = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailImage2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', imageYN: 'Y', subImageYN: 'Y' },
+      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
-    const items = response.data?.response?.body?.items?.item || [];
-    const normalized = normalizeItems(items);
-    return { items: normalized };
+    const body = response.data?.response?.body;
+    const items = body?.items?.item || [];
+    return { items: normalizeItems(items) };
   } catch (error) { return { items: [] }; }
 };

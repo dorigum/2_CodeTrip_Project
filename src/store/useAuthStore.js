@@ -12,10 +12,23 @@ const useAuthStore = create((set) => ({
 
   logout: () => {
     localStorage.removeItem('trip_user');
+    localStorage.removeItem('trip_token');
     set({ user: null, isLoggedIn: false });
   },
 
-  setUser: (userData) => set({ user: userData }),
+  setUser: (userData) => {
+    localStorage.setItem('trip_user', JSON.stringify(userData));
+    set({ user: userData });
+  },
+
+  // 프로필 정보 업데이트 (기존 유저 정보와 병합)
+  updateUser: (updatedData) => {
+    set((state) => {
+      const newUser = { ...state.user, ...updatedData };
+      localStorage.setItem('trip_user', JSON.stringify(newUser));
+      return { user: newUser };
+    });
+  }
 }));
 
 export default useAuthStore;

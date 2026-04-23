@@ -8,6 +8,8 @@ import TravelDetail from './pages/TravelDetail.jsx'
 import Login from './pages/Login.jsx'
 import SignUp from './pages/SignUp.jsx'
 import MyPage from './pages/MyPage.jsx'
+import Settings from './pages/Settings.jsx'
+import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -16,10 +18,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />}>
           <Route index element={<Home />} />
           <Route path="explore" element={<Explore />} />
-          <Route path="explore/:id" element={<TravelDetail />} />
+          <Route path="explore/:contentId" element={<TravelDetail />} />
           <Route path="login" element={<Login />} />
           <Route path="signup" element={<SignUp />} />
           <Route path="mypage" element={<MyPage />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

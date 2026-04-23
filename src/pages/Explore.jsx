@@ -211,7 +211,13 @@ const Explore = () => {
                         <span className="truncate">{post.addr1}</span>
                       </div>
                       <div className="mt-6 flex justify-end">
-                        <Link to={`/explore/${post.contentid}`} state={{ firstimage: post.firstimage }} className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold font-label hover:brightness-110 transition-all">상세보기</Link>
+                        <Link 
+                          to={`/explore/${post.contentid}`} 
+                          state={{ firstimage: post.firstimage }} 
+                          className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold font-label hover:brightness-110 transition-all"
+                        >
+                          상세보기
+                        </Link>
                       </div>
                     </div>
                   </article>

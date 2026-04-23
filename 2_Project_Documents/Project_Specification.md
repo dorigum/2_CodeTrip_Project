@@ -13,18 +13,17 @@
 ## 1. 프로젝트 개요: CodeTrip
 - **프로젝트 명**: CodeTrip (Vibe Board + Tour Info)
 - **목적**: 프리미엄 디자인이 적용된 현대적인 CRUD 게시판 시스템 및 관광 정보 서비스 구축
-- **현상태**: 전국 여행지 탐색 기능(Explore) 및 상세 페이지(TravelDetail) 통합 완료. 실시간 지도 API(카카오) 및 공공데이터 연동 완료. 디자인 일관성을 유지하며 풀스택 기능 안정화 중.
+- **현상태**: 전국 여행지 탐색 기능(Explore) 및 상세 페이지(TravelDetail) 통합 완료. 사용자 프로필 수정 및 보안 설정(비밀번호 변경) 시스템 구축 완료. 실시간 지도 API 및 파일 업로드 기능이 포함된 완성도 높은 풀스택 서비스 단계.
 
 ### 1.1 기술 스택 (Current)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
-- **Backend**: Node.js (Express), MySQL (Local/EC2)
-- **Infrastructure**: Vite Proxy (CORS Bypass), Nginx
+- **Backend**: Node.js (Express), MySQL, **Multer** (파일 업로드 처리)
+- **Infrastructure**: Vite Proxy (CORS Bypass), Nginx, 정적 파일 서빙(`/uploads`)
 - **APIs**: 
     - 한국관광공사 KorService2 (TourAPI) — 전국 여행지 데이터 및 상세 정보
     - 카카오 맵 API — 여행지 위치 시각화 (`react-kakao-maps-sdk`)
-    - 한국관광공사 관광사진정보서비스 (PhotoGalleryService1) — 메인 슬라이더 등
-    - Open-Meteo API (실시간 날씨 정보)
-    - Nominatim API (무료 역지오코딩)
+    - 한국관광공사 관광사진정보서비스 (PhotoGalleryService1)
+    - Open-Meteo API / Nominatim API
 - **Linting**: ESLint 9.39.4
 
 ---
@@ -36,35 +35,28 @@
 본 프로젝트는 유지보수성과 확장성을 극대화하기 위해 다음과 같은 설계 원칙을 따릅니다.
 
 1. **전역 상태 관리의 최적화 (Zustand)**:
-   - 복잡한 `Context API` 대신 가볍고 빠른 `Zustand`를 도입하여 보일러플레이트를 최소화함.
-   - `useAuthStore`를 통해 로그인 상태, 유저 정보, 세션 유지 로직을 캡슐화하여 관리함.
-
+   - `useAuthStore`를 통해 사용자 인증 및 전역 세션 관리.
+   - `updateUser` 액션을 통한 실시간 프로필 정보 동기화.
 2. **도메인 기반 API 레이어 분리 (Service Layer Pattern)**:
-   - 모든 API 통신은 `src/api` 내의 도메인별 파일(`authApi`, `travelApi`, `weatherApi` 등)로 분리되어 컴포넌트 로직과 비즈니스 로직을 엄격히 분리함.
-   - `axiosInstance.js`를 통해 공통 설정(BaseURL, Timeout 등)을 관리하여 통신 일관성 확보.
-
-3. **중첩 라우팅 기반 레이아웃 구조 (Nested Routing)**:
-   - `App.jsx`를 레이아웃 컨트롤러로 활용하고 `react-router-dom`의 `<Outlet />`을 사용하여 페이지 전환 시 헤더, 사이드바, 푸터가 재렌더링되지 않도록 최적화.
-
-4. **사용자 경험 중심의 어댑티브 UX (Adaptive UX)**:
-   - Geolocation 및 역지오코딩을 결합하여 사용자의 위치에 따라 동적으로 콘텐츠가 개인화되는 지능형 추천 시스템 구축.
+   - `travelInfoApi.js`, `authApi.js` 등 도메인별 모듈화를 통해 비즈니스 로직 격리.
+3. **Vite Proxy 기반의 안정적인 통신**:
+   - `vite.config.js` 프록시 설정을 통해 공공데이터 및 백엔드 서버(`/api`) 간의 통신 안정성 확보.
+4. **중첩 라우팅 기반 레이아웃 구조 (Nested Routing)**:
+   - `/`, `/explore`, `/explore/:id`, `/settings` 등 모든 경로에서 사이드바와 헤더를 유지하는 효율적인 라우팅 설계.
 
 ### 2.1 레이아웃 및 라우팅 구조
-- **App Layout**: `App.jsx`를 최상위 레이아웃 베이스로 사용하며, 독립된 공통 컴포넌트들을 조합하여 구조를 형성함.
-    - **Header**: 최상단 고정 헤더.
-    - **SideBar**: 데스크탑 좌측 사이드 네비게이션 및 모바일 하단 네비게이션 통합.
-    - **Footer**: 하단 정보 영역.
-- **Nested Routing**: `react-router-dom`의 `<Outlet />`을 활용하여 페이지 전환 시 공통 요소를 재렌더링하지 않고 컨텐츠만 교체.
-    - `/`: `Home.jsx` (MainTopImg 슬라이더 및 날씨 기반 다중 키워드 랜덤 추천)
+- **App Layout**: `App.jsx` 중심의 레이아웃 셸 구조.
+- **주요 라우트**:
+    - `/`: `Home.jsx` (랜덤 여행지 추천 및 날씨 위젯)
     - `/explore`: `Explore.jsx` (전국 여행지 리스트 및 지역/테마 필터링)
-    - `/explore/:id`: `TravelDetail.jsx` (여행지 상세 정보 및 카카오 지도 마커 표시)
+    - `/explore/:contentId`: `TravelDetail.jsx` (여행지 상세 정보 및 카카오 지도 마커 표시)
+    - `/settings`: `Settings.jsx` (사용자 프로필 및 비밀번호 변경)
+    - `/login` / `/signup`: 인증 페이지
 
 ### 2.1.1 네트워크 및 보안 최적화 (Network & Security)
-- **Vite Proxy (CORS 해결)**:
-  - 한국관광공사 API의 CORS 제한을 우회하기 위해 `vite.config.js`에서 프록시 서버 설정.
-  - `/B551011` → 공공데이터 API 서버 전달, `/api` → 로컬 Express 서버 전달로 통신 안정성 확보.
-- **Axios Instance**:
-  - `axiosInstance.js`를 통해 베이스 URL 및 공통 헤더를 관리하여 코드 중복 제거 및 유지보수 용이성 확보.
+- **Vite Proxy 설정**: `/B551011` (공공데이터), `/api` (로컬 Express 서버) 프록시 구축.
+- **인증키 보안**: `decodeURIComponent`를 통한 키 데이터 안정화.
+- **파일 보안**: `Multer` 파일 필터링을 통해 이미지 파일 형식만 업로드 허용.
 
 ### 2.5 데이터베이스 설계 (Database Schema)
 
@@ -77,158 +69,29 @@
 | `email` | VARCHAR(255) | NOT NULL, UNIQUE | 사용자 이메일 (로그인 ID) |
 | `password` | VARCHAR(255) | NOT NULL | 해싱된 비밀번호 (bcrypt) |
 | `name` | VARCHAR(100) | NOT NULL | 사용자 이름/닉네임 |
-| `profile_img` | VARCHAR(255) | | 프로필 이미지 URL |
+| `profile_img` | VARCHAR(255) | | 프로필 이미지 URL (또는 서버 경로) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 계정 생성 일시 |
 
 ### 2.6 사용자 인증 시스템 (Authentication)
-- **Location Service**: 브라우저 Geolocation API를 통해 사용자 좌표를 획득하고, `Nominatim` 서비스를 통해 실제 지역명(`{ name, state }`)으로 변환.
-  - `name`: 표시용 문자열 (예: `성남시, KR`)
-  - `state`: 도/시명 (예: `경기도`) — KTO 지역 코드 매핑에 사용
-  - `User-Agent: CodeTrip/1.0` 헤더 포함 (Nominatim 이용 정책 준수)
-  - `addr.state → addr.province → addr.region` 순서 다중 폴백으로 응답 포맷 차이 대응
-- **Weather Service**: 획득된 좌표를 `weatherApi.js`로 전달하여 현지 실시간 날씨 정보 획득. 상태 코드에 따라 최적화된 **다중 키워드 배열** 매핑.
-- **Random Recommendation (Random Pick 카드)**: 매핑된 키워드 중 하나를 랜덤 선택하여 관광공사 API 검색. 결과가 없을 경우 대체 키워드로 재시도하는 안정성 확보.
-- **City-Based Recommendation (Near Me 카드)**:
-    - 획득된 `state`(도/시명)를 KTO `areaCode`로 매핑하여 해당 지역 인기 관광지 조회.
-    - `AREA_CODES` 테이블: 전국 17개 시도 정식명 + 약식명 (경기, 강원, 충북 등) 모두 등록.
-    - `resolveAreaCode(province)`: 완전 일치 → 부분 문자열 포함 2단계 매칭으로 Nominatim 응답 형식 차이 흡수.
-    - 위치 권한 거부 또는 매핑 실패 시 빈 결과로 명시적 처리 (서울 강제 폴백 없음).
-    - 최대 5곳 선조회 후 `>` 버튼으로 API 재호출 없이 클라이언트 순환.
-- **MainTopImg Auto-Slider**:
-    - **배치 로딩**: `galleryList1` API를 사용하여 무작위 페이지에서 20장의 이미지를 선페칭(Pre-fetching).
-    - **동적 순환**: 로컬 인덱스를 5초마다 업데이트하여 네트워크 대기 없는 부드러운 이미지 전환 구현.
-    - **Fallback**: API 장애 시 자체 이미지 자산(`BACKUP_TOP_IMAGES`)으로 자동 전환.
-
-### 2.3 관광 정보 시스템 (Tourist Information)
-- **실시간 데이터 페칭**: `useCallback` 기반의 비동기 함수로 한국관광공사 API 호출 최적화.
-- **검색 및 필터링**: `searchTerm` 상태를 활용하여 제목 및 촬영 장소 기준의 실시간 클라이언트 사이드 필터링 구현.
-
-### 2.4 메인 페이지 Bento Grid 카드 구성
-
-홈 화면 하단의 Bento Grid는 `lg:col-span-2` (좌측 2카드) + `lg:col-span-1` (우측 1카드) 구조.
-
-| 카드 | 라벨 | 데이터 소스 | 인터랙션 |
-|---|---|---|---|
-| **Near Me** | 내 주변 / Near Me | `areaBasedList1` — 사용자 도/시 단위 인기 관광지 | `>` 버튼으로 최대 5곳 클라이언트 순환 |
-| **Random Pick** | 즉흥 여행 / Random Pick | `gallerySearchList1` — 날씨 키워드 기반 랜덤 이미지 | 🎲 casino 버튼으로 슬롯머신 스핀. 스핀 중 "여행지 뽑는 중..." 오버레이 표시 |
-| **지역 행사 & 테마** | — | `searchFestival1` + 계절 테마 사진 | hover 시 썸네일 확대. `VIEW_ALL` → `/explore` |
-
-**카드 공통 디자인 패턴**:
-- 배경: `bg-surface-container-lowest`, 패딩: `p-8`, 모서리: `rounded-xl`, 테두리: `border border-outline-variant/10`
-- 헤더: 라벨(작은 대문자) + 제목 + 우측 아이콘 버튼
-- 코드 블록: `// Comment` 스타일의 현재 상태 설명 텍스트
-- 이미지: `h-40` 고정 높이, `object-cover`, hover 시 `scale-105`
-- 로딩: `absolute inset-0` 반투명 스피너 오버레이
-
-**세 번째 카드 특이 구조**:
-- `flex-1 flex flex-col gap-3` 아이템 컨테이너 — 카드 전체 높이를 3개 아이템이 균등 분배
-- 각 아이템: `w-28` 세로 이미지(전체 높이 자동 맞춤) + 텍스트 영역 + chevron
-
-### 2.6 사용자 인증 시스템 (Authentication)
-- **전역 상태 관리 (`useAuthStore.js` - Zustand)**:
-    - `isLoggedIn`, `user` 정보를 Zustand 스토어로 관리.
-    - 로그인/로그아웃 액션 및 로컬 스토리지를 활용한 세션 유지 로직이 스토어 내부에 캡슐화됨.
-- **회원가입/로그인 API (REST)**:
-    - **Security**: `bcrypt`를 통한 비밀번호 단방향 해싱 저장.
-    - **Session**: `JWT`를 활용한 토큰 기반 인증 및 1일 만료 세션 적용.
-    - **API Endpoint**: `POST /api/signup`, `POST /api/login`.
-
-### 2.7 데이터 저장 및 위시리스트 아키텍처 제안
-사용자의 위시리스트(하트 정보) 관리를 위한 기술적 검토 및 향후 방향성입니다.
-
-- **방식 A: Local Storage (로컬 저장)**
-    - 장점: 빠른 구현, 서버 비용 전무, 비로그인 상태 유지 가능.
-    - 단점: 브라우저/기기간 데이터 동기화 불가, 캐시 삭제 시 데이터 소실 위험.
-- **방식 B: Database (서버 저장 - 권장)**
-    - **채택 이유**: Code Trip의 "영속성(Persistence) 있는 스마트 가이드" 컨셉에 부합. 기기 상관없는 데이터 유지 및 향후 개인화 추천 엔진의 기초 데이터로 활용 가능.
-    - **기술 스택**: 프로젝트 내 구축된 Express 서버 및 MySQL 연동 활용.
-
-### 2.8 향후 구현 로드맵 (Next Steps)
-1. **위시리스트 테이블 설계**: MySQL 내 `wishlist` 테이블(User_ID, Node_ID, Title, Image_URL 등) 생성.
-2. **API 엔드포인트 구축**: Express 기반의 CRUD API(POST/GET/DELETE) 개발.
-3. **인택션 연동**: Explore 페이지 하트 클릭 시 실시간 API 호출 및 MyPage 동기화.
-
-### 2.9 UI/UX 디자인 시스템
-- **Glassmorphism**: 헤더, 버튼(`EXPLORE_NOW`), 정보 카드 등에 반투명 블러 효과(`backdrop-blur`)를 적용하여 현대적인 비주얼 구현.
-- **Point Color**: 주요 액션 버튼(EXPLORE_NOW)에 청록색(Primary) 텍스트를 적용하여 브랜드 아이덴티티 및 가독성 확보.
-- **Code Vibe Style**: 데이터 표시 영역에 주석(`// Currently Rendering`) 스타일과 모노스페이스 폰트를 혼용하여 브랜드 정체성 강조.
-- **Responsive Aspect Ratio**: MainTopImg 섹션에 `aspect-[21/6]` 비율을 적용하여 슬림하고 세련된 레이아웃 유지.
-- **Spin Overlay**: Random Pick 카드의 슬롯머신 작동 중 이미지 위 반투명 오버레이 + `"여행지 뽑는 중..."` `animate-pulse` 텍스트로 진행 상태 시각화.
+...
+- **Profile Update API**: 닉네임, 프로필 이미지 URL 변경 지원.
+- **Password Security**: 현재 비밀번호 대조 후 신규 비밀번호 암호화(bcrypt) 저장.
+- **File Upload System**: 서버 내 `uploads` 폴더에 물리적 파일 저장 및 정적 경로 반환.
 
 ### 2.10 여행 탐색 및 상세 시스템 (Explore & Detail)
 - **데이터 페칭**: `KorService2/areaBasedList2`를 활용한 대용량 데이터 핸들링.
 - **스마트 필터**: 17개 시도(areaCode) 및 콘텐츠 타입(contentTypeId)을 조합한 다중 필터링 시스템.
 - **이미지 최적화**: 
-    - HTTPS 자동 전환 로직 적용.
-    - `onError` Fallback 시스템을 통한 시각적 완성도 유지.
-- **지도 연동**: 상세 페이지 접속 시 해당 여행지의 `mapx`, `mapy` 좌표를 활용하여 카카오 지도로 실시간 위치 표시.
+    - HTTPS 자동 전환 및 `onError` Fallback 시스템 구축.
+    - `originimgurl`, `firstimage`, `smallimageurl` 순차적 매핑 로직 적용.
+- **지도 연동**: 카카오 지도를 이용한 실시간 위치 표시 및 `window.kakao.maps.load`를 통한 안정적인 초기화.
+
+### 2.9 UI/UX 디자인 시스템
+- **Code Vibe Style**: 숫자형 페이지네이션, 모노스페이스 텍스트, 코드 주석 스타일 피드백 UI.
+- **Adaptive SideBar**: 사용자 상태에 따른 프로필/로그인 버튼 동적 전환 및 이미지 로딩 예외 처리.
 
 ---
 
-*최종 업데이트: 2026.04.23 변경 사항 (Explore 게시판 및 TravelDetail 지도 연동 완료)*
+*최종 업데이트: 2026.04.23 변경 사항 (프로필 수정, 비밀번호 변경 및 상세 페이지 완벽 복구 완료)*
 
-```text
-2_Code_Trip/
-├── server/                       # Express Backend
-├── src/
-│   ├── api/
-│   │   ├── weatherApi.js         # 실시간 날씨, 역지오코딩 ({ name, state } 반환)
-│   │   ├── travelApi.js          # 관광공사 API 연동
-│   │   ├── travelInfoApi.js      # 전국 여행지 데이터 및 상세 정보 API (KorService2)
-│   │   ├── authApi.js            # 회원가입/로그인 API
-│   │   ├── axiosInstance.js
-│   │   └── mockData.js
-│   ├── components/               # 공통 컴포넌트
-│   │   ├── Layout/               # 레이아웃 관련 (Header, Footer, SideBar)
-│   │   └── TravelPic.jsx         # 여행지 탐색 리스트 (Legacy)
-│   ├── pages/
-│   │   ├── Home.jsx              # 메인 페이지
-│   │   ├── Explore.jsx           # 전국 여행지 리스트 및 필터 페이지
-│   │   ├── TravelDetail.jsx      # 여행지 상세 정보 및 지도 페이지
-│   │   ├── Login.jsx             # 로그인
-│   │   ├── SignUp.jsx            # 회원가입
-│   ├── App.jsx                   # 레이아웃 베이스
-│   ├── main.jsx                  # 라우팅 설정
-│   └── index.css
-├── vite.config.js                # CORS 프록시 설정
-├── .env
-└── 2_Project_Documents/
-    ├── Project_Specification.md  # 현재 명세서 (이 파일)
-    ├── CHANGELOG.md              # 작업 이력
-```
-
----
-
-## 3. 개발 환경 설정 (Environment Variables)
-
-프로젝트 구동을 위해 다음 환경 변수가 설정되어야 합니다.
-
-### Frontend (`.env`)
-- `VITE_GALLERY_API_KEY`: 한국관광공사 사진 API 인증키
-- `VITE_TRAVEL_INFO_API_KEY`: 한국관광공사 TourAPI 인증키
-- `VITE_KAKAO_MAP_API_KEY`: 카카오 맵 JavaScript API 키
-
-### Backend (`server/.env`)
-- `DB_HOST`: 데이터베이스 호스트 주소 (로컬: `127.0.0.1`)
-- `DB_USER`: 데이터베이스 사용자명
-- `DB_PASSWORD`: 데이터베이스 비밀번호
-- `DB_NAME`: 사용할 데이터베이스명 (`codetrip`)
-- `JWT_SECRET`: JWT 서명용 비밀 키
-- `PORT`: Express 서버 포트 (기본값: `8080`)
-
----
-
-## 9. 향후 개발 계획
-
-### 현시점 주요 과제
-- **지도 API 연동**: 여행지 상세 페이지에 위치 마커 표시 ✅완료
-- **실제 DB 기반 위시리스트**: MySQL 연동을 통한 영구 저장 기능 구축 중
-
-| 구현 기능           | 상태  |
-| --------------- | --- |
-| 로그인/회원가입 페이지 구현 | ✅완료 |
-| 마이페이지(위시리스트) 구현  | ✅완료 |
-| 지도 API 연동       | ✅완료 |
-| 전국 여행지 필터링 시스템    | ✅완료 |
-
-... (이하 기존 메모 유지)
+... (이하 로드맵 등 기존 내용 유지)

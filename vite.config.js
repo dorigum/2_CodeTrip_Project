@@ -9,6 +9,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    port: 5180,
     proxy: {
       // 공공데이터 여행 API 프록시
       '/B551011': {
