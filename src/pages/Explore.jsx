@@ -76,15 +76,15 @@ const Explore = () => {
                   </span>
                 </div>
                 {regionOpen && (
-                  <ul className="ml-4 space-y-2 border-l border-outline-variant/30 pl-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <ul className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2">
                     {regions.map((r) => (
                       <li
                         key={r.code}
-                        className="flex items-center gap-2 cursor-pointer group"
+                        className="flex items-center gap-1.5 cursor-pointer group"
                         onClick={() => toggleRegion(r.code)}
                       >
-                        <span className={`w-1.5 h-1.5 transition-colors flex-shrink-0 ${r.code === '' ? 'rounded-sm' : 'rounded-full'} ${selectedRegions.has(String(r.code)) ? 'bg-primary' : 'bg-outline-variant group-hover:bg-primary'}`} />
-                        <span className={`text-xs transition-colors ${selectedRegions.has(String(r.code)) ? 'text-primary font-medium' : 'text-on-secondary-container group-hover:text-primary'}`}>
+                        <span className={`w-1.5 h-1.5 flex-shrink-0 transition-colors ${r.code === '' ? 'rounded-sm' : 'rounded-full'} ${selectedRegions.has(String(r.code)) ? 'bg-primary' : 'bg-outline-variant group-hover:bg-primary'}`} />
+                        <span className={`text-xs truncate transition-colors ${selectedRegions.has(String(r.code)) ? 'text-primary font-medium' : 'text-on-secondary-container group-hover:text-primary'}`}>
                           #{r.name}
                         </span>
                       </li>
