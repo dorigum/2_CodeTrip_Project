@@ -74,11 +74,13 @@
               "title": "북마크"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "dbfed928b8a0d5cb",
@@ -183,14 +185,14 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "8f239bae5c743501",
+  "active": "bf4261e814438f97",
   "lastOpenFiles": [
+    "CHANGELOG.md",
+    "Project_Sketch.md",
+    "Project_Specification.md",
     "img",
     "img/Pasted image 20260423174039.png",
-    "CHANGELOG.md",
     "무제.md",
-    "Project_Specification.md",
-    "Project_Sketch.md",
     "Project_Specification.md.tmp.24300.1776828872971",
     "Project_Specification.md.tmp.24300.1776828867724",
     "Project_Specification.md.tmp.24300.1776828847079",
