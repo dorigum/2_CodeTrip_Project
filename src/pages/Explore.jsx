@@ -124,7 +124,7 @@ const Explore = () => {
 
               <button
                 onClick={applyFilter}
-                className="w-full py-2 bg-primary text-on-primary rounded-lg font-label text-xs font-bold hover:brightness-110 transition-all shadow-md"
+                className="w-full py-2 bg-primary text-white rounded-lg font-label text-xs font-bold hover:brightness-110 transition-all shadow-md"
               >
                 RUN_FILTER.SH
               </button>
@@ -170,7 +170,7 @@ const Explore = () => {
                         <Link
                           to={`/explore/${post.contentid}`}
                           state={{ firstimage: post.firstimage }}
-                          className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold font-label hover:brightness-110 transition-all"
+                          className="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold font-label hover:brightness-110 transition-all"
                         >
                           상세보기
                         </Link>
@@ -203,7 +203,7 @@ const Explore = () => {
                       key={page}
                       onClick={() => changePage(page)}
                       className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                        page === currentPage ? 'bg-primary text-on-primary shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
+                        page === currentPage ? 'bg-primary text-white shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
                       }`}
                     >
                       {page}

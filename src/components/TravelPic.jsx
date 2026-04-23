@@ -188,7 +188,7 @@ const TravelList = () => {
                 </div>
               </section>
 
-              <button className="w-full py-2 bg-primary text-on-primary rounded-lg font-label text-xs font-bold hover:brightness-110 transition-all">
+              <button className="w-full py-2 bg-primary text-white rounded-lg font-label text-xs font-bold hover:brightness-110 transition-all">
                 RUN_FILTER.SH
               </button>
             </div>
@@ -265,7 +265,7 @@ const TravelList = () => {
                     </div>
 
                     <div className="mt-6 flex items-center justify-end">
-                      <button className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold hover:shadow-lg hover:brightness-110 transition-all font-label">
+                      <button className="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold hover:shadow-lg hover:brightness-110 transition-all font-label">
                         상세보기
                       </button>
                     </div>

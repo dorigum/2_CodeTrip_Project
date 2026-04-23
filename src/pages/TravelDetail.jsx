@@ -186,7 +186,7 @@ const TravelDetail = () => {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-on-secondary-container">
         <span className="material-symbols-outlined text-5xl mb-4 opacity-30">search_off</span>
         <p className="font-label text-sm syntax-comment">// destination_not_found</p>
-        <button onClick={() => navigate(-1)} className="mt-6 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-label">BACK_TO_LIST</button>
+        <button onClick={() => navigate(-1)} className="mt-6 px-4 py-2 bg-primary text-white rounded-lg text-sm font-label">BACK_TO_LIST</button>
       </div>
     );
   }
@@ -226,7 +226,7 @@ const TravelDetail = () => {
                 </button>
                 <button
                   onClick={() => { setShowLoginDialog(false); navigate('/login'); }}
-                  className="flex-1 py-2.5 rounded-lg text-xs font-bold font-label bg-primary text-on-primary hover:brightness-110 transition-all"
+                  className="flex-1 py-2.5 rounded-lg text-xs font-bold font-label bg-primary text-white hover:brightness-110 transition-all"
                 >
                   GO_TO_LOGIN.SH
                 </button>
@@ -312,7 +312,7 @@ const TravelDetail = () => {
                   <button
                     onClick={handleCommentSubmit}
                     disabled={submitting || !commentText.trim()}
-                    className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {submitting ? '// posting...' : 'COMMIT_COMMENT.SH'}
                   </button>
@@ -385,7 +385,7 @@ const TravelDetail = () => {
                                 <button
                                   onClick={() => handleEditSubmit(comment.id)}
                                   disabled={!editText.trim()}
-                                  className="px-3 py-1.5 text-xs font-bold font-label bg-primary text-on-primary rounded-lg hover:brightness-110 transition-all disabled:opacity-40"
+                                  className="px-3 py-1.5 text-xs font-bold font-label bg-primary text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-40"
                                 >
                                   SAVE.SH
                                 </button>

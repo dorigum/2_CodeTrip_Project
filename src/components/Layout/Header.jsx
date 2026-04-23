@@ -62,7 +62,7 @@ const Header = () => {
         ) : (
           <Link 
             to="/login"
-            className="px-5 py-2 bg-primary text-on-primary font-headline font-bold rounded-lg hover:brightness-110 transition-all text-sm flex items-center gap-2 shadow-md"
+            className="px-5 py-2 bg-primary text-white font-headline font-bold rounded-lg hover:brightness-110 transition-all text-sm flex items-center gap-2 shadow-md"
           >
             <span className="material-symbols-outlined text-base font-normal">login</span>
             Sign In

@@ -177,7 +177,7 @@ const MyPage = () => {
                     </div>
                   </div>
 
-                  <button className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 rounded-lg font-label text-xs font-bold tracking-widest hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center gap-2 shadow-lg">
+                  <button className="w-full bg-primary text-white py-3 rounded-lg font-label text-xs font-bold tracking-widest hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg">
                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
                     EXECUTE_TRIP_PLAN
                   </button>

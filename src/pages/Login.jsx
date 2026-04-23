@@ -90,7 +90,7 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full py-4 bg-primary text-on-primary font-headline font-bold rounded-2xl shadow-lg hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
+            className="w-full py-4 bg-primary text-white font-headline font-bold rounded-2xl shadow-lg hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
           >
             <span className="material-symbols-outlined text-xl">login</span>
             Sign In

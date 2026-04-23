@@ -180,7 +180,7 @@ const Settings = () => {
               <button 
                 type="submit" 
                 disabled={profileLoading}
-                className="bg-primary text-on-primary px-8 py-3 rounded-xl font-label text-xs font-bold tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                className="bg-primary text-white px-8 py-3 rounded-xl font-label text-xs font-bold tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
               >
                 {profileLoading ? (
                   <span className="animate-spin w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full" />

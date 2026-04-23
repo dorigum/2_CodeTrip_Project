@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getWeather, getLocationName } from '../api/weatherApi';
-import { getPhotoList, getFestivalList, getCityBasedPlaces } from '../api/travelApi';
+import { getPhotoList, getFestivalList, getCityBasedPlaces, searchKeywordPlaces } from '../api/travelApi';
 
 const MOCK_HERO = [
   { galContentId: 'm1', galTitle: '감성 여행', galPhotographyLocation: '대한민국', galWebImageUrl: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?q=80&w=2070' },
@@ -82,7 +82,7 @@ const Home = () => {
       const weatherData = await getWeather(lat, lon);
       setWeather({ ...weatherData, location: locCity });
       
-      const recs = await getPhotoList(weatherData.keywords, 1);
+      const recs = await searchKeywordPlaces(weatherData.keywords[0], 1);
       if (recs.length > 0 && !hasPickedRef.current) {
         setWeatherRec(recs[0]);
       }
@@ -112,17 +112,17 @@ const Home = () => {
     setIsSlotSpinning(true);
     setHasPicked(false);
     
-    const candidates = await getPhotoList(weather.keywords, 15);
+    const candidates = await searchKeywordPlaces(weather.keywords[0], 15);
     
     if (candidates && candidates.length > 0) {
       const spinCount = 15;
       for (let i = 0; i < spinCount; i++) {
-        setSlotImg(candidates[i % candidates.length].galWebImageUrl);
+        setSlotImg(candidates[i % candidates.length].firstimage);
         await new Promise(r => setTimeout(r, 80)); // 스핀 속도 증가
       }
       const finalResult = candidates[Math.floor(Math.random() * candidates.length)];
       setWeatherRec(finalResult);
-      setSlotImg(finalResult.galWebImageUrl);
+      setSlotImg(finalResult.firstimage);
     }
     
     setIsSlotSpinning(false);
@@ -218,13 +218,13 @@ const Home = () => {
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold text-xl text-slate-900 truncate font-headline">
-                    {isSlotSpinning ? 'PICKING...' : (hasPicked ? weatherRec?.galTitle : 'READY_TO_SPIN')}
+                    {isSlotSpinning ? 'PICKING...' : (hasPicked ? weatherRec?.title : 'READY_TO_SPIN')}
                   </h4>
-                  {weatherRec && hasPicked && !isSlotSpinning && <Link to={`/explore/${weatherRec.galContentId}`} className="shrink-0 text-[10px] font-bold text-primary hover:underline uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full font-label">View_Detail</Link>}
+                  {weatherRec && hasPicked && !isSlotSpinning && <Link to={`/explore/${weatherRec.contentid}`} className="shrink-0 text-[10px] font-bold text-primary hover:underline uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full font-label">View_Detail</Link>}
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-slate-400 font-mono text-xs italic">
                   <span className="text-primary-container">//</span>
-                  <p className="truncate">{isSlotSpinning ? '행운의 여행지를 찾는 중입니다...' : (hasPicked ? weatherRec?.galPhotographyLocation : '현재 날씨와 어울리는 여행지 탐색')}</p>
+                  <p className="truncate">{isSlotSpinning ? '행운의 여행지를 찾는 중입니다...' : (hasPicked ? weatherRec?.addr1 : '현재 날씨와 어울리는 여행지 탐색')}</p>
                 </div>
               </div>
             </div>

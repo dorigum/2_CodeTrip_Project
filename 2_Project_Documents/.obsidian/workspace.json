@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CHANGELOG.md",
+                "file": "Project_Specification.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CHANGELOG"
+              "title": "Project_Specification"
             }
           }
         ]
@@ -78,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "dbfed928b8a0d5cb",
@@ -185,10 +186,10 @@
   },
   "active": "bf4261e814438f97",
   "lastOpenFiles": [
-    "Project_Specification.md",
     "CHANGELOG.md",
-    "Project_Sketch.md",
     "무제.md",
+    "Project_Specification.md",
+    "Project_Sketch.md",
     "Project_Specification.md.tmp.24300.1776828872971",
     "Project_Specification.md.tmp.24300.1776828867724",
     "Project_Specification.md.tmp.24300.1776828847079",

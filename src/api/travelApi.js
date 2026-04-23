@@ -78,6 +78,28 @@ export const getCityBasedPlaces = async (areaName, numOfRows = 10) => {
   }
 };
 
+export const searchKeywordPlaces = async (keyword, numOfRows = 10) => {
+  try {
+    const response = await axios.get(`${TOUR_BASE_URL}/searchKeyword2`, {
+      params: {
+        serviceKey: SERVICE_KEY,
+        numOfRows,
+        pageNo: 1,
+        MobileOS: 'ETC',
+        MobileApp: 'CodeTrip',
+        _type: 'json',
+        keyword: keyword,
+        listYN: 'Y',
+        arrange: 'Q',
+        contentTypeId: '12'
+      },
+    });
+    return normalizeList(response.data?.response?.body?.items?.item);
+  } catch (error) {
+    return [];
+  }
+};
+
 export const getWeatherRecommendations = async (keyword) => {
   const items = await getPhotoList(keyword, 10);
   if (items.length > 0) return items[Math.floor(Math.random() * items.length)];
