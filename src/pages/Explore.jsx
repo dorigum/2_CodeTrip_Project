@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
@@ -46,6 +46,13 @@ const Explore = () => {
     fetchRegions();
     if (!initialized) fetchPosts();
   }, []);
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    const el = document.getElementById('main-scroll');
+    if (el) el.scrollTop = 0;
+  }, [currentPage]);
 
   useEffect(() => {
     const el = document.getElementById('main-scroll');
