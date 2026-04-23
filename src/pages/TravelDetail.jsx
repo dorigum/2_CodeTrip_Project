@@ -29,6 +29,7 @@ const TravelDetail = () => {
   const [infoItems, setInfoItems] = useState([]);
   const [images, setImages] = useState([]);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [commentText, setCommentText] = useState('');
 
   // 1. 카카오 맵 스크립트 안정 로딩 (핵심 수정)
   useEffect(() => {
@@ -170,6 +171,79 @@ const TravelDetail = () => {
               ))}
             </div>
           )}
+
+          {/* Comments */}
+          <div>
+            <h3 className="font-headline font-bold text-lg mb-5 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-lg">chat</span>
+              코멘트
+            </h3>
+
+            {/* Comment Input */}
+            <div className="bg-surface-container-low p-1 rounded-lg mb-6 shadow-sm border border-outline-variant/10">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-outline-variant/20 rounded-t-[4px]">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(186,26,26,0.6)' }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(90,95,101,0.6)' }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(0,184,212,0.6)' }} />
+                </div>
+                <span className="text-[10px] font-mono text-outline uppercase tracking-widest">new_comment.md</span>
+              </div>
+              <div className="p-5">
+                <div className="flex gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-primary text-sm">person</span>
+                  </div>
+                  <textarea
+                    className="flex-1 bg-transparent font-mono text-sm text-on-surface placeholder:text-outline resize-none outline-none leading-relaxed"
+                    rows={3}
+                    placeholder="// 여행 후기를 남겨주세요..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all">
+                    COMMIT_COMMENT.SH
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Comment List */}
+            <div className="space-y-4">
+              {[
+                { user: 'traveler_01', time: '2025-03-15 · 14:23', text: '정말 아름다운 곳이었습니다. 날씨가 좋을 때 방문하면 더 좋을 것 같아요!', likes: 12 },
+                { user: 'code_tripper', time: '2025-03-12 · 09:11', text: '주차 공간이 넉넉해서 편하게 이용했습니다. 주변 식당도 괜찮아요.', likes: 7 },
+                { user: 'dev_traveler', time: '2025-03-08 · 17:45', text: '가족들과 함께 방문했는데 아이들이 정말 좋아했어요. 다음에 또 오고 싶습니다.', likes: 21 },
+              ].map((comment, i) => (
+                <div key={i} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-primary text-sm">person</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <span className="text-xs font-mono font-bold text-primary">@{comment.user}</span>
+                          <span className="text-[10px] text-outline font-mono ml-3">{comment.time}</span>
+                        </div>
+                        <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
+                          <span className="material-symbols-outlined text-sm">favorite</span>
+                          {comment.likes}
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-600 leading-relaxed font-mono">
+                        <span className="text-outline">"</span>
+                        {comment.text}
+                        <span className="text-outline">"</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="col-span-12 lg:col-span-4 space-y-6">
