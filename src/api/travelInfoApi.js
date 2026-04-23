@@ -1,20 +1,18 @@
 import axios from 'axios';
 
 const API_URL = '/B551011/KorService2'; 
-const SERVICE_KEY = import.meta.env.VITE_TRAVEL_INFO_API_KEY || import.meta.env.VITE_GALLERY_API_KEY;
+const SERVICE_KEY = decodeURIComponent(import.meta.env.VITE_TRAVEL_INFO_API_KEY || import.meta.env.VITE_GALLERY_API_KEY);
 
 const normalizeItems = (items) => {
   if (!items) return [];
   const list = Array.isArray(items) ? items : [items];
   return list.map(item => ({
     ...item,
-    firstimage: item.firstimage?.replace('http://', 'https://'),
-    originimgurl: item.originimgurl?.replace('http://', 'https://'),
-    smallimageurl: item.smallimageurl?.replace('http://', 'https://')
+    firstimage: (item.firstimage || item.originimgurl || item.galWebImageUrl || '')?.replace('http://', 'https://'),
+    originimgurl: (item.originimgurl || item.firstimage || '')?.replace('http://', 'https://')
   }));
 };
 
-// 리스트 조회
 export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, areaCode } = {}) => {
   try {
     const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
@@ -26,7 +24,6 @@ export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId,
   } catch (error) { return { items: [], totalCount: 0 }; }
 };
 
-// 지역 목록
 export const getRegions = async () => {
   try {
     const response = await axios.get(`${API_URL}/areaCode2`, {
@@ -37,54 +34,67 @@ export const getRegions = async () => {
   } catch (error) { return []; }
 };
 
-// 상세 공통 정보 (파라미터 완전 최소화)
+// 3. 상세 공통 정보 (에러 유발 파라미터 완전 제거 - 오직 필수값만)
 export const getDetailCommon = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailCommon2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
+      params: {
+        serviceKey: SERVICE_KEY,
+        contentId: contentId,
+        MobileOS: 'ETC',
+        MobileApp: 'CodeTrip',
+        _type: 'json',
+        defaultYN: 'Y',
+        firstImageYN: 'Y',
+        addrYN: 'Y',
+        mapinfoYN: 'Y',
+        overviewYN: 'Y'
+      },
     });
+
     const body = response.data?.response?.body;
-    if (!body || !body.items || !body.items.item) return null;
+    // resultCode가 '0000'이 아니거나 items가 없으면 실패로 간주
+    if (response.data?.response?.header?.resultCode !== '0000' || !body?.items?.item) {
+      console.warn('API Response Error for ID:', contentId, response.data);
+      return null;
+    }
+
     const item = body.items.item;
     const result = Array.isArray(item) ? item[0] : item;
     if (result && result.firstimage) result.firstimage = result.firstimage.replace('http://', 'https://');
     return result;
-  } catch (error) { return null; }
+  } catch (error) {
+    return null;
+  }
 };
 
-// 상세 소개 정보
 export const getDetailIntro = async (contentId, contentTypeId) => {
   try {
     const response = await axios.get(`${API_URL}/detailIntro2`, {
       params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const body = response.data?.response?.body;
-    if (!body || !body.items || !body.items.item) return null;
-    const item = body.items.item;
-    return Array.isArray(item) ? item[0] : item;
+    if (!body?.items?.item) return null;
+    return Array.isArray(body.items.item) ? body.items.item[0] : body.items.item;
   } catch (error) { return null; }
 };
 
-// 상세 반복 정보
 export const getDetailInfo = async (contentId, contentTypeId) => {
   try {
     const response = await axios.get(`${API_URL}/detailInfo2`, {
       params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const body = response.data?.response?.body;
-    const items = body?.items?.item || [];
-    return { items: Array.isArray(items) ? items : [items] };
+    return { items: normalizeItems(body?.items?.item) };
   } catch (error) { return { items: [] }; }
 };
 
-// 상세 이미지 정보
 export const getDetailImage = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailImage2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
+      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', imageYN: 'Y', subImageYN: 'Y' },
     });
     const body = response.data?.response?.body;
-    const items = body?.items?.item || [];
-    return { items: normalizeItems(items) };
+    return { items: normalizeItems(body?.items?.item) };
   } catch (error) { return { items: [] }; }
 };
