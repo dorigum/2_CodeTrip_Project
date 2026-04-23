@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
+import { getComments } from '../api/commentApi';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 
@@ -30,6 +31,7 @@ const TravelDetail = () => {
   const [images, setImages] = useState([]);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState([]);
 
   // 1. 카카오 맵 스크립트 안정 로딩 (핵심 수정)
   useEffect(() => {
@@ -70,15 +72,17 @@ const TravelDetail = () => {
         setCommon(commonData);
 
         const cTypeId = commonData.contenttypeid;
-        const [introData, infoData, imageData] = await Promise.all([
+        const [introData, infoData, imageData, commentsData] = await Promise.all([
           getDetailIntro(contentId, cTypeId),
           getDetailInfo(contentId, cTypeId),
           getDetailImage(contentId),
+          getComments(contentId),
         ]);
 
         setIntro(introData);
         setInfoItems(infoData?.items ?? []);
         setImages(imageData?.items ?? []);
+        setComments(commentsData ?? []);
       } catch (err) {
         console.error('Fetch detail error:', err);
       } finally {
@@ -211,38 +215,40 @@ const TravelDetail = () => {
             </div>
 
             {/* Comment List */}
-            <div className="space-y-4">
-              {[
-                { user: 'traveler_01', time: '2025-03-15 · 14:23', text: '정말 아름다운 곳이었습니다. 날씨가 좋을 때 방문하면 더 좋을 것 같아요!', likes: 12 },
-                { user: 'code_tripper', time: '2025-03-12 · 09:11', text: '주차 공간이 넉넉해서 편하게 이용했습니다. 주변 식당도 괜찮아요.', likes: 7 },
-                { user: 'dev_traveler', time: '2025-03-08 · 17:45', text: '가족들과 함께 방문했는데 아이들이 정말 좋아했어요. 다음에 또 오고 싶습니다.', likes: 21 },
-              ].map((comment, i) => (
-                <div key={i} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-primary text-sm">person</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <span className="text-xs font-mono font-bold text-primary">@{comment.user}</span>
-                          <span className="text-[10px] text-outline font-mono ml-3">{comment.time}</span>
-                        </div>
-                        <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
-                          <span className="material-symbols-outlined text-sm">favorite</span>
-                          {comment.likes}
-                        </button>
+            {comments.length === 0 ? (
+              <p className="text-sm font-mono text-outline text-center py-6">// 아직 코멘트가 없습니다.</p>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-primary text-sm">person</span>
                       </div>
-                      <p className="text-sm text-slate-600 leading-relaxed font-mono">
-                        <span className="text-outline">"</span>
-                        {comment.text}
-                        <span className="text-outline">"</span>
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-primary">@{comment.nickname}</span>
+                            <span className="text-[10px] text-outline font-mono ml-3">
+                              {new Date(comment.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          </div>
+                          <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
+                            <span className="material-symbols-outlined text-sm">favorite</span>
+                            {comment.likes}
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed font-mono">
+                          <span className="text-outline">"</span>
+                          {comment.body}
+                          <span className="text-outline">"</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
