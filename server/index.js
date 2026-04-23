@@ -91,7 +91,17 @@ const initDB = async () => {
       )
     `);
 
-    console.log('✅ Users table initialized and optimized');
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS comment_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        comment_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_comment_user (comment_id, user_id)
+      )
+    `);
+
+    console.log('✅ Tables initialized');
     conn.release();
   } catch (err) {
     console.error('❌ Database initialization failed:', err.message);
@@ -274,14 +284,52 @@ app.delete('/api/boards/:id', async (req, res) => {
 
 // --- Comment Routes ---
 
-// 코멘트 조회
+// 코멘트 조회 (좋아요 수 + 현재 유저 좋아요 여부 포함)
 app.get('/api/comments/:contentId', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  let userId = null;
+  if (token) {
+    try { userId = jwt.verify(token, JWT_SECRET).id; } catch {}
+  }
+
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM comments WHERE content_id = ? ORDER BY created_at DESC',
-      [req.params.contentId]
+    const [rows] = await pool.query(`
+      SELECT c.id, c.content_id, c.user_id, c.nickname, c.body, c.created_at,
+        COUNT(cl.id) AS likes,
+        COALESCE(MAX(CASE WHEN cl.user_id = ? THEN 1 ELSE 0 END), 0) AS liked
+      FROM comments c
+      LEFT JOIN comment_likes cl ON cl.comment_id = c.id
+      WHERE c.content_id = ?
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `, [userId, req.params.contentId]);
+
+    res.json(rows.map(r => ({ ...r, likes: Number(r.likes), liked: !!r.liked })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 좋아요 토글
+app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.user.id;
+  try {
+    const [existing] = await pool.query(
+      'SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?',
+      [commentId, userId]
     );
-    res.json(rows);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?', [commentId, userId]);
+    } else {
+      await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
+    }
+    const [[{ likes }]] = await pool.query(
+      'SELECT COUNT(*) AS likes FROM comment_likes WHERE comment_id = ?',
+      [commentId]
+    );
+    res.json({ liked: existing.length === 0, likes: Number(likes) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

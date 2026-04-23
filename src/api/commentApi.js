@@ -5,7 +5,18 @@ const authHeader = () => ({
 });
 
 export const getComments = async (contentId) => {
-  const { data } = await axios.get(`/api/comments/${contentId}`);
+  const token = localStorage.getItem('trip_token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const { data } = await axios.get(`/api/comments/${contentId}`, { headers });
+  return data;
+};
+
+export const toggleCommentLike = async (commentId) => {
+  const { data } = await axios.post(
+    `/api/comments/${commentId}/like`,
+    {},
+    { headers: authHeader() }
+  );
   return data;
 };
 

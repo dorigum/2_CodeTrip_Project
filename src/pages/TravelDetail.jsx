@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
-import { getComments, postComment, updateComment, deleteComment } from '../api/commentApi';
+import { getComments, postComment, updateComment, deleteComment, toggleCommentLike } from '../api/commentApi';
 import useAuthStore from '../store/useAuthStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
@@ -154,6 +154,36 @@ const TravelDetail = () => {
     }
   };
 
+  const handleLike = async (commentId) => {
+    if (!isLoggedIn) {
+      setShowLoginDialog(true);
+      return;
+    }
+    // 낙관적 업데이트
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
+          : c
+      )
+    );
+    try {
+      const { liked, likes } = await toggleCommentLike(commentId);
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, liked, likes } : c))
+      );
+    } catch (err) {
+      // 실패 시 롤백
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
+            : c
+        )
+      );
+    }
+  };
+
   const systemEnvFields = () => {
     const fields = [];
     const push = (icon, label, value) => {
@@ -214,7 +244,7 @@ const TravelDetail = () => {
                 <span className="material-symbols-outlined text-primary text-2xl">lock</span>
                 <div>
                   <p className="font-headline font-bold text-on-surface text-sm">로그인이 필요합니다</p>
-                  <p className="text-xs text-outline font-mono mt-0.5">// 코멘트 작성은 로그인 후 이용 가능합니다.</p>
+                  <p className="text-xs text-outline font-mono mt-0.5">// 해당 기능은 로그인 후 이용 가능합니다.</p>
                 </div>
               </div>
               <div className="flex gap-2 mt-6">
@@ -359,8 +389,13 @@ const TravelDetail = () => {
                                   </button>
                                 </>
                               )}
-                              <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
-                                <span className="material-symbols-outlined text-sm">favorite</span>
+                              <button
+                                onClick={() => handleLike(comment.id)}
+                                className={`flex items-center gap-1 transition-colors text-[11px] font-mono ${comment.liked ? 'text-primary' : 'text-outline hover:text-primary'}`}
+                              >
+                                <span className={`material-symbols-outlined text-sm ${comment.liked ? 'filled' : ''}`}>
+                                  favorite
+                                </span>
                                 {comment.likes}
                               </button>
                             </div>
