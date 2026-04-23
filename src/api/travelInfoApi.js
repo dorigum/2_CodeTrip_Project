@@ -101,7 +101,7 @@ export const getDetailInfo = async (contentId, contentTypeId) => {
 export const getDetailImage = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailImage2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', imageYN: 'Y', subImageYN: 'Y' },
+      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const body = response.data?.response?.body;
     return { items: normalizeItems(body?.items?.item) };
