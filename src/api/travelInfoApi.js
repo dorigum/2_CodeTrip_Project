@@ -13,6 +13,24 @@ const normalizeItems = (items) => {
   }));
 };
 
+// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
+export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+  try {
+    const response = await axios.get('/api/travel', {
+      params: {
+        regions: regions.join(','),
+        themes: themes.join(','),
+        pageNo,
+        numOfRows,
+        ...(keyword ? { keyword } : {}),
+      },
+    });
+    return response.data;
+  } catch {
+    return { items: [], totalCount: 0 };
+  }
+};
+
 // 리스트 조회
 export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
   try {

@@ -6,7 +6,45 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 require('dotenv').config();
+
+const TRAVEL_API_BASE = 'https://apis.data.go.kr/B551011/KorService2';
+const TRAVEL_SERVICE_KEY = decodeURIComponent(
+  process.env.TRAVEL_INFO_API_KEY
+);
+
+const fetchCombination = async ({ region, theme, keyword, numOfRows, arrange }) => {
+  const endpoint = keyword ? 'searchKeyword2' : 'areaBasedList2';
+  const params = {
+    serviceKey: TRAVEL_SERVICE_KEY,
+    numOfRows,
+    pageNo: 1,
+    MobileOS: 'ETC',
+    MobileApp: 'CodeTrip',
+    _type: 'json',
+    arrange: arrange || 'O',
+  };
+  if (keyword) params.keyword = keyword;
+  if (theme) params.contentTypeId = theme;
+  if (region) params.lDongRegnCd = region;
+
+  try {
+    const response = await axios.get(`${TRAVEL_API_BASE}/${endpoint}`, { params });
+    const body = response.data?.response?.body;
+    const rawItems = body?.items?.item;
+    const list = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
+    return {
+      items: list.map(item => ({
+        ...item,
+        firstimage: (item.firstimage || item.originimgurl || '')?.replace('http://', 'https://'),
+      })),
+      totalCount: Number(body?.totalCount || 0),
+    };
+  } catch {
+    return { items: [], totalCount: 0 };
+  }
+};
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -221,6 +259,45 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
     await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, userId]);
 
     res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Travel API Routes ---
+
+app.get('/api/travel', async (req, res) => {
+  try {
+    const pageNo = Math.max(1, parseInt(req.query.pageNo) || 1);
+    const numOfRows = Math.max(1, parseInt(req.query.numOfRows) || 10);
+    const keyword = req.query.keyword || '';
+    const arrange = req.query.arrange || 'O';
+
+    const regions = (req.query.regions || '').split(',').map(r => r.trim());
+    const themes = (req.query.themes || '').split(',').map(t => t.trim());
+
+    const combinations = regions.flatMap(region =>
+      themes.map(theme => ({ region, theme }))
+    );
+
+    // 현재 페이지까지의 누적 데이터를 확보하되 외부 API 한계(100)를 초과하지 않음
+    const fetchNumOfRows = Math.min(pageNo * numOfRows, 100);
+
+    const results = await Promise.all(
+      combinations.map(({ region, theme }) =>
+        fetchCombination({ region, theme, keyword, numOfRows: fetchNumOfRows, arrange })
+      )
+    );
+
+    const allItems = results.flatMap(r => r.items);
+    const totalCount = results.reduce((sum, r) => sum + r.totalCount, 0);
+
+    allItems.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ko'));
+
+    const start = (pageNo - 1) * numOfRows;
+    const items = allItems.slice(start, start + numOfRows);
+
+    res.json({ items, totalCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

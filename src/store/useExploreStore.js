@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getTravelInfo, getTravelInfoByKeyword, getRegions } from '../api/travelInfoApi';
+import { getTravelList, getRegions } from '../api/travelInfoApi';
 
 const NUM_OF_ROWS = 10;
 
@@ -83,26 +83,15 @@ const useExploreStore = create((set, get) => ({
 
   fetchPosts: async () => {
     const { appliedRegions, appliedThemes, currentPage, keyword } = get();
-    const callApi = keyword
-      ? (params) => getTravelInfoByKeyword({ keyword, ...params })
-      : (params) => getTravelInfo(params);
     try {
       set({ loading: true });
-      const combinations = appliedRegions.flatMap((region) =>
-        appliedThemes.map((theme) => ({ region, theme }))
-      );
-      const results = await Promise.all(
-        combinations.map(({ region, theme }) =>
-          callApi({
-            pageNo: currentPage,
-            numOfRows: NUM_OF_ROWS,
-            contentTypeId: theme === '' ? undefined : theme,
-            lDongRegnCd: region === '' ? undefined : region,
-          })
-        )
-      );
-      const items = results.flatMap((r) => r.items);
-      const totalCount = results.reduce((sum, r) => sum + r.totalCount, 0);
+      const { items, totalCount } = await getTravelList({
+        regions: appliedRegions,
+        themes: appliedThemes,
+        pageNo: currentPage,
+        numOfRows: NUM_OF_ROWS,
+        keyword,
+      });
       set({ posts: items, totalCount, initialized: true });
     } catch (error) {
       console.error('Failed to fetch posts:', error);
