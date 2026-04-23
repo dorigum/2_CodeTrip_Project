@@ -38,9 +38,12 @@ const Header = () => {
             <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1 pr-1 border border-outline-variant/10">
               <Link to="/mypage" className="p-1 relative group cursor-pointer">
                 <img 
-                  src={user.profileImg || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=40'} 
+                  src={user.profileImg || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
                   alt="Profile" 
-                  className="w-8 h-8 rounded-lg border border-outline-variant/30 group-hover:border-primary transition-colors"
+                  className="w-8 h-8 rounded-lg border border-outline-variant/30 group-hover:border-primary transition-colors object-cover"
+                  onError={(e) => {
+                    e.target.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                  }}
                 />
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full"></span>
               </Link>
