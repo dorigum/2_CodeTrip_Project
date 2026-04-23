@@ -3,10 +3,22 @@ import { Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 
 const NAV_ITEMS = [
-  { icon: 'home', label: 'Home', path: '/' },
-  { icon: 'explore', label: 'Explore', path: '/explore' },
-  { icon: 'bookmark', label: 'Wishlist', path: '/mypage' },
-  { icon: 'manage_accounts', label: 'UserInfo Edit', path: '/settings' },
+  { icon: 'home', label: 'Home', path: '/', animation: 'group-hover:-translate-y-1' },
+  { icon: 'explore', label: 'Explore', path: '/explore', animation: 'group-hover:rotate-45' },
+  { 
+    icon: 'favorite', 
+    label: 'Wishlist', 
+    path: '/mypage', 
+    animation: 'group-hover:text-red-500',
+    extra: (
+      <>
+        <span className="material-symbols-outlined heart-bubble heart-bubble-1 fill-1">favorite</span>
+        <span className="material-symbols-outlined heart-bubble heart-bubble-2 fill-1">favorite</span>
+        <span className="material-symbols-outlined heart-bubble heart-bubble-3 fill-1">favorite</span>
+      </>
+    )
+  },
+  { icon: 'manage_accounts', label: 'UserInfo Edit', path: '/settings', animation: 'group-hover:scale-110 group-hover:-translate-y-0.5' },
 ];
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
@@ -55,9 +67,12 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                   : 'text-slate-600 hover:text-primary hover:bg-slate-50'
               }`}
             >
-              <span className={`material-symbols-outlined ${isActive(item.path) ? 'fill-1' : ''}`}>
-                {item.icon}
-              </span>
+              <div className="relative flex items-center justify-center">
+                <span className={`material-symbols-outlined ${isActive(item.path) ? 'fill-1' : ''} transition-all duration-300 ${item.animation}`}>
+                  {item.icon}
+                </span>
+                {item.extra}
+              </div>
               <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
                 {item.label}
               </span>
@@ -84,20 +99,40 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                 </div>
               </div>
               {!isCollapsed && (
-                <button onClick={logout} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">logout</span>
+                <button onClick={logout} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 group/logout">
+                  <span className="material-symbols-outlined text-sm transition-transform duration-300 group-hover/logout:-translate-x-1">logout</span>
                   LOGOUT_SYSTEM
                 </button>
               )}
             </div>
           ) : (
-            <Link to="/login" className={`flex items-center gap-4 transition-all ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-              <span className="material-symbols-outlined text-primary">account_circle</span>
+            <Link to="/login" className={`flex items-center gap-4 transition-all group ${isCollapsed ? 'justify-center' : 'px-2'}`}>
+              <span className="material-symbols-outlined text-primary transition-transform duration-300 group-hover:scale-110">account_circle</span>
               {!isCollapsed && <span className="text-sm font-bold uppercase text-primary">Sign In</span>}
             </Link>
           )}
         </div>
       </aside>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 z-[55] flex md:hidden items-center justify-around h-16 px-2">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.label}
+            to={item.path}
+            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all group ${
+              isActive(item.path) ? 'text-primary' : 'text-slate-400'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-2xl ${isActive(item.path) ? 'fill-1' : ''} transition-all duration-300 ${item.animation}`}>
+              {item.icon}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">
+              {item.label === 'UserInfo Edit' ? 'Settings' : item.label}
+            </span>
+          </Link>
+        ))}
+      </nav>
     </>
   );
 };

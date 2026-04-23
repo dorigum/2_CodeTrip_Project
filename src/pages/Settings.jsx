@@ -253,7 +253,7 @@ const Settings = () => {
               <button 
                 type="submit" 
                 disabled={pwdLoading}
-                className="bg-slate-900 text-white px-8 py-3 rounded-xl font-label text-xs font-bold tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+                className="bg-primary text-white px-8 py-3 rounded-xl font-label text-xs font-bold tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
               >
                 {pwdLoading ? (
                   <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
