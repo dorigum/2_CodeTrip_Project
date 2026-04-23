@@ -17,6 +17,8 @@ const Explore = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
+  const [likedPosts, setLikedPosts] = useState(new Set()); // 로컬 좋아요 상태 관리
+  const [activeAnimId, setActiveAnimId] = useState(null); // 강제 애니메이션 트리거용 ID
 
   const {
     regions,
@@ -26,6 +28,29 @@ const Explore = () => {
     initialized,
     fetchPosts, fetchRegions, applyFilter, changePage,
   } = useExploreStore();
+
+  const handleHeartToggle = (postId) => {
+    setLikedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) newSet.delete(postId);
+      else newSet.add(postId);
+      return newSet;
+    });
+  };
+
+  const handleImageDoubleClick = (postId) => {
+    // 좋아요가 없는 상태에서 더블 클릭 시 애니메이션 강제 트리거
+    if (!likedPosts.has(postId)) {
+      setActiveAnimId(postId);
+      handleHeartToggle(postId);
+      
+      // 1.5초 후 강제 애니메이션 상태 초기화
+      setTimeout(() => setActiveAnimId(null), 1500);
+    } else {
+      // 이미 좋아요 상태라면 그냥 취소 (애니메이션 없이)
+      handleHeartToggle(postId);
+    }
+  };
 
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
@@ -150,13 +175,16 @@ const Explore = () => {
                 {filteredPosts.map((post) => (
                   <article
                     key={post.contentid}
-                    className="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-outline-variant/10"
+                    className="group/card bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-outline-variant/10"
                   >
-                    <div className="relative h-64 overflow-hidden bg-surface-container-low">
+                    <div 
+                      className="relative h-64 overflow-hidden bg-surface-container-low cursor-pointer"
+                      onDoubleClick={() => handleImageDoubleClick(post.contentid)}
+                    >
                       <img
                         src={post.firstimage || FALLBACK_IMAGE}
                         alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
                         onError={(e) => { e.target.src = FALLBACK_IMAGE; }}
                       />
                     </div>
@@ -166,11 +194,30 @@ const Explore = () => {
                         <span className="material-symbols-outlined text-sm">location_on</span>
                         <span className="truncate">{post.addr1}</span>
                       </div>
-                      <div className="mt-6 flex justify-end">
+                      <div className="mt-6 flex justify-between items-center">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleHeartToggle(post.contentid);
+                            alert('위시리스트 기능은 곧 업데이트될 예정입니다!');
+                          }}
+                          className={`group/heart relative flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm active:scale-75 ${
+                            likedPosts.has(post.contentid) 
+                              ? 'bg-red-50 text-red-500' 
+                              : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500'
+                          }`}
+                        >
+                          <span className={`material-symbols-outlined text-xl ${likedPosts.has(post.contentid) ? 'fill-1 text-red-500' : ''}`}>
+                            favorite
+                          </span>
+                          {/* Classic Simple Bubbling Hearts */}
+                          <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite]' : ''}`}>favorite</span>
+                          <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]' : ''}`}>favorite</span>
+                        </button>
                         <Link
                           to={`/explore/${post.contentid}`}
                           state={{ firstimage: post.firstimage }}
-                          className="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold font-label hover:brightness-110 transition-all"
+                          className="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold font-label hover:brightness-110 transition-all shadow-sm"
                         >
                           상세보기
                         </Link>

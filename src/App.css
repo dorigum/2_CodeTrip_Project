@@ -92,7 +92,7 @@
   white-space: nowrap;
 }
 
-/* Instagram Live Style Heart Animation */
+/* Instagram Live Style Heart Animation - Classic Simple */
 @keyframes bubble-heart {
   0% {
     transform: translateY(0) scale(0.5);
@@ -103,7 +103,7 @@
     transform: translateY(-10px) scale(1.2);
   }
   100% {
-    transform: translateY(-50px) translateX(var(--random-x)) scale(0.8);
+    transform: translateY(-60px) translateX(var(--random-x)) scale(0.8);
     opacity: 0;
   }
 }
@@ -112,19 +112,17 @@
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(0);
   pointer-events: none;
   opacity: 0;
   color: #ef4444; /* text-red-500 */
-  font-size: 14px;
+  will-change: transform, opacity;
 }
 
-/* Trigger animation on parent hover */
-.group:hover .heart-bubble {
-  animation: bubble-heart 1.5s ease-out infinite;
-}
 
-.heart-bubble-1 { --random-x: -15px; animation-delay: 0s !important; }
-.heart-bubble-2 { --random-x: 15px; animation-delay: 0.4s !important; }
-.heart-bubble-3 { --random-x: -5px; animation-delay: 0.8s !important; }
+.heart-bubble-1 { --random-x: -15px; }
+.heart-bubble-2 { --random-x: 15px; }
+.heart-bubble-3 { --random-x: -5px; }
+
+
 

@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "dbfed928b8a0d5cb",
@@ -184,8 +183,10 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "bf4261e814438f97",
+  "active": "8f239bae5c743501",
   "lastOpenFiles": [
+    "img",
+    "img/Pasted image 20260423174039.png",
     "CHANGELOG.md",
     "무제.md",
     "Project_Specification.md",
