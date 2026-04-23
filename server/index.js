@@ -77,7 +77,20 @@ const initDB = async () => {
     
     // Ensure column is VARCHAR(255) even if it was previously TEXT
     await conn.query('ALTER TABLE users MODIFY profile_img VARCHAR(255)');
-    
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        content_id VARCHAR(50) NOT NULL,
+        user_id INT,
+        nickname VARCHAR(100) NOT NULL DEFAULT '익명',
+        body TEXT NOT NULL,
+        likes INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_content_id (content_id)
+      )
+    `);
+
     console.log('✅ Users table initialized and optimized');
     conn.release();
   } catch (err) {
@@ -254,6 +267,72 @@ app.delete('/api/boards/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM boards WHERE id = ?', [req.params.id]);
     res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Comment Routes ---
+
+// 코멘트 조회
+app.get('/api/comments/:contentId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM comments WHERE content_id = ? ORDER BY created_at DESC',
+      [req.params.contentId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 작성
+app.post('/api/comments', authenticateToken, async (req, res) => {
+  const { content_id, nickname, body } = req.body;
+  if (!content_id || !body || !body.trim()) {
+    return res.status(400).json({ message: '필수 항목이 누락되었습니다.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)',
+      [content_id, req.user.id, nickname || '익명', body.trim()]
+    );
+    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 수정
+app.put('/api/comments/:id', authenticateToken, async (req, res) => {
+  const { body } = req.body;
+  if (!body || !body.trim()) {
+    return res.status(400).json({ message: '내용을 입력해주세요.' });
+  }
+  try {
+    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '수정 권한이 없습니다.' });
+
+    await pool.query('UPDATE comments SET body = ? WHERE id = ?', [body.trim(), req.params.id]);
+    const [updated] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    res.json(updated[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 삭제
+app.delete('/api/comments/:id', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '삭제 권한이 없습니다.' });
+
+    await pool.query('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    res.json({ message: '삭제되었습니다.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
