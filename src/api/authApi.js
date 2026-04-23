@@ -72,6 +72,16 @@ const authApi = {
     } catch (error) {
       throw error.response?.data || { message: 'Password change failed' };
     }
+  },
+
+  // 비밀번호 찾기 (재설정)
+  forgotPassword: async (resetData) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/forgot-password`, resetData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Password reset failed' };
+    }
   }
 };
 

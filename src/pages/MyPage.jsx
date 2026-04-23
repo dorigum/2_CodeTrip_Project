@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 
 const WISH_LIST = [
@@ -41,7 +42,15 @@ const WISH_LIST = [
 ];
 
 const MyPage = () => {
-  const { user } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
+  const navigate = useNavigate();
+
+  // Authentication Check
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate]);
 
   const [sortBy, setSortBy] = useState('CREATED'); // CREATED, TITLE, MODIFIED
 
@@ -57,6 +66,8 @@ const MyPage = () => {
       }
     });
   }, [sortBy]);
+
+  if (!isLoggedIn) return null;
 
   return (
     <div className="flex-1 bg-background overflow-y-auto custom-scrollbar">

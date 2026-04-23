@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 
 const NAV_ITEMS = [
@@ -23,9 +23,22 @@ const NAV_ITEMS = [
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
   const { pathname } = useLocation();
-  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, logout, isLoggedIn } = useAuthStore();
 
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
+
+  const handleNavClick = (e, item) => {
+    // 보호된 경로 설정
+    const protectedPaths = ['/mypage', '/settings'];
+    
+    if (protectedPaths.includes(item.path) && !isLoggedIn) {
+      e.preventDefault();
+      alert('회원만 이용 가능한 서비스입니다.');
+      navigate('/login');
+      return;
+    }
+  };
 
   return (
     <>
@@ -61,6 +74,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             <Link
               key={item.label}
               to={item.path}
+              onClick={(e) => handleNavClick(e, item)}
               className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 group ${
                 isActive(item.path)
                   ? 'text-primary bg-primary/5 border-r-4 border-primary font-semibold'
@@ -120,6 +134,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
           <Link
             key={item.label}
             to={item.path}
+            onClick={(e) => handleNavClick(e, item)}
             className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all group ${
               isActive(item.path) ? 'text-primary' : 'text-slate-400'
             }`}

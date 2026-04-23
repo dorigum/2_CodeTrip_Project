@@ -216,6 +216,43 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
   }
 });
 
+// 5. Forgot Password (Reset via Email & Name Verification)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email, name, newPassword } = req.body;
+  
+  // 입력값 정규화 (공백 제거)
+  const cleanEmail = email?.trim();
+  const cleanName = name?.trim();
+
+  console.log('Password Reset Attempt:', { cleanEmail, cleanName });
+
+  try {
+    // 1. 먼저 이메일로 사용자 검색
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [cleanEmail]);
+    
+    if (users.length === 0) {
+      return res.status(400).json({ message: '해당 이메일로 등록된 계정을 찾을 수 없습니다.' });
+    }
+
+    const user = users[0];
+
+    // 2. 이메일은 맞는데 이름이 일치하지 않는 경우
+    if (user.name !== cleanName) {
+      return res.status(400).json({ message: '이메일과 이름 정보가 일치하지 않습니다.' });
+    }
+
+    // 3. 모든 정보 일치 시 비밀번호 해싱 및 업데이트
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, user.id]);
+
+    console.log('Reset Success for:', cleanEmail);
+    res.json({ message: '비밀번호가 성공적으로 재설정되었습니다. 다시 로그인해주세요.' });
+  } catch (err) {
+    console.error('Forgot Password Error:', err.message);
+    res.status(500).json({ error: '서버 오류로 인해 비밀번호를 재설정할 수 없습니다.' });
+  }
+});
+
 // --- Board Routes ---
 
 app.get('/api/boards', async (req, res) => {

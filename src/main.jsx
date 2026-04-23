@@ -9,6 +9,7 @@ import Login from './pages/Login.jsx'
 import SignUp from './pages/SignUp.jsx'
 import MyPage from './pages/MyPage.jsx'
 import Settings from './pages/Settings.jsx'
+import ForgotPassword from './pages/ForgotPassword.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="signup" element={<SignUp />} />
           <Route path="mypage" element={<MyPage />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
         </Route>
       </Routes>
     </BrowserRouter>

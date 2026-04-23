@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
@@ -6,10 +6,20 @@ import authApi from '../api/authApi';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('remembered_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +29,13 @@ const Login = () => {
       setIsLoading(true);
       const data = await authApi.login({ email, password });
       
+      // Handle Remember Me
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+      } else {
+        localStorage.removeItem('remembered_email');
+      }
+
       // Store token and user data in Zustand + LocalStorage
       login(data.user);
       localStorage.setItem('trip_token', data.token);
@@ -82,10 +99,15 @@ const Login = () => {
 
           <div className="flex items-center justify-between text-xs font-label">
             <label className="flex items-center gap-2 text-on-secondary-container cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 accent-primary rounded border-none bg-surface-container-high" />
+              <input 
+                type="checkbox" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 accent-primary rounded border-none bg-surface-container-high" 
+              />
               Remember Me
             </label>
-            <a href="#" className="text-primary hover:underline">Forgot Password?</a>
+            <Link to="/forgot-password" data-testid="forgot-password" className="text-primary hover:underline">Forgot Password?</Link>
           </div>
 
           <button

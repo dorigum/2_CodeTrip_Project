@@ -1,11 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
 
 const Settings = () => {
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, isLoggedIn } = useAuthStore();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
+
+  // Authentication Check
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate]);
+
   // Profile Form State
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileImg, setProfileImg] = useState(user?.profileImg || '');
