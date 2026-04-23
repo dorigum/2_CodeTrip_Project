@@ -13,11 +13,12 @@ const normalizeItems = (items) => {
   }));
 };
 
-export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, areaCode } = {}) => {
+// 리스트 조회
+export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
   try {
     const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
     if (contentTypeId) params.contentTypeId = contentTypeId;
-    if (areaCode) params.areaCode = areaCode;
+    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
     const response = await axios.get(`${API_URL}/areaBasedList2`, { params });
     const body = response.data?.response?.body;
     return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
@@ -26,7 +27,7 @@ export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId,
 
 export const getRegions = async () => {
   try {
-    const response = await axios.get(`${API_URL}/areaCode2`, {
+    const response = await axios.get(`${API_URL}/ldongCode2`, {
       params: { serviceKey: SERVICE_KEY, numOfRows: 20, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const items = response.data?.response?.body?.items?.item || [];
@@ -44,11 +45,6 @@ export const getDetailCommon = async (contentId) => {
         MobileOS: 'ETC',
         MobileApp: 'CodeTrip',
         _type: 'json',
-        defaultYN: 'Y',
-        firstImageYN: 'Y',
-        addrYN: 'Y',
-        mapinfoYN: 'Y',
-        overviewYN: 'Y'
       },
     });
 
