@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../App.css';
-import useExploreStore, { NUM_OF_ROWS } from '../store/useExploreStore';
+import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
 
 const CONTENT_TYPE_MAP = {
   '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
@@ -30,9 +30,29 @@ const Explore = () => {
 
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
+  useLayoutEffect(() => {
+    if (!initialized) return;
+    const target = getExploreScrollY();
+    if (target === 0) return;
+    const el = document.getElementById('main-scroll');
+    if (!el) return;
+    el.scrollTop = target;
+    if (el.scrollTop !== target) {
+      requestAnimationFrame(() => { el.scrollTop = target; });
+    }
+  }, []);
+
   useEffect(() => {
     fetchRegions();
     if (!initialized) fetchPosts();
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById('main-scroll');
+    if (!el) return;
+    const handleScroll = () => setExploreScrollY(el.scrollTop);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
   const getPageNumbers = () => {
@@ -146,7 +166,7 @@ const Explore = () => {
         </aside>
 
         {/* Content */}
-        <div className="col-span-12 lg:col-span-9 xl:col-span-7">
+        <div className="col-span-12 lg:col-span-9 xl:col-span-10">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -215,9 +235,8 @@ const Explore = () => {
                     <button
                       key={page}
                       onClick={() => changePage(page)}
-                      className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                        page === currentPage ? 'bg-primary text-on-primary shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
-                      }`}
+                      className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${page === currentPage ? 'bg-primary text-on-primary shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
+                        }`}
                     >
                       {page}
                     </button>

@@ -3,6 +3,10 @@ import { getTravelInfo, getTravelInfoByKeyword, getRegions } from '../api/travel
 
 const NUM_OF_ROWS = 10;
 
+let exploreScrollY = 0;
+export const getExploreScrollY = () => exploreScrollY;
+export const setExploreScrollY = (y) => { exploreScrollY = y; };
+
 const useExploreStore = create((set, get) => ({
   regions: [{ code: '', name: '전국' }],
 
