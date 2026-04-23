@@ -15,11 +15,11 @@ const normalizeItems = (items) => {
 };
 
 // 리스트 조회
-export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, areaCode } = {}) => {
+export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
   try {
     const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
     if (contentTypeId) params.contentTypeId = contentTypeId;
-    if (areaCode) params.areaCode = areaCode;
+    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
     const response = await axios.get(`${API_URL}/areaBasedList2`, { params });
     const body = response.data?.response?.body;
     return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };

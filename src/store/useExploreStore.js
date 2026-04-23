@@ -62,17 +62,24 @@ const useExploreStore = create((set, get) => ({
 
   fetchPosts: async () => {
     const { appliedRegions, appliedThemes, currentPage } = get();
-    const targetRegion = appliedRegions[appliedRegions.length - 1] || undefined;
-    const targetTheme = appliedThemes[appliedThemes.length - 1] || undefined;
     try {
       set({ loading: true });
-      const result = await getTravelInfo({
-        pageNo: currentPage,
-        numOfRows: NUM_OF_ROWS,
-        contentTypeId: targetTheme === '' ? undefined : targetTheme,
-        areaCode: targetRegion === '' ? undefined : targetRegion,
-      });
-      set({ posts: result.items || [], totalCount: result.totalCount || 0, initialized: true });
+      const combinations = appliedRegions.flatMap((region) =>
+        appliedThemes.map((theme) => ({ region, theme }))
+      );
+      const results = await Promise.all(
+        combinations.map(({ region, theme }) =>
+          getTravelInfo({
+            pageNo: currentPage,
+            numOfRows: NUM_OF_ROWS,
+            contentTypeId: theme === '' ? undefined : theme,
+            lDongRegnCd: region === '' ? undefined : region,
+          })
+        )
+      );
+      const items = results.flatMap((r) => r.items);
+      const totalCount = results.reduce((sum, r) => sum + r.totalCount, 0);
+      set({ posts: items, totalCount, initialized: true });
     } catch (error) {
       console.error('Failed to fetch posts:', error);
     } finally {
