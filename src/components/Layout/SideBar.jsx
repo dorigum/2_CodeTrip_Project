@@ -24,10 +24,21 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
       >
         {/* Logo Section */}
         <div className="h-16 flex items-center px-6 shrink-0 border-b border-outline-variant/10">
-          <span className={`text-xl font-bold tracking-tighter text-slate-900 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-            Code Trip
-          </span>
-          <button onClick={toggleSidebar} className={`material-symbols-outlined text-primary hover:bg-primary/5 p-1 rounded-lg transition-all ${isCollapsed ? 'mx-auto' : 'ml-auto'}`}>
+          {!isCollapsed ? (
+            <Link 
+              to="/" 
+              className="text-xl font-bold tracking-tighter text-slate-900 transition-opacity duration-300 hover:text-primary opacity-100"
+            >
+              Code Trip
+            </Link>
+          ) : (
+            <div className="w-0 overflow-hidden opacity-0">Code Trip</div>
+          )}
+          
+          <button 
+            onClick={toggleSidebar} 
+            className={`material-symbols-outlined text-primary hover:bg-primary/5 p-1 rounded-lg transition-all ${isCollapsed ? 'mx-auto' : 'ml-auto'}`}
+          >
             {isCollapsed ? 'menu_open' : 'menu'}
           </button>
         </div>

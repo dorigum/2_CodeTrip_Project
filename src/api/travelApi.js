@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const KTO_BASE_URL = '/B551011/PhotoGalleryService1';
-const TOUR_BASE_URL = '/B551011/KorService2'; 
+const TOUR_BASE_URL = '/B551011/KorService2'; // 사용자 키와 호환되는 2번 버전으로 원복
 const SERVICE_KEY = decodeURIComponent(import.meta.env.VITE_GALLERY_API_KEY);
 
 const AREA_CODES = {
@@ -10,64 +10,72 @@ const AREA_CODES = {
 };
 
 const normalizeList = (items) => {
-  if (!items) return [];
-  return Array.isArray(items) ? items : [items];
+  if (!items || items === "") return [];
+  const list = Array.isArray(items) ? items : [items];
+  return list.map(item => ({
+    ...item,
+    firstimage: (item.firstimage || item.firstimage2 || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2070')?.replace('http://', 'https://'),
+    galWebImageUrl: item.galWebImageUrl?.replace('http://', 'https://')
+  }));
 };
 
 export const getPhotoList = async (keywords = null, numOfRows = 10) => {
   try {
-    // 다양한 결과를 위해 pageNo를 랜덤하게 설정 (1~10페이지 사이)
-    const randomPage = Math.floor(Math.random() * 10) + 1;
+    const randomPage = Math.floor(Math.random() * 30) + 1;
     const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo: randomPage, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' };
-    
     let url = `${KTO_BASE_URL}/galleryList1`;
-    if (keywords) {
+    if (keywords && keywords.length > 0) {
       url = `${KTO_BASE_URL}/gallerySearchList1`;
-      params.keyword = Array.isArray(keywords) ? keywords[Math.floor(Math.random() * keywords.length)] : keywords;
+      params.keyword = keywords[Math.floor(Math.random() * keywords.length)];
     }
-    
     const response = await axios.get(url, { params });
-    const items = response.data?.response?.body?.items?.item;
-    return normalizeList(items).map(item => ({
-      ...item,
-      galWebImageUrl: item.galWebImageUrl?.replace('http://', 'https://')
-    }));
+    return normalizeList(response.data?.response?.body?.items?.item);
   } catch (error) { return []; }
 };
 
-export const getFestivalList = async (numOfRows = 6) => {
+export const getFestivalList = async (numOfRows = 10) => {
   try {
-    const response = await axios.get(`${TOUR_BASE_URL}/searchFestival2`, {
+    const response = await axios.get(`${TOUR_BASE_URL}/areaBasedList2`, {
       params: {
         serviceKey: SERVICE_KEY, numOfRows, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip',
-        _type: 'json', listYN: 'Y', arrange: 'A',
-        eventStartDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+        _type: 'json', listYN: 'Y', arrange: 'Q', contentTypeId: '15'
       },
     });
-    const items = response.data?.response?.body?.items?.item;
-    return normalizeList(items).map(item => ({
+    const items = normalizeList(response.data?.response?.body?.items?.item);
+    return items.map(item => ({
       ...item,
-      firstimage: item.firstimage?.replace('http://', 'https://')
+      eventstartdate: item.createdtime?.slice(4, 8) || 'NOW'
     }));
   } catch (error) { return []; }
 };
 
 export const getCityBasedPlaces = async (areaName, numOfRows = 10) => {
   try {
-    const shortName = String(areaName).substring(0, 2);
-    const areaCode = AREA_CODES[shortName] || undefined;
+    let areaCode = '1';
+    const nameStr = String(areaName || '서울');
+    for (const [name, code] of Object.entries(AREA_CODES)) {
+      if (nameStr.includes(name)) { areaCode = code; break; }
+    }
+
+    // KorService2의 areaBasedList2 사용
     const response = await axios.get(`${TOUR_BASE_URL}/areaBasedList2`, {
       params: {
-        serviceKey: SERVICE_KEY, numOfRows, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip',
-        _type: 'json', listYN: 'Y', arrange: 'O', areaCode
+        serviceKey: SERVICE_KEY, 
+        numOfRows, 
+        pageNo: 1, 
+        MobileOS: 'ETC', 
+        MobileApp: 'CodeTrip',
+        _type: 'json', 
+        areaCode: areaCode, 
+        contentTypeId: '12',
+        arrange: 'Q' // 데이터 누락을 방지하기 위해 수정일순(Q)으로 변경
       },
     });
-    const items = response.data?.response?.body?.items?.item;
-    return normalizeList(items).map(item => ({
-      ...item,
-      firstimage: item.firstimage?.replace('http://', 'https://')
-    }));
-  } catch (error) { return []; }
+    const items = normalizeList(response.data?.response?.body?.items?.item);
+    return items;
+  } catch (error) { 
+    return []; 
+  }
 };
 
 export const getWeatherRecommendations = async (keyword) => {
