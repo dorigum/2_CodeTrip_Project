@@ -337,29 +337,6 @@ const TravelList = () => {
           </div>
         </aside>
       </main>
-
-      {/* Footer */}
-      <footer className="w-full border-t border-outline-variant/20 bg-inverse-surface flex flex-col md:flex-row justify-between items-center px-12 py-10 gap-6">
-        <div className="flex flex-col md:flex-row gap-8 items-center">
-          <div className="font-mono text-xs uppercase tracking-widest text-[#4ec9b0]">
-            // STATUS: 200 OK | Built with Syntactic Voyager v1.0.4
-          </div>
-          <nav className="flex gap-6">
-            {['Docs', 'Commit History', 'API Status', 'Privacy.sh'].map((link) => (
-              <a
-                key={link}
-                className="font-mono text-xs uppercase tracking-widest text-on-surface-variant hover:text-[#4ec9b0] transition-all hover:underline underline-offset-4 opacity-70 hover:opacity-100"
-                href="#"
-              >
-                {link}
-              </a>
-            ))}
-          </nav>
-        </div>
-        <div className="text-outline text-[10px] font-mono opacity-60">
-          © 2026 CODE_TRIP_INFRASTRUCTURE. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 };
