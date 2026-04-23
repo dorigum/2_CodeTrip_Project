@@ -22,14 +22,25 @@ const Home = () => {
   const [loading, setLoading] = useState({ nearby: true, trending: true, weather: true });
   const [isSlotSpinning, setIsSlotSpinning] = useState(false);
   const [hasPicked, setHasPicked] = useState(false);
+  const hasPickedRef = useRef(false); // fetchMainData에서 최신 상태 참조용
   
-  const isInitialMount = useRef(true); // 무한 업데이트 방지
+  const isInitialMount = useRef(true); 
+  const currentProvinceRef = useRef(''); // 현재 지역 고정용
   const topImgTimerRef = useRef(null);
+
+  // hasPicked 상태와 Ref 동기화
+  useEffect(() => {
+    hasPickedRef.current = hasPicked;
+  }, [hasPicked]);
 
   const fetchMainData = useCallback(async (locProv = '서울', locCity = '서울', lat = 37.5665, lon = 126.9780, isUpdate = false) => {
     try {
-      // 1. 상태 동기화
-      if (isUpdate) setProvince(locProv);
+      // 지역이 같으면 불필요한 재호출 방지 (업데이트 모드일 때만)
+      if (isUpdate && locProv === currentProvinceRef.current) return;
+      if (isUpdate) {
+        setProvince(locProv);
+        currentProvinceRef.current = locProv;
+      }
 
       // 2. 데이터 페칭
       const [tops, near, fests] = await Promise.all([
@@ -40,7 +51,7 @@ const Home = () => {
 
       if (tops.length > 0) setTopImgList(tops);
 
-      // [핵심 수정 1] 첫 번째 카드 데이터 셔플 (서운동산 고정 해제)
+      // 첫 번째 카드: 지역 기반 명소 셔플
       if (near.length > 0) {
         const shuffledNear = [...near].sort(() => Math.random() - 0.5);
         setNearbyPlaces(shuffledNear);
@@ -58,20 +69,20 @@ const Home = () => {
       setTrendingItems(festItems);
       setLoading(prev => ({ ...prev, trending: false }));
 
-      // [핵심 수정 2] 두 번째 카드: 사용자가 뽑기 전(isUpdate === false)에는 내부적으로만 데이터를 가지고 있고 화면엔 노출 안 함
+      // 두 번째 카드: 날씨 데이터 및 추천
       const weatherData = await getWeather(lat, lon);
       setWeather({ ...weatherData, location: locCity });
+      
       const recs = await getPhotoList(weatherData.keywords, 1);
       if (recs.length > 0) {
-        setWeatherRec(recs[0]);
-        // hasPicked가 false일 때는 slotImg를 바꾸지 않아 번쩍거림 방지
-        if (!hasPicked) {
-          // 필요 시 기본 이미지 유지
+        // [수정] 사용자가 이미 뽑았다면(hasPickedRef.current) 자동 업데이트로 결과를 덮어쓰지 않음
+        if (!hasPickedRef.current) {
+          setWeatherRec(recs[0]);
         }
       }
       setLoading(prev => ({ ...prev, weather: false }));
     } catch (err) { console.error('Data fetch error:', err); }
-  }, [hasPicked]);
+  }, []); // 의존성 배열을 비워 함수 안정화 (Ref 사용)
 
   useEffect(() => {
     if (isInitialMount.current) {
