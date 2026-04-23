@@ -25,6 +25,19 @@ export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId,
   } catch (error) { return { items: [], totalCount: 0 }; }
 };
 
+// 키워드 검색
+export const getTravelInfoByKeyword = async ({keyword, pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd} = {}) => {
+  try {
+    const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
+    if (keyword) params.keyword = keyword;
+    if (contentTypeId) params.contentTypeId = contentTypeId;
+    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
+    const response = await axios.get(`${API_URL}/searchKeyword2`, { params });
+    const body = response.data?.response?.body;
+    return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
+  } catch (error) { return { items: [], totalCount: 0 }; }
+};
+
 export const getRegions = async () => {
   try {
     const response = await axios.get(`${API_URL}/ldongCode2`, {

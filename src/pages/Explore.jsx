@@ -23,6 +23,7 @@ const Explore = () => {
     selectedRegions, toggleRegion,
     selectedThemes, toggleTheme,
     posts, loading, totalCount, currentPage,
+    keyword, clearKeyword,
     initialized,
     fetchPosts, fetchRegions, applyFilter, changePage,
   } = useExploreStore();
@@ -53,6 +54,18 @@ const Explore = () => {
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface font-headline">
           여행지 탐색 <span className="text-primary">.</span>
         </h1>
+        {keyword && (
+          <div className="mt-4 inline-flex items-center gap-3 bg-surface-container-low border border-primary/20 rounded-lg px-4 py-2 font-mono text-sm">
+            <span className="text-outline">// searching:</span>
+            <span className="text-primary font-bold">"{keyword}"</span>
+            <button
+              onClick={clearKeyword}
+              className="ml-1 text-outline hover:text-on-surface transition-colors flex items-center"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-12 gap-8">

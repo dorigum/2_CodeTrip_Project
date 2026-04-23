@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getTravelInfo, getRegions } from '../api/travelInfoApi';
+import { getTravelInfo, getTravelInfoByKeyword, getRegions } from '../api/travelInfoApi';
 
 const NUM_OF_ROWS = 10;
 
@@ -12,6 +12,7 @@ const useExploreStore = create((set, get) => ({
   appliedRegions: [''],
   appliedThemes: [''],
 
+  keyword: '',
   currentPage: 1,
   posts: [],
   totalCount: 0,
@@ -42,6 +43,22 @@ const useExploreStore = create((set, get) => ({
     });
   },
 
+  setKeyword: (keyword) => {
+    const { selectedRegions, selectedThemes } = get();
+    set({
+      keyword,
+      currentPage: 1,
+      appliedRegions: Array.from(selectedRegions),
+      appliedThemes: Array.from(selectedThemes),
+    });
+    get().fetchPosts();
+  },
+
+  clearKeyword: () => {
+    set({ keyword: '' });
+    get().fetchPosts();
+  },
+
   applyFilter: () => {
     const { selectedRegions, selectedThemes } = get();
     set({
@@ -61,7 +78,10 @@ const useExploreStore = create((set, get) => ({
   },
 
   fetchPosts: async () => {
-    const { appliedRegions, appliedThemes, currentPage } = get();
+    const { appliedRegions, appliedThemes, currentPage, keyword } = get();
+    const callApi = keyword
+      ? (params) => getTravelInfoByKeyword({ keyword, ...params })
+      : (params) => getTravelInfo(params);
     try {
       set({ loading: true });
       const combinations = appliedRegions.flatMap((region) =>
@@ -69,7 +89,7 @@ const useExploreStore = create((set, get) => ({
       );
       const results = await Promise.all(
         combinations.map(({ region, theme }) =>
-          getTravelInfo({
+          callApi({
             pageNo: currentPage,
             numOfRows: NUM_OF_ROWS,
             contentTypeId: theme === '' ? undefined : theme,
