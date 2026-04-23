@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { icon: 'home', label: 'Home', path: '/' },
   { icon: 'explore', label: 'Explore', path: '/explore' },
   { icon: 'bookmark', label: 'Wishlist', path: '/mypage' },
-  { icon: 'settings', label: 'Settings', path: '/settings' },
+  { icon: 'manage_accounts', label: 'UserInfo Edit', path: '/settings' },
 ];
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
