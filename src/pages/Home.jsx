@@ -35,50 +35,56 @@ const Home = () => {
 
   const fetchMainData = useCallback(async (locProv = '서울', locCity = '서울', lat = 37.5665, lon = 126.9780, isUpdate = false) => {
     try {
-      // 지역이 같으면 불필요한 재호출 방지 (업데이트 모드일 때만)
-      if (isUpdate && locProv === currentProvinceRef.current) return;
-      if (isUpdate) {
+      // 1. 지역이 같으면 불필요한 재호출 방지
+      const isProvinceChanged = locProv !== currentProvinceRef.current;
+      
+      if (isUpdate && !isProvinceChanged) {
+        // 지역은 같지만 상세 위치(City)나 날씨가 바뀔 수 있으므로 날씨 데이터만 업데이트
+        const weatherData = await getWeather(lat, lon);
+        setWeather({ ...weatherData, location: locCity });
+        return; 
+      }
+
+      if (isProvinceChanged) {
         setProvince(locProv);
         currentProvinceRef.current = locProv;
       }
 
-      // 2. 데이터 페칭
-      const [tops, near, fests] = await Promise.all([
-        getPhotoList(null, 20),
-        getCityBasedPlaces(locProv, 20),
-        getFestivalList(10)
-      ]);
+      // 2. 지역 기반 데이터 (isProvinceChanged 일 때만 셔플 및 업데이트)
+      if (isProvinceChanged || !isUpdate) {
+        const [tops, near, fests] = await Promise.all([
+          getPhotoList(null, 20),
+          getCityBasedPlaces(locProv, 20),
+          getFestivalList(10)
+        ]);
 
-      if (tops.length > 0) setTopImgList(tops);
+        if (tops.length > 0) setTopImgList(tops);
 
-      // 첫 번째 카드: 지역 기반 명소 셔플
-      if (near.length > 0) {
-        const shuffledNear = [...near].sort(() => Math.random() - 0.5);
-        setNearbyPlaces(shuffledNear);
+        if (near.length > 0) {
+          const shuffledNear = [...near].sort(() => Math.random() - 0.5);
+          setNearbyPlaces(shuffledNear);
+          setNearbyIndex(0); // 지역 바뀌면 인덱스 초기화
+        }
+        setLoading(prev => ({ ...prev, nearby: false }));
+
+        const festItems = (fests || []).slice(0, 3).map(f => ({
+          type: 'festival', icon: 'celebration', title: f.title, 
+          subtitle: f.eventstartdate || 'NOW',
+          location: f.addr1?.split(' ')[0] || '전국', 
+          image: f.firstimage,
+          contentid: f.contentid
+        }));
+        setTrendingItems(festItems);
+        setLoading(prev => ({ ...prev, trending: false }));
       }
-      setLoading(prev => ({ ...prev, nearby: false }));
 
-      // 세 번째 카드 (축제)
-      const festItems = (fests || []).slice(0, 3).map(f => ({
-        type: 'festival', icon: 'celebration', title: f.title, 
-        subtitle: f.eventstartdate || 'NOW',
-        location: f.addr1?.split(' ')[0] || '전국', 
-        image: f.firstimage,
-        contentid: f.contentid
-      }));
-      setTrendingItems(festItems);
-      setLoading(prev => ({ ...prev, trending: false }));
-
-      // 두 번째 카드: 날씨 데이터 및 추천
+      // 3. 날씨 데이터 (매 호출마다 업데이트 가능하지만 슬롯머신 결과는 보호)
       const weatherData = await getWeather(lat, lon);
       setWeather({ ...weatherData, location: locCity });
       
       const recs = await getPhotoList(weatherData.keywords, 1);
-      if (recs.length > 0) {
-        // [수정] 사용자가 이미 뽑았다면(hasPickedRef.current) 자동 업데이트로 결과를 덮어쓰지 않음
-        if (!hasPickedRef.current) {
-          setWeatherRec(recs[0]);
-        }
+      if (recs.length > 0 && !hasPickedRef.current) {
+        setWeatherRec(recs[0]);
       }
       setLoading(prev => ({ ...prev, weather: false }));
     } catch (err) { console.error('Data fetch error:', err); }
