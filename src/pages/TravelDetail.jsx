@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
-import { getComments, postComment } from '../api/commentApi';
+import { getComments, postComment, updateComment, deleteComment } from '../api/commentApi';
 import useAuthStore from '../store/useAuthStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
@@ -35,6 +35,8 @@ const TravelDetail = () => {
   const [comments, setComments] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
 
   const { isLoggedIn, user } = useAuthStore();
 
@@ -117,6 +119,38 @@ const TravelDetail = () => {
       console.error('Comment post error:', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditStart = (comment) => {
+    setEditingId(comment.id);
+    setEditText(comment.body);
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleEditSubmit = async (id) => {
+    if (!editText.trim()) return;
+    try {
+      await updateComment(id, editText.trim());
+      setEditingId(null);
+      setEditText('');
+      setComments(await getComments(contentId));
+    } catch (err) {
+      console.error('Comment update error:', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('코멘트를 삭제하시겠습니까?')) return;
+    try {
+      await deleteComment(id);
+      setComments(await getComments(contentId));
+    } catch (err) {
+      console.error('Comment delete error:', err);
     }
   };
 
@@ -291,34 +325,84 @@ const TravelDetail = () => {
               <p className="text-sm font-mono text-outline text-center py-6">// 아직 코멘트가 없습니다.</p>
             ) : (
               <div className="space-y-4">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-primary text-sm">person</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <span className="text-xs font-mono font-bold text-primary">@{comment.nickname}</span>
-                            <span className="text-[10px] text-outline font-mono ml-3">
-                              {new Date(comment.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
-                            </span>
-                          </div>
-                          <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
-                            <span className="material-symbols-outlined text-sm">favorite</span>
-                            {comment.likes}
-                          </button>
+                {comments.map((comment) => {
+                  const isOwner = user?.id && comment.user_id === user.id;
+                  const isEditing = editingId === comment.id;
+                  return (
+                    <div key={comment.id} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-primary text-sm">person</span>
                         </div>
-                        <p className="text-sm text-slate-600 leading-relaxed font-mono">
-                          <span className="text-outline">"</span>
-                          {comment.body}
-                          <span className="text-outline">"</span>
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <span className="text-xs font-mono font-bold text-primary">@{comment.nickname}</span>
+                              <span className="text-[10px] text-outline font-mono ml-3">
+                                {new Date(comment.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isOwner && !isEditing && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditStart(comment)}
+                                    className="text-[11px] font-mono text-outline hover:text-primary transition-colors flex items-center gap-0.5"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(comment.id)}
+                                    className="text-[11px] font-mono text-outline hover:text-error transition-colors flex items-center gap-0.5"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                  </button>
+                                </>
+                              )}
+                              <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
+                                <span className="material-symbols-outlined text-sm">favorite</span>
+                                {comment.likes}
+                              </button>
+                            </div>
+                          </div>
+
+                          {isEditing ? (
+                            <div>
+                              <textarea
+                                className="w-full bg-surface-container-low font-mono text-sm text-on-surface resize-none outline-none leading-relaxed rounded-lg p-3 border border-primary/30 focus:border-primary transition-colors"
+                                rows={3}
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                autoFocus
+                              />
+                              <div className="flex justify-end gap-2 mt-2">
+                                <button
+                                  onClick={handleEditCancel}
+                                  className="px-3 py-1.5 text-xs font-bold font-label border border-outline-variant/30 rounded-lg text-on-secondary-container hover:bg-surface-container-high transition-all"
+                                >
+                                  CANCEL
+                                </button>
+                                <button
+                                  onClick={() => handleEditSubmit(comment.id)}
+                                  disabled={!editText.trim()}
+                                  className="px-3 py-1.5 text-xs font-bold font-label bg-primary text-on-primary rounded-lg hover:brightness-110 transition-all disabled:opacity-40"
+                                >
+                                  SAVE.SH
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-600 leading-relaxed font-mono">
+                              <span className="text-outline">"</span>
+                              {comment.body}
+                              <span className="text-outline">"</span>
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
