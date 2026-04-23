@@ -59,7 +59,14 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
           {user ? (
             <div className={`flex flex-col gap-4 ${isCollapsed ? 'items-center' : ''}`}>
               <div className="flex items-center gap-4 overflow-hidden">
-                <img src={user.profileImg} alt="User" className="w-10 h-10 rounded-full border border-outline-variant/15 shrink-0" />
+                <img 
+                  src={user.profileImg || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+                  alt="User" 
+                  className="w-10 h-10 rounded-full border border-outline-variant/15 shrink-0 object-cover" 
+                  onError={(e) => {
+                    e.target.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                  }}
+                />
                 <div className={`transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
                   <p className="text-sm font-bold truncate">{user.name}</p>
                   <p className="text-[10px] text-slate-400 uppercase tracking-widest truncate">Premium Core</p>

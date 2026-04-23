@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// 서버 URL 설정 (Express 서버 포트 8080 가정)
-const API_URL = 'http://localhost:8080/api';
+// Vite Proxy 설정을 사용하여 통신 (/api로 시작하는 요청은 localhost:8080으로 전달됨)
+const API_URL = '/api';
 
 const authApi = {
   // 회원가입
