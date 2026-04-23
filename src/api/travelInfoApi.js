@@ -29,7 +29,7 @@ export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId,
 // 지역 목록
 export const getRegions = async () => {
   try {
-    const response = await axios.get(`${API_URL}/areaCode2`, {
+    const response = await axios.get(`${API_URL}/ldongCode2`, {
       params: { serviceKey: SERVICE_KEY, numOfRows: 20, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const items = response.data?.response?.body?.items?.item || [];

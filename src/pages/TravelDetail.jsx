@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
-import { getComments } from '../api/commentApi';
+import { getComments, postComment } from '../api/commentApi';
+import useAuthStore from '../store/useAuthStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 
@@ -32,6 +33,10 @@ const TravelDetail = () => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+
+  const { isLoggedIn, user } = useAuthStore();
 
   // 1. 카카오 맵 스크립트 안정 로딩 (핵심 수정)
   useEffect(() => {
@@ -93,6 +98,28 @@ const TravelDetail = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [contentId]);
 
+  const handleCommentFocus = (e) => {
+    if (!isLoggedIn) {
+      e.target.blur();
+      setShowLoginDialog(true);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!isLoggedIn || !commentText.trim() || submitting) return;
+    try {
+      setSubmitting(true);
+      await postComment({ contentId, nickname: user.name, body: commentText.trim() });
+      setCommentText('');
+      const updated = await getComments(contentId);
+      setComments(updated);
+    } catch (err) {
+      console.error('Comment post error:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const systemEnvFields = () => {
     const fields = [];
     const push = (icon, label, value) => {
@@ -135,6 +162,46 @@ const TravelDetail = () => {
 
   return (
     <div className="bg-background text-on-surface font-body min-h-screen pb-20">
+
+      {/* 로그인 유도 다이얼로그 */}
+      {showLoginDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface-container-low rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-outline-variant/20">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(186,26,26,0.6)' }} />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(90,95,101,0.6)' }} />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'rgba(0,184,212,0.6)' }} />
+              </div>
+              <span className="text-[10px] font-mono text-outline uppercase tracking-widest">auth_required.sh</span>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-primary text-2xl">lock</span>
+                <div>
+                  <p className="font-headline font-bold text-on-surface text-sm">로그인이 필요합니다</p>
+                  <p className="text-xs text-outline font-mono mt-0.5">// 코멘트 작성은 로그인 후 이용 가능합니다.</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => setShowLoginDialog(false)}
+                  className="flex-1 py-2.5 rounded-lg text-xs font-bold font-label border border-outline-variant/30 text-on-secondary-container hover:bg-surface-container-high transition-all"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={() => { setShowLoginDialog(false); navigate('/login'); }}
+                  className="flex-1 py-2.5 rounded-lg text-xs font-bold font-label bg-primary text-on-primary hover:brightness-110 transition-all"
+                >
+                  GO_TO_LOGIN.SH
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="relative h-[400px] w-full bg-slate-900 overflow-hidden">
         {heroImage ? (
           <img alt={common.title} className="w-full h-full object-cover opacity-80" src={heroImage} />
@@ -204,11 +271,16 @@ const TravelDetail = () => {
                     placeholder="// 여행 후기를 남겨주세요..."
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
+                    onFocus={handleCommentFocus}
                   />
                 </div>
                 <div className="flex justify-end">
-                  <button className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all">
-                    COMMIT_COMMENT.SH
+                  <button
+                    onClick={handleCommentSubmit}
+                    disabled={submitting || !commentText.trim()}
+                    className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? '// posting...' : 'COMMIT_COMMENT.SH'}
                   </button>
                 </div>
               </div>
