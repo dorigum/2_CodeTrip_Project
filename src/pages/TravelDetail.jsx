@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
 import { getComments, postComment, updateComment, deleteComment, toggleCommentLike } from '../api/commentApi';
 import useAuthStore from '../store/useAuthStore';
+import useWishlistStore from '../store/useWishlistStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 
@@ -39,6 +40,26 @@ const TravelDetail = () => {
   const [editText, setEditText] = useState('');
 
   const { isLoggedIn, user } = useAuthStore();
+  const { wishlistIds, toggleWishlist, initWishlist } = useWishlistStore();
+
+  // 0. 위시리스트 초기화
+  useEffect(() => {
+    if (isLoggedIn && wishlistIds.size === 0) {
+      initWishlist();
+    }
+  }, [isLoggedIn]);
+
+  const handleWishlistToggle = async () => {
+    if (!isLoggedIn) {
+      setShowLoginDialog(true);
+      return;
+    }
+    try {
+      await toggleWishlist(contentId);
+    } catch (error) {
+      alert('오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
 
   // 1. 카카오 맵 스크립트 안정 로딩 (핵심 수정)
   useEffect(() => {
@@ -221,7 +242,7 @@ const TravelDetail = () => {
     );
   }
 
-  const heroImage = state?.firstimage || common.firstimage || (images.length > 0 ? (images[0].originimgurl || images[0].firstimage) : null);
+  const nodeHeaderImage = state?.firstimage || common.firstimage || (images.length > 0 ? (images[0].originimgurl || images[0].firstimage) : null);
   const envFields = systemEnvFields();
 
   return (
@@ -267,8 +288,8 @@ const TravelDetail = () => {
       )}
 
       <section className="relative h-[400px] w-full bg-slate-900 overflow-hidden">
-        {heroImage ? (
-          <img alt={common.title} className="w-full h-full object-cover opacity-80" src={heroImage} />
+        {nodeHeaderImage ? (
+          <img alt={common.title} className="w-full h-full object-cover opacity-80" src={nodeHeaderImage} />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-slate-800">
             <span className="material-symbols-outlined text-8xl text-slate-700">image_not_supported</span>
@@ -279,9 +300,26 @@ const TravelDetail = () => {
           <span className="bg-primary/20 backdrop-blur-md text-white px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border border-white/20 mb-4 inline-block">
             {CONTENT_TYPE[common.contenttypeid] || '기타'}
           </span>
-          <h1 className="text-5xl font-headline font-extrabold text-white tracking-tighter drop-shadow-2xl">
-            {common.title}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-5xl font-headline font-extrabold text-white tracking-tighter drop-shadow-2xl">
+              {common.title}
+            </h1>
+            <button 
+              onClick={handleWishlistToggle}
+              className={`group/heart relative flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg active:scale-75 mt-1 ${
+                wishlistIds.has(String(contentId)) 
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-2xl ${wishlistIds.has(String(contentId)) ? 'fill-1' : ''}`}>
+                favorite
+              </span>
+              {/* Classic Simple Bubbling Hearts */}
+              <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite]`}>favorite</span>
+              <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]`}>favorite</span>
+            </button>
+          </div>
         </div>
       </section>
 

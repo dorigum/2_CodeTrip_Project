@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getWeather, getLocationName } from '../api/weatherApi';
 import { getPhotoList, getFestivalList, getCityBasedPlaces, searchKeywordPlaces } from '../api/travelApi';
 
-const MOCK_HERO = [
+const MOCK_NODE_HEADER = [
   { galContentId: 'm1', galTitle: '감성 여행', galPhotographyLocation: '대한민국', galWebImageUrl: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?q=80&w=2070' },
   { galContentId: 'm2', galTitle: '평화로운 산책', galPhotographyLocation: '전국 팔도', galWebImageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=2094' }
 ];
@@ -11,7 +11,7 @@ const MOCK_HERO = [
 const Home = () => {
   const [weather, setWeather] = useState({ temp: 24, label: 'Sunny', icon: 'sunny', keywords: ['여행'], location: '서울' });
   const [province, setProvince] = useState('서울');
-  const [topImgList, setTopImgList] = useState(MOCK_HERO);
+  const [topImgList, setTopImgList] = useState(MOCK_NODE_HEADER);
   const [topImgIndex, setTopImgIndex] = useState(0);
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [nearbyIndex, setNearbyIndex] = useState(0);
@@ -136,19 +136,19 @@ const Home = () => {
     return () => clearInterval(topImgTimerRef.current);
   }, [topImgList]);
 
-  const currentTop = topImgList[topImgIndex] || MOCK_HERO[0];
+  const currentNodeHeader = topImgList[topImgIndex] || MOCK_NODE_HEADER[0];
 
   return (
     <div className="p-6 lg:p-10 space-y-6 flex-1 flex flex-col bg-background overflow-hidden">
       
-      {/* 1. 상단 파노라마 이미지 */}
+      {/* 1. 상단 Node_Header 섹션 */}
       <section className="relative w-full h-[25vh] min-h-[200px] rounded-2xl overflow-hidden shadow-xl bg-surface-container-high shrink-0">
-        <img src={currentTop.galWebImageUrl || currentTop.image} key={currentTop.galContentId} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" alt="bg" />
+        <img src={currentNodeHeader.galWebImageUrl || currentNodeHeader.image} key={currentNodeHeader.galContentId || currentNodeHeader.id} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" alt="bg" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent flex items-center px-12">
           <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 w-fit text-white text-[10px] font-bold tracking-widest uppercase font-label">system.log: live_feed_active</div>
+            <div className="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 w-fit text-white text-[10px] font-bold tracking-widest uppercase font-label">system.log: node_header_active</div>
             <h1 className="text-4xl lg:text-5xl font-headline font-bold text-white leading-tight drop-shadow-lg">Build your next <span className="text-primary-container">Adventure.</span></h1>
-            <p className="text-white/80 text-base font-body max-w-lg leading-relaxed">대한민국 곳곳의 숨겨진 장소들을 탐험하세요.</p>
+            <p className="text-white/80 text-base font-body max-w-lg leading-relaxed">대한민국 곳곳의 숨겨진 데이터 노드들을 탐험하세요.</p>
             <div className="pt-1"><Link to="/explore" className="bg-white/50 backdrop-blur-md text-slate-900 px-7 py-2.5 rounded-full font-bold hover:bg-white/70 transition-all flex items-center gap-2 w-fit text-sm shadow-lg font-label border border-white/20"><span>GET STARTED</span><span className="material-symbols-outlined text-sm font-bold">arrow_right_alt</span></Link></div>
           </div>
           <div className="absolute bottom-6 right-8 bg-white/70 backdrop-blur-2xl p-4 rounded-xl shadow-xl border border-white/30 text-slate-900">

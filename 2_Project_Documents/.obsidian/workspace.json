@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "47f85f9a58b9d0f2",
+        "id": "6a170e2ae501197e",
         "type": "tabs",
         "children": [
           {
-            "id": "bf4261e814438f97",
+            "id": "cabc9d870566ad19",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -74,13 +74,11 @@
               "title": "북마크"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "dbfed928b8a0d5cb",
@@ -185,11 +183,12 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "bf4261e814438f97",
+  "active": "cabc9d870566ad19",
   "lastOpenFiles": [
     "CHANGELOG.md",
-    "Project_Sketch.md",
     "Project_Specification.md",
+    "무제.canvas",
+    "Project_Sketch.md",
     "img",
     "img/Pasted image 20260423174039.png",
     "무제.md",

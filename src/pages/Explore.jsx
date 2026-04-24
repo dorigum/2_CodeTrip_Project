@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
+import useWishlistStore from '../store/useWishlistStore';
+import useAuthStore from '../store/useAuthStore';
 
 const CONTENT_TYPE_MAP = {
   '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
@@ -14,12 +16,15 @@ const THEME_LIST = [
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
-  const [likedPosts, setLikedPosts] = useState(new Set()); // 로컬 좋아요 상태 관리
   const [activeAnimId, setActiveAnimId] = useState(null); // 강제 애니메이션 트리거용 ID
   const [pageInput, setPageInput] = useState('');
+
+  const { isLoggedIn } = useAuthStore();
+  const { wishlistIds, toggleWishlist, initWishlist } = useWishlistStore();
 
   const {
     regions,
@@ -31,25 +36,33 @@ const Explore = () => {
     fetchPosts, fetchRegions, applyFilter, changePage,
   } = useExploreStore();
 
-  const handleHeartToggle = (postId) => {
-    setLikedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(postId)) newSet.delete(postId);
-      else newSet.add(postId);
-      return newSet;
-    });
+  const handleHeartToggle = async (postId) => {
+    if (!isLoggedIn) {
+      if (window.confirm('위시리스트 기능은 로그인이 필요합니다. 로그인 페이지로 이동할까요?')) {
+        navigate('/login');
+      }
+      return;
+    }
+
+    try {
+      await toggleWishlist(postId);
+    } catch (error) {
+      alert('오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleImageDoubleClick = (postId) => {
-    // 좋아요가 없는 상태에서 더블 클릭 시 애니메이션 강제 트리거
-    if (!likedPosts.has(postId)) {
+    if (!isLoggedIn) return; // 로그인 안 되어 있으면 무시
+    
+    // 위시리스트에 없는 상태에서 더블 클릭 시 애니메이션 강제 트리거
+    if (!wishlistIds.has(String(postId))) {
       setActiveAnimId(postId);
       handleHeartToggle(postId);
       
       // 1.5초 후 강제 애니메이션 상태 초기화
       setTimeout(() => setActiveAnimId(null), 1500);
     } else {
-      // 이미 좋아요 상태라면 그냥 취소 (애니메이션 없이)
+      // 이미 위시리스트 상태라면 그냥 취소 (애니메이션 없이)
       handleHeartToggle(postId);
     }
   };
@@ -71,7 +84,11 @@ const Explore = () => {
   useEffect(() => {
     fetchRegions();
     if (!initialized) fetchPosts();
-  }, []);
+    // 위시리스트 초기화
+    if (isLoggedIn && wishlistIds.size === 0) {
+      initWishlist();
+    }
+  }, [isLoggedIn]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -249,15 +266,14 @@ const Explore = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             handleHeartToggle(post.contentid);
-                            alert('위시리스트 기능은 곧 업데이트될 예정입니다!');
                           }}
                           className={`group/heart relative flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm active:scale-75 ${
-                            likedPosts.has(post.contentid) 
+                            wishlistIds.has(String(post.contentid)) 
                               ? 'bg-red-50 text-red-500' 
                               : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500'
                           }`}
                         >
-                          <span className={`material-symbols-outlined text-xl ${likedPosts.has(post.contentid) ? 'fill-1 text-red-500' : ''}`}>
+                          <span className={`material-symbols-outlined text-xl ${wishlistIds.has(String(post.contentid)) ? 'fill-1 text-red-500' : ''}`}>
                             favorite
                           </span>
                           {/* Classic Simple Bubbling Hearts */}
