@@ -6,7 +6,45 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 require('dotenv').config();
+
+const TRAVEL_API_BASE = 'https://apis.data.go.kr/B551011/KorService2';
+const TRAVEL_SERVICE_KEY = decodeURIComponent(
+  process.env.TRAVEL_INFO_API_KEY
+);
+
+const fetchCombination = async ({ region, theme, keyword, numOfRows, pageNo, arrange }) => {
+  const endpoint = keyword ? 'searchKeyword2' : 'areaBasedList2';
+  const params = {
+    serviceKey: TRAVEL_SERVICE_KEY,
+    numOfRows,
+    pageNo,
+    MobileOS: 'ETC',
+    MobileApp: 'CodeTrip',
+    _type: 'json',
+    arrange: arrange || 'O',
+  };
+  if (keyword) params.keyword = keyword;
+  if (theme) params.contentTypeId = theme;
+  if (region) params.lDongRegnCd = region;
+
+  try {
+    const response = await axios.get(`${TRAVEL_API_BASE}/${endpoint}`, { params });
+    const body = response.data?.response?.body;
+    const rawItems = body?.items?.item;
+    const list = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
+    return {
+      items: list.map(item => ({
+        ...item,
+        firstimage: (item.firstimage || item.originimgurl || '')?.replace('http://', 'https://'),
+      })),
+      totalCount: Number(body?.totalCount || 0),
+    };
+  } catch {
+    return { items: [], totalCount: 0 };
+  }
+};
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -91,13 +129,40 @@ const initDB = async () => {
       )
     `);
 
-    console.log('✅ Users table initialized and optimized');
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS comment_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        comment_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_comment_user (comment_id, user_id)
+      )
+    `);
+
+    console.log('✅ Tables initialized');
     conn.release();
   } catch (err) {
     console.error('❌ Database initialization failed:', err.message);
   }
 };
 initDB();
+
+// 서버 시작 시 전체 여행 데이터를 한 번 캐싱 (이후 모든 필터는 인메모리 처리)
+let allTravelItems = null;
+
+const initTravelCache = async () => {
+  try {
+    console.log('⏳ 전체 여행 데이터 로딩 중...');
+    const result = await fetchCombination({
+      region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O',
+    });
+    allTravelItems = result.items;
+    console.log(`✅ 여행 데이터 캐시 완료: ${allTravelItems.length}건`);
+  } catch (err) {
+    console.error('❌ 여행 데이터 캐시 실패:', err.message);
+  }
+};
+initTravelCache();
 
 // Middleware: Authenticate JWT
 const authenticateToken = (req, res, next) => {
@@ -216,6 +281,48 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
   }
 });
 
+// --- Travel API Routes ---
+
+app.get('/api/travel', async (req, res) => {
+  try {
+    if (!allTravelItems) {
+      return res.status(503).json({ message: '데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.' });
+    }
+
+    const pageNo = Math.max(1, parseInt(req.query.pageNo) || 1);
+    const numOfRows = Math.max(1, parseInt(req.query.numOfRows) || 10);
+    const keyword = (req.query.keyword || '').trim();
+
+    const regions = (req.query.regions || '').split(',').map(r => r.trim());
+    const themes = (req.query.themes || '').split(',').map(t => t.trim());
+
+    let filtered = allTravelItems;
+
+    if (!regions.includes('')) {
+      const regionSet = new Set(regions);
+      filtered = filtered.filter(item => regionSet.has(item.lDongRegnCd));
+    }
+
+    if (!themes.includes('')) {
+      const themeSet = new Set(themes);
+      filtered = filtered.filter(item => themeSet.has(String(item.contenttypeid)));
+    }
+
+    if (keyword) {
+      const lower = keyword.toLowerCase();
+      filtered = filtered.filter(item => item.title?.toLowerCase().includes(lower));
+    }
+
+    const totalCount = filtered.length;
+    const start = (pageNo - 1) * numOfRows;
+    const items = filtered.slice(start, start + numOfRows);
+
+    res.json({ items, totalCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Board Routes ---
 
 app.get('/api/boards', async (req, res) => {
@@ -274,14 +381,52 @@ app.delete('/api/boards/:id', async (req, res) => {
 
 // --- Comment Routes ---
 
-// 코멘트 조회
+// 코멘트 조회 (좋아요 수 + 현재 유저 좋아요 여부 포함)
 app.get('/api/comments/:contentId', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  let userId = null;
+  if (token) {
+    try { userId = jwt.verify(token, JWT_SECRET).id; } catch {}
+  }
+
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM comments WHERE content_id = ? ORDER BY created_at DESC',
-      [req.params.contentId]
+    const [rows] = await pool.query(`
+      SELECT c.id, c.content_id, c.user_id, c.nickname, c.body, c.created_at,
+        COUNT(cl.id) AS likes,
+        COALESCE(MAX(CASE WHEN cl.user_id = ? THEN 1 ELSE 0 END), 0) AS liked
+      FROM comments c
+      LEFT JOIN comment_likes cl ON cl.comment_id = c.id
+      WHERE c.content_id = ?
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `, [userId, req.params.contentId]);
+
+    res.json(rows.map(r => ({ ...r, likes: Number(r.likes), liked: !!r.liked })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 좋아요 토글
+app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.user.id;
+  try {
+    const [existing] = await pool.query(
+      'SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?',
+      [commentId, userId]
     );
-    res.json(rows);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?', [commentId, userId]);
+    } else {
+      await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
+    }
+    const [[{ likes }]] = await pool.query(
+      'SELECT COUNT(*) AS likes FROM comment_likes WHERE comment_id = ?',
+      [commentId]
+    );
+    res.json({ liked: existing.length === 0, likes: Number(likes) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

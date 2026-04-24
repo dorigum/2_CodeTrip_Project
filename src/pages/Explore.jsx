@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import '../App.css';
-import useExploreStore, { NUM_OF_ROWS } from '../store/useExploreStore';
+import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
 
 const CONTENT_TYPE_MAP = {
   '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
@@ -17,22 +17,60 @@ const Explore = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
+  const [pageInput, setPageInput] = useState('');
 
   const {
     regions,
     selectedRegions, toggleRegion,
     selectedThemes, toggleTheme,
     posts, loading, totalCount, currentPage,
+    keyword, clearKeyword,
     initialized,
     fetchPosts, fetchRegions, applyFilter, changePage,
   } = useExploreStore();
 
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
+  useLayoutEffect(() => {
+    if (!initialized) return;
+    const target = getExploreScrollY();
+    if (target === 0) return;
+    const el = document.getElementById('main-scroll');
+    if (!el) return;
+    el.scrollTop = target;
+    if (el.scrollTop !== target) {
+      requestAnimationFrame(() => { el.scrollTop = target; });
+    }
+  }, []);
+
   useEffect(() => {
     fetchRegions();
     if (!initialized) fetchPosts();
   }, []);
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    const el = document.getElementById('main-scroll');
+    if (el) el.scrollTop = 0;
+  }, [currentPage]);
+
+  useEffect(() => {
+    const el = document.getElementById('main-scroll');
+    if (!el) return;
+    const handleScroll = () => setExploreScrollY(el.scrollTop);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handlePageInputSubmit = (e) => {
+    e.preventDefault();
+    const page = parseInt(pageInput);
+    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+      changePage(page);
+    }
+    setPageInput('');
+  };
 
   const getPageNumbers = () => {
     const WINDOW = 2;
@@ -53,6 +91,18 @@ const Explore = () => {
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface font-headline">
           여행지 탐색 <span className="text-primary">.</span>
         </h1>
+        {keyword && (
+          <div className="mt-4 inline-flex items-center gap-3 bg-surface-container-low border border-primary/20 rounded-lg px-4 py-2 font-mono text-sm">
+            <span className="text-outline">// searching:</span>
+            <span className="text-primary font-bold">"{keyword}"</span>
+            <button
+              onClick={clearKeyword}
+              className="ml-1 text-outline hover:text-on-surface transition-colors flex items-center"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-12 gap-8">
@@ -133,7 +183,7 @@ const Explore = () => {
         </aside>
 
         {/* Content */}
-        <div className="col-span-12 lg:col-span-9 xl:col-span-7">
+        <div className="col-span-12 lg:col-span-9 xl:col-span-10">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -202,9 +252,8 @@ const Explore = () => {
                     <button
                       key={page}
                       onClick={() => changePage(page)}
-                      className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                        page === currentPage ? 'bg-primary text-on-primary shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
-                      }`}
+                      className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${page === currentPage ? 'bg-primary text-on-primary shadow-md scale-110' : 'text-on-secondary-container hover:bg-surface-container-high'
+                        }`}
                     >
                       {page}
                     </button>
@@ -228,6 +277,24 @@ const Explore = () => {
                   <span className="ml-4 text-[10px] text-outline">
                     {currentPage} / {totalPages} ({totalCount.toLocaleString()} 건)
                   </span>
+
+                  <form onSubmit={handlePageInputSubmit} className="ml-4 flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      placeholder="페이지"
+                      className="w-16 h-9 text-center text-xs font-mono bg-surface-container-low border border-outline-variant/30 rounded-lg focus:outline-none focus:border-primary text-on-surface"
+                    />
+                    <button
+                      type="submit"
+                      className="h-9 px-2 rounded-lg text-xs font-mono text-on-secondary-container hover:bg-surface-container-high transition-colors"
+                    >
+                      GO
+                    </button>
+                  </form>
                 </div>
               )}
             </>

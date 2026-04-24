@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
-import { getComments, postComment, updateComment, deleteComment } from '../api/commentApi';
+import { getComments, postComment, updateComment, deleteComment, toggleCommentLike } from '../api/commentApi';
 import useAuthStore from '../store/useAuthStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
@@ -154,6 +154,36 @@ const TravelDetail = () => {
     }
   };
 
+  const handleLike = async (commentId) => {
+    if (!isLoggedIn) {
+      setShowLoginDialog(true);
+      return;
+    }
+    // 낙관적 업데이트
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
+          : c
+      )
+    );
+    try {
+      const { liked, likes } = await toggleCommentLike(commentId);
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, liked, likes } : c))
+      );
+    } catch (err) {
+      // 실패 시 롤백
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
+            : c
+        )
+      );
+    }
+  };
+
   const systemEnvFields = () => {
     const fields = [];
     const push = (icon, label, value) => {
@@ -214,7 +244,7 @@ const TravelDetail = () => {
                 <span className="material-symbols-outlined text-primary text-2xl">lock</span>
                 <div>
                   <p className="font-headline font-bold text-on-surface text-sm">로그인이 필요합니다</p>
-                  <p className="text-xs text-outline font-mono mt-0.5">// 코멘트 작성은 로그인 후 이용 가능합니다.</p>
+                  <p className="text-xs text-outline font-mono mt-0.5">// 해당 기능은 로그인 후 이용 가능합니다.</p>
                 </div>
               </div>
               <div className="flex gap-2 mt-6">
@@ -359,8 +389,13 @@ const TravelDetail = () => {
                                   </button>
                                 </>
                               )}
-                              <button className="flex items-center gap-1 text-outline hover:text-primary transition-colors text-[11px] font-mono">
-                                <span className="material-symbols-outlined text-sm">favorite</span>
+                              <button
+                                onClick={() => handleLike(comment.id)}
+                                className={`flex items-center gap-1 transition-colors text-[11px] font-mono ${comment.liked ? 'text-primary' : 'text-outline hover:text-primary'}`}
+                              >
+                                <span className={`material-symbols-outlined text-sm ${comment.liked ? 'filled' : ''}`}>
+                                  favorite
+                                </span>
                                 {comment.likes}
                               </button>
                             </div>
@@ -432,20 +467,35 @@ const TravelDetail = () => {
 
           {/* Map Area */}
           {common.mapx && common.mapy && (
-            <div className="rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm h-[300px] relative bg-slate-100">
+            <div
+              className="rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm h-[300px] relative bg-slate-100 cursor-pointer group"
+              onClick={() => {
+                window.open(`https://map.kakao.com/link/to/${common.title},${common.mapy},${common.mapx}`, '_blank');
+              }}
+            >
               {!isMapLoaded ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center gap-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                   <p className="text-[10px] text-outline font-mono animate-pulse">Initializing Map SDK...</p>
                 </div>
               ) : (
-                <Map
-                  center={{ lat: Number(common.mapy), lng: Number(common.mapx) }}
-                  style={{ width: '100%', height: '100%' }}
-                  level={3}
-                >
-                  <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
-                </Map>
+                <>
+                  <Map
+                    center={{ lat: Number(common.mapy), lng: Number(common.mapx) }}
+                    style={{ width: '100%', height: '100%' }}
+                    level={3}
+                    draggable={false}
+                    zoomable={false}
+                    scrollwheel={false}
+                  >
+                    <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
+                  </Map>
+                  <div className="absolute inset-0 flex items-end justify-end p-3 pointer-events-none">
+                    <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      카카오맵에서 보기
+                    </span>
+                  </div>
+                </>
               )}
             </div>
           )}

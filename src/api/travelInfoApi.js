@@ -13,6 +13,24 @@ const normalizeItems = (items) => {
   }));
 };
 
+// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
+export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+  try {
+    const response = await axios.get('/api/travel', {
+      params: {
+        regions: regions.join(','),
+        themes: themes.join(','),
+        pageNo,
+        numOfRows,
+        ...(keyword ? { keyword } : {}),
+      },
+    });
+    return response.data;
+  } catch {
+    return { items: [], totalCount: 0 };
+  }
+};
+
 // 리스트 조회
 export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
   try {
@@ -20,6 +38,19 @@ export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId,
     if (contentTypeId) params.contentTypeId = contentTypeId;
     if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
     const response = await axios.get(`${API_URL}/areaBasedList2`, { params });
+    const body = response.data?.response?.body;
+    return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
+  } catch (error) { return { items: [], totalCount: 0 }; }
+};
+
+// 키워드 검색
+export const getTravelInfoByKeyword = async ({keyword, pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd} = {}) => {
+  try {
+    const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
+    if (keyword) params.keyword = keyword;
+    if (contentTypeId) params.contentTypeId = contentTypeId;
+    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
+    const response = await axios.get(`${API_URL}/searchKeyword2`, { params });
     const body = response.data?.response?.body;
     return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
   } catch (error) { return { items: [], totalCount: 0 }; }
@@ -88,7 +119,7 @@ export const getDetailInfo = async (contentId, contentTypeId) => {
 export const getDetailImage = async (contentId) => {
   try {
     const response = await axios.get(`${API_URL}/detailImage2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', imageYN: 'Y', subImageYN: 'Y' },
+      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
     });
     const body = response.data?.response?.body;
     return { items: normalizeItems(body?.items?.item) };

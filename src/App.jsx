@@ -22,7 +22,7 @@ const App = () => {
         <Header toggleSidebar={toggleSidebar} />
         
         {/* Dynamic Content Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div id="main-scroll" className="flex-1 overflow-y-auto custom-scrollbar">
           <Outlet />
           
           {/* 푸터 복구 */}
