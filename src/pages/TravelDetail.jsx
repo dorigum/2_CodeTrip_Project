@@ -467,20 +467,35 @@ const TravelDetail = () => {
 
           {/* Map Area */}
           {common.mapx && common.mapy && (
-            <div className="rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm h-[300px] relative bg-slate-100">
+            <div
+              className="rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm h-[300px] relative bg-slate-100 cursor-pointer group"
+              onClick={() => {
+                window.open(`https://map.kakao.com/link/to/${common.title},${common.mapy},${common.mapx}`, '_blank');
+              }}
+            >
               {!isMapLoaded ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center gap-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                   <p className="text-[10px] text-outline font-mono animate-pulse">Initializing Map SDK...</p>
                 </div>
               ) : (
-                <Map
-                  center={{ lat: Number(common.mapy), lng: Number(common.mapx) }}
-                  style={{ width: '100%', height: '100%' }}
-                  level={3}
-                >
-                  <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
-                </Map>
+                <>
+                  <Map
+                    center={{ lat: Number(common.mapy), lng: Number(common.mapx) }}
+                    style={{ width: '100%', height: '100%' }}
+                    level={3}
+                    draggable={false}
+                    zoomable={false}
+                    scrollwheel={false}
+                  >
+                    <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
+                  </Map>
+                  <div className="absolute inset-0 flex items-end justify-end p-3 pointer-events-none">
+                    <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      카카오맵에서 보기
+                    </span>
+                  </div>
+                </>
               )}
             </div>
           )}
