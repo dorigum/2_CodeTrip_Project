@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
+import useExploreStore from '../../store/useExploreStore';
 
 const Header = () => {
   const { user, logout } = useAuthStore();
+  const { setKeyword } = useExploreStore();
   const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    if (!searchInput.trim()) {
+      alert('검색어를 입력해 주세요.');
+      return;
+    }
+    setKeyword(searchInput.trim());
+    setSearchInput('');
+    navigate('/explore');
+  };
 
   const handleLogout = () => {
     logout();
@@ -23,6 +37,9 @@ const Header = () => {
             className="bg-surface-container-high border-none rounded-lg py-2.5 pl-10 pr-4 text-sm w-full focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"
             placeholder="Search destinations, festivals, themes..."
             type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
       </div>

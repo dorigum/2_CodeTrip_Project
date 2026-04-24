@@ -1,7 +1,11 @@
 import { create } from 'zustand';
-import { getTravelInfo, getRegions } from '../api/travelInfoApi';
+import { getTravelList, getRegions } from '../api/travelInfoApi';
 
 const NUM_OF_ROWS = 10;
+
+let exploreScrollY = 0;
+export const getExploreScrollY = () => exploreScrollY;
+export const setExploreScrollY = (y) => { exploreScrollY = y; };
 
 const useExploreStore = create((set, get) => ({
   regions: [{ code: '', name: '전국' }],
@@ -12,6 +16,7 @@ const useExploreStore = create((set, get) => ({
   appliedRegions: [''],
   appliedThemes: [''],
 
+  keyword: '',
   currentPage: 1,
   posts: [],
   totalCount: 0,
@@ -42,6 +47,22 @@ const useExploreStore = create((set, get) => ({
     });
   },
 
+  setKeyword: (keyword) => {
+    const { selectedRegions, selectedThemes } = get();
+    set({
+      keyword,
+      currentPage: 1,
+      appliedRegions: Array.from(selectedRegions),
+      appliedThemes: Array.from(selectedThemes),
+    });
+    get().fetchPosts();
+  },
+
+  clearKeyword: () => {
+    set({ keyword: '' });
+    get().fetchPosts();
+  },
+
   applyFilter: () => {
     const { selectedRegions, selectedThemes } = get();
     set({
@@ -61,24 +82,16 @@ const useExploreStore = create((set, get) => ({
   },
 
   fetchPosts: async () => {
-    const { appliedRegions, appliedThemes, currentPage } = get();
+    const { appliedRegions, appliedThemes, currentPage, keyword } = get();
     try {
       set({ loading: true });
-      const combinations = appliedRegions.flatMap((region) =>
-        appliedThemes.map((theme) => ({ region, theme }))
-      );
-      const results = await Promise.all(
-        combinations.map(({ region, theme }) =>
-          getTravelInfo({
-            pageNo: currentPage,
-            numOfRows: NUM_OF_ROWS,
-            contentTypeId: theme === '' ? undefined : theme,
-            lDongRegnCd: region === '' ? undefined : region,
-          })
-        )
-      );
-      const items = results.flatMap((r) => r.items);
-      const totalCount = results.reduce((sum, r) => sum + r.totalCount, 0);
+      const { items, totalCount } = await getTravelList({
+        regions: appliedRegions,
+        themes: appliedThemes,
+        pageNo: currentPage,
+        numOfRows: NUM_OF_ROWS,
+        keyword,
+      });
       set({ posts: items, totalCount, initialized: true });
     } catch (error) {
       console.error('Failed to fetch posts:', error);
