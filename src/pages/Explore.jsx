@@ -17,6 +17,7 @@ const Explore = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
+  const [pageInput, setPageInput] = useState('');
 
   const {
     regions,
@@ -61,6 +62,15 @@ const Explore = () => {
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handlePageInputSubmit = (e) => {
+    e.preventDefault();
+    const page = parseInt(pageInput);
+    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+      changePage(page);
+    }
+    setPageInput('');
+  };
 
   const getPageNumbers = () => {
     const WINDOW = 2;
@@ -267,6 +277,24 @@ const Explore = () => {
                   <span className="ml-4 text-[10px] text-outline">
                     {currentPage} / {totalPages} ({totalCount.toLocaleString()} 건)
                   </span>
+
+                  <form onSubmit={handlePageInputSubmit} className="ml-4 flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      placeholder="페이지"
+                      className="w-16 h-9 text-center text-xs font-mono bg-surface-container-low border border-outline-variant/30 rounded-lg focus:outline-none focus:border-primary text-on-surface"
+                    />
+                    <button
+                      type="submit"
+                      className="h-9 px-2 rounded-lg text-xs font-mono text-on-secondary-container hover:bg-surface-container-high transition-colors"
+                    >
+                      GO
+                    </button>
+                  </form>
                 </div>
               )}
             </>

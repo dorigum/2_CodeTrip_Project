@@ -14,12 +14,12 @@ const TRAVEL_SERVICE_KEY = decodeURIComponent(
   process.env.TRAVEL_INFO_API_KEY
 );
 
-const fetchCombination = async ({ region, theme, keyword, numOfRows, arrange }) => {
+const fetchCombination = async ({ region, theme, keyword, numOfRows, pageNo, arrange }) => {
   const endpoint = keyword ? 'searchKeyword2' : 'areaBasedList2';
   const params = {
     serviceKey: TRAVEL_SERVICE_KEY,
     numOfRows,
-    pageNo: 1,
+    pageNo,
     MobileOS: 'ETC',
     MobileApp: 'CodeTrip',
     _type: 'json',
@@ -147,6 +147,23 @@ const initDB = async () => {
 };
 initDB();
 
+// 서버 시작 시 전체 여행 데이터를 한 번 캐싱 (이후 모든 필터는 인메모리 처리)
+let allTravelItems = null;
+
+const initTravelCache = async () => {
+  try {
+    console.log('⏳ 전체 여행 데이터 로딩 중...');
+    const result = await fetchCombination({
+      region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O',
+    });
+    allTravelItems = result.items;
+    console.log(`✅ 여행 데이터 캐시 완료: ${allTravelItems.length}건`);
+  } catch (err) {
+    console.error('❌ 여행 데이터 캐시 실패:', err.message);
+  }
+};
+initTravelCache();
+
 // Middleware: Authenticate JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -268,34 +285,37 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
 
 app.get('/api/travel', async (req, res) => {
   try {
+    if (!allTravelItems) {
+      return res.status(503).json({ message: '데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.' });
+    }
+
     const pageNo = Math.max(1, parseInt(req.query.pageNo) || 1);
     const numOfRows = Math.max(1, parseInt(req.query.numOfRows) || 10);
-    const keyword = req.query.keyword || '';
-    const arrange = req.query.arrange || 'O';
+    const keyword = (req.query.keyword || '').trim();
 
     const regions = (req.query.regions || '').split(',').map(r => r.trim());
     const themes = (req.query.themes || '').split(',').map(t => t.trim());
 
-    const combinations = regions.flatMap(region =>
-      themes.map(theme => ({ region, theme }))
-    );
+    let filtered = allTravelItems;
 
-    // 현재 페이지까지의 누적 데이터를 확보하되 외부 API 한계(100)를 초과하지 않음
-    const fetchNumOfRows = Math.min(pageNo * numOfRows, 100);
+    if (!regions.includes('')) {
+      const regionSet = new Set(regions);
+      filtered = filtered.filter(item => regionSet.has(item.lDongRegnCd));
+    }
 
-    const results = await Promise.all(
-      combinations.map(({ region, theme }) =>
-        fetchCombination({ region, theme, keyword, numOfRows: fetchNumOfRows, arrange })
-      )
-    );
+    if (!themes.includes('')) {
+      const themeSet = new Set(themes);
+      filtered = filtered.filter(item => themeSet.has(String(item.contenttypeid)));
+    }
 
-    const allItems = results.flatMap(r => r.items);
-    const totalCount = results.reduce((sum, r) => sum + r.totalCount, 0);
+    if (keyword) {
+      const lower = keyword.toLowerCase();
+      filtered = filtered.filter(item => item.title?.toLowerCase().includes(lower));
+    }
 
-    allItems.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ko'));
-
+    const totalCount = filtered.length;
     const start = (pageNo - 1) * numOfRows;
-    const items = allItems.slice(start, start + numOfRows);
+    const items = filtered.slice(start, start + numOfRows);
 
     res.json({ items, totalCount });
   } catch (err) {
