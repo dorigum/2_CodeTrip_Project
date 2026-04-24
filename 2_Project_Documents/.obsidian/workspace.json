@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Project_Specification.md",
+                "file": "CHANGELOG.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Project_Specification"
+              "title": "CHANGELOG"
             }
           }
         ]
@@ -185,8 +185,8 @@
   },
   "active": "cabc9d870566ad19",
   "lastOpenFiles": [
-    "CHANGELOG.md",
     "Project_Specification.md",
+    "CHANGELOG.md",
     "무제.canvas",
     "Project_Sketch.md",
     "img",

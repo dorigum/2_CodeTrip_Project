@@ -1,19 +1,34 @@
 import { create } from 'zustand';
-import { fetchWishlistIds, toggleWishlist as toggleApi } from '../api/wishlistApi';
+import { 
+  fetchWishlistIds, 
+  toggleWishlist as toggleApi, 
+  fetchFolders, 
+  createFolder as createFolderApi, 
+  deleteFolder as deleteFolderApi,
+  moveWishlistItem as moveItemApi
+} from '../api/wishlistApi';
 
 const useWishlistStore = create((set, get) => ({
   wishlistIds: new Set(),
+  folders: [],
   loading: false,
   initialized: false,
 
-  // 위시리스트 초기화 (로그인 시 호출)
+  // 위시리스트 초기화
   initWishlist: async () => {
     if (get().loading) return;
     set({ loading: true });
     try {
-      const ids = await fetchWishlistIds();
-      console.log('Wishlist initialized with IDs:', ids);
-      set({ wishlistIds: new Set(ids.map(String)), initialized: true });
+      const [ids, folders] = await Promise.all([
+        fetchWishlistIds(),
+        fetchFolders()
+      ]);
+      console.log('Wishlist initialized with IDs:', ids, 'Folders:', folders);
+      set({ 
+        wishlistIds: new Set(ids.map(String)), 
+        folders,
+        initialized: true 
+      });
     } catch (error) {
       console.error('Failed to init wishlist:', error);
     } finally {
@@ -21,9 +36,45 @@ const useWishlistStore = create((set, get) => ({
     }
   },
 
+  // 폴더 생성
+  createFolder: async (name) => {
+    try {
+      const newFolder = await createFolderApi(name);
+      set((state) => ({ folders: [...state.folders, newFolder] }));
+      return newFolder;
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      throw error;
+    }
+  },
+
+  // 폴더 삭제
+  deleteFolder: async (folderId) => {
+    try {
+      await deleteFolderApi(folderId);
+      set((state) => ({ folders: state.folders.filter(f => f.id !== folderId) }));
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+      throw error;
+    }
+  },
+
+  // 아이템 폴더 이동
+  moveItem: async (contentId, folderId) => {
+    try {
+      await moveItemApi(contentId, folderId);
+      // 상세 데이터가 store에 없으므로 (MyPage local state 사용), 
+      // 이 store에서는 전역 상태 동기화가 필요한 경우만 업데이트함
+    } catch (error) {
+      console.error('Failed to move item:', error);
+      throw error;
+    }
+  },
+
   // 위시리스트 토글
   toggleWishlist: async (contentId) => {
-    if (!contentId) return;
+// ... (기존 로직 유지)
+
     const idStr = String(contentId);
     console.log('Toggling wishlist for ID:', idStr);
     try {

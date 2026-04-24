@@ -144,10 +144,34 @@ const initDB = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         content_id VARCHAR(50) NOT NULL,
+        folder_id INT DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_user_content (user_id, content_id)
       )
     `);
+
+    // 위시리스트 폴더 테이블 추가
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS wishlist_folders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 기존 테이블에 updated_at 컬럼이 없는 경우 추가
+    try {
+      await conn.query('ALTER TABLE wishlist_folders ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at');
+    } catch (e) {}
+
+    // 기존 wishlists 테이블에 folder_id가 없는 경우를 대비한 컬럼 추가 로직 (에러 방지용)
+    try {
+      await conn.query('ALTER TABLE wishlists ADD COLUMN folder_id INT DEFAULT NULL AFTER content_id');
+    } catch (e) {
+      // 이미 컬럼이 있으면 무시
+    }
 
     console.log('✅ Tables initialized');
     conn.release();
@@ -571,37 +595,43 @@ app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
 
 // --- Wishlist Routes ---
 
-// 위시리스트 토글 (추가/삭제)
-app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
-  const { contentId } = req.body;
+// 1. 위시리스트 상세 정보 조회 (캐시 데이터 결합)
+app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
   const userId = req.user.id;
-
-  if (!contentId) {
-    return res.status(400).json({ message: 'contentId가 필요합니다.' });
-  }
-
   try {
-    const [existing] = await pool.query(
-      'SELECT id FROM wishlists WHERE user_id = ? AND content_id = ?',
-      [userId, contentId]
-    );
+    const [rows] = await pool.query('SELECT content_id, folder_id FROM wishlists WHERE user_id = ?', [userId]);
+    const wishDataMap = {};
+    rows.forEach(row => {
+      wishDataMap[String(row.content_id)] = row.folder_id;
+    });
 
-    if (existing.length > 0) {
-      // 이미 있으면 삭제
-      await pool.query('DELETE FROM wishlists WHERE user_id = ? AND content_id = ?', [userId, contentId]);
-      res.json({ wishlisted: false, message: '위시리스트에서 제거되었습니다.' });
-    } else {
-      // 없으면 추가
-      await pool.query('INSERT INTO wishlists (user_id, content_id) VALUES (?, ?)', [userId, contentId]);
-      res.json({ wishlisted: true, message: '위시리스트에 추가되었습니다.' });
+    if (!allTravelItems) {
+      return res.status(503).json({ message: '데이터 로딩 중입니다.' });
     }
+
+    const details = allTravelItems
+      .filter(item => wishDataMap[String(item.contentid)] !== undefined)
+      .map(item => ({
+        ...item,
+        folder_id: wishDataMap[String(item.contentid)]
+      }));
+    res.json(details);
   } catch (err) {
-    console.error('Wishlist Toggle Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 로그인한 유저의 위시리스트 content_id 목록 조회
+// 2. 폴더 목록 조회
+app.get('/api/wishlist/folders', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM wishlist_folders WHERE user_id = ? ORDER BY created_at ASC', [req.user.id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. 로그인한 유저의 위시리스트 content_id 목록 조회 (심플)
 app.get('/api/wishlist', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
@@ -612,19 +642,63 @@ app.get('/api/wishlist', authenticateToken, async (req, res) => {
   }
 });
 
-// 로그인한 유저의 위시리스트 상세 정보 조회 (캐시된 데이터와 결합)
-app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
+// 4. 위시리스트 토글 (추가/삭제)
+app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
+  const { contentId } = req.body;
   const userId = req.user.id;
+  if (!contentId) return res.status(400).json({ message: 'contentId가 필요합니다.' });
+
   try {
-    const [rows] = await pool.query('SELECT content_id FROM wishlists WHERE user_id = ?', [userId]);
-    const wishContentIds = new Set(rows.map(row => String(row.content_id)));
-
-    if (!allTravelItems) {
-      return res.status(503).json({ message: '데이터 로딩 중입니다.' });
+    const [existing] = await pool.query('SELECT id FROM wishlists WHERE user_id = ? AND content_id = ?', [userId, contentId]);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM wishlists WHERE user_id = ? AND content_id = ?', [userId, contentId]);
+      res.json({ wishlisted: false, message: '위시리스트에서 제거되었습니다.' });
+    } else {
+      await pool.query('INSERT INTO wishlists (user_id, content_id) VALUES (?, ?)', [userId, contentId]);
+      res.json({ wishlisted: true, message: '위시리스트에 추가되었습니다.' });
     }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const details = allTravelItems.filter(item => wishContentIds.has(String(item.contentid)));
-    res.json(details);
+// --- Wishlist Folder Actions ---
+
+// 폴더 생성
+app.post('/api/wishlist/folders', authenticateToken, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ message: '폴더 이름이 필요합니다.' });
+  try {
+    const [result] = await pool.query('INSERT INTO wishlist_folders (user_id, name) VALUES (?, ?)', [req.user.id, name]);
+    res.status(201).json({ id: result.insertId, name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 폴더 삭제
+app.delete('/api/wishlist/folders/:id', authenticateToken, async (req, res) => {
+  const folderId = req.params.id;
+  try {
+    // 1. 해당 폴더에 속한 위시리스트 아이템들의 folder_id를 null로 변경
+    await pool.query('UPDATE wishlists SET folder_id = NULL WHERE folder_id = ? AND user_id = ?', [folderId, req.user.id]);
+    // 2. 폴더 삭제
+    await pool.query('DELETE FROM wishlist_folders WHERE id = ? AND user_id = ?', [folderId, req.user.id]);
+    res.json({ message: '폴더가 삭제되었습니다.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 여행지 폴더 이동
+app.put('/api/wishlist/move', authenticateToken, async (req, res) => {
+  const { contentId, folderId } = req.body; // folderId가 null이면 미분류
+  try {
+    await pool.query(
+      'UPDATE wishlists SET folder_id = ? WHERE content_id = ? AND user_id = ?',
+      [folderId, contentId, req.user.id]
+    );
+    res.json({ message: '이동 완료', folderId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
