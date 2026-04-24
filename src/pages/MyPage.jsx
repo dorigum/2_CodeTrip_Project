@@ -8,7 +8,7 @@ const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834
 
 const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
-  const { wishlistIds, initWishlist, toggleWishlist } = useWishlistStore();
+  const { wishlistIds, initWishlist, toggleWishlist, initialized: wishlistInitialized } = useWishlistStore();
   const navigate = useNavigate();
 
   const [wishlistItems, setWishlistItems] = useState([]);
@@ -32,7 +32,7 @@ const MyPage = () => {
         const details = await fetchWishlistDetails();
         setWishlistItems(details);
         // ID 목록도 동기화 (전역 스토어)
-        if (wishlistIds.size === 0) {
+        if (!wishlistInitialized) {
           await initWishlist();
         }
       } catch (error) {
@@ -43,7 +43,7 @@ const MyPage = () => {
     };
 
     loadData();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, wishlistInitialized]);
 
   const handleRemoveWish = async (e, contentId) => {
     e.preventDefault();
@@ -181,10 +181,10 @@ const MyPage = () => {
                     {/* 즉시 삭제 하트 버튼 */}
                     <button 
                       onClick={(e) => handleRemoveWish(e, item.contentid)}
-                      className="absolute top-4 right-4 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-10"
+                      className="absolute top-4 right-4 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-10 select-none outline-none cursor-pointer"
                       title="위시리스트에서 삭제"
                     >
-                      <span className="material-symbols-outlined text-xl fill-1">favorite</span>
+                      <span className="material-symbols-outlined text-xl fill-1 select-none">favorite</span>
                     </button>
                   </div>
                   <div className="p-6">

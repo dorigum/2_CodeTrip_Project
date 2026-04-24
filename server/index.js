@@ -471,7 +471,103 @@ app.delete('/api/boards/:id', async (req, res) => {
 
 // --- Comment Routes ---
 
-// ... (기존 코멘트 라우트 생략 없이 유지됨)
+// 특정 여행지의 댓글 조회
+app.get('/api/comments/:contentId', async (req, res) => {
+  const { contentId } = req.params;
+  const userId = req.headers.authorization ? req.user?.id : null; // 토큰이 있을 경우 대비
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT c.*, 
+              (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes,
+              EXISTS(SELECT 1 FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as liked
+       FROM comments c 
+       WHERE c.content_id = ? 
+       ORDER BY c.created_at DESC`,
+      [userId, contentId]
+    );
+    // 댓글이 없어도 404가 아닌 빈 배열 전송
+    res.json(rows || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 댓글 작성
+app.post('/api/comments', authenticateToken, async (req, res) => {
+  const { content_id, nickname, body } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)',
+      [content_id, userId, nickname, body]
+    );
+    res.status(201).json({ id: result.insertId, content_id, nickname, body });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 댓글 수정
+app.put('/api/comments/:id', authenticateToken, async (req, res) => {
+  const { body } = req.body;
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const [result] = await pool.query(
+      'UPDATE comments SET body = ? WHERE id = ? AND user_id = ?',
+      [body, id, userId]
+    );
+    if (result.affectedRows === 0) return res.status(403).json({ message: '수정 권한이 없거나 댓글이 없습니다.' });
+    res.json({ message: 'Updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 댓글 삭제
+app.delete('/api/comments/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const [result] = await pool.query('DELETE FROM comments WHERE id = ? AND user_id = ?', [id, userId]);
+    if (result.affectedRows === 0) return res.status(403).json({ message: '삭제 권한이 없거나 댓글이 없습니다.' });
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 댓글 좋아요 토글
+app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    const [existing] = await pool.query(
+      'SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?',
+      [commentId, userId]
+    );
+
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM comment_likes WHERE id = ?', [existing[0].id]);
+    } else {
+      await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
+    }
+
+    const [stats] = await pool.query(
+      `SELECT (SELECT COUNT(*) FROM comment_likes WHERE comment_id = ?) as likes,
+              EXISTS(SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?) as liked`,
+      [commentId, commentId, userId]
+    );
+    res.json(stats[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // --- Wishlist Routes ---
 

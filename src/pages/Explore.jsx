@@ -24,7 +24,7 @@ const Explore = () => {
   const [pageInput, setPageInput] = useState('');
 
   const { isLoggedIn } = useAuthStore();
-  const { wishlistIds, toggleWishlist, initWishlist } = useWishlistStore();
+  const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
 
   const {
     regions,
@@ -36,18 +36,29 @@ const Explore = () => {
     fetchPosts, fetchRegions, applyFilter, changePage,
   } = useExploreStore();
 
+  const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
+
   const handleHeartToggle = async (postId) => {
     if (!isLoggedIn) {
-      if (window.confirm('위시리스트 기능은 로그인이 필요합니다. 로그인 페이지로 이동할까요?')) {
-        navigate('/login');
-      }
+      setShowLoginDialog(true);
       return;
     }
 
+    if (wishlistLoadingId === postId) return;
+
     try {
-      await toggleWishlist(postId);
+      setWishlistLoadingId(postId);
+      const result = await toggleWishlist(postId);
+      if (result.wishlisted) {
+        alert('위시리스트에 추가되었습니다!');
+      } else {
+        alert('위시리스트에서 삭제되었습니다.');
+      }
     } catch (error) {
-      alert('오류가 발생했습니다. 다시 시도해주세요.');
+      console.error('Wishlist error:', error);
+      alert('위시리스트 처리 중 오류가 발생했습니다. 네트워크 상태를 확인해 주세요.');
+    } finally {
+      setWishlistLoadingId(null);
     }
   };
 
@@ -85,10 +96,10 @@ const Explore = () => {
     fetchRegions();
     if (!initialized) fetchPosts();
     // 위시리스트 초기화
-    if (isLoggedIn && wishlistIds.size === 0) {
+    if (isLoggedIn && !wishlistInitialized) {
       initWishlist();
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, wishlistInitialized]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -264,21 +275,21 @@ const Explore = () => {
                       <div className="mt-6 flex justify-between items-center">
                         <button 
                           onClick={(e) => {
-                            e.preventDefault();
+                            e.stopPropagation();
                             handleHeartToggle(post.contentid);
                           }}
-                          className={`group/heart relative flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm active:scale-75 ${
+                          className={`group/heart relative flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm active:scale-75 select-none outline-none cursor-pointer ${
                             wishlistIds.has(String(post.contentid)) 
                               ? 'bg-red-50 text-red-500' 
                               : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500'
                           }`}
                         >
-                          <span className={`material-symbols-outlined text-xl ${wishlistIds.has(String(post.contentid)) ? 'fill-1 text-red-500' : ''}`}>
+                          <span className={`material-symbols-outlined text-xl select-none ${wishlistIds.has(String(post.contentid)) ? 'fill-1 text-red-500' : ''}`}>
                             favorite
                           </span>
                           {/* Classic Simple Bubbling Hearts */}
-                          <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite]' : ''}`}>favorite</span>
-                          <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]' : ''}`}>favorite</span>
+                          <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 select-none group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite]' : ''}`}>favorite</span>
+                          <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 select-none group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s] ${activeAnimId === post.contentid ? 'animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]' : ''}`}>favorite</span>
                         </button>
                         <Link
                           to={`/explore/${post.contentid}`}

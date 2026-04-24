@@ -40,14 +40,14 @@ const TravelDetail = () => {
   const [editText, setEditText] = useState('');
 
   const { isLoggedIn, user } = useAuthStore();
-  const { wishlistIds, toggleWishlist, initWishlist } = useWishlistStore();
+  const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
 
   // 0. 위시리스트 초기화
   useEffect(() => {
-    if (isLoggedIn && wishlistIds.size === 0) {
+    if (isLoggedIn && !wishlistInitialized) {
       initWishlist();
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, wishlistInitialized]);
 
   const handleWishlistToggle = async () => {
     if (!isLoggedIn) {
@@ -55,7 +55,12 @@ const TravelDetail = () => {
       return;
     }
     try {
-      await toggleWishlist(contentId);
+      const result = await toggleWishlist(contentId);
+      if (result.wishlisted) {
+        alert('위시리스트에 추가되었습니다!');
+      } else {
+        alert('위시리스트에서 삭제되었습니다.');
+      }
     } catch (error) {
       alert('오류가 발생했습니다. 다시 시도해주세요.');
     }
@@ -306,18 +311,18 @@ const TravelDetail = () => {
             </h1>
             <button 
               onClick={handleWishlistToggle}
-              className={`group/heart relative flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg active:scale-75 mt-1 ${
+              className={`group/heart relative flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-lg active:scale-75 mt-1 select-none outline-none cursor-pointer ${
                 wishlistIds.has(String(contentId)) 
                   ? 'bg-red-500 text-white' 
                   : 'bg-white/20 backdrop-blur-md text-white hover:bg-white/40'
               }`}
             >
-              <span className={`material-symbols-outlined text-2xl ${wishlistIds.has(String(contentId)) ? 'fill-1' : ''}`}>
+              <span className={`material-symbols-outlined text-2xl select-none ${wishlistIds.has(String(contentId)) ? 'fill-1' : ''}`}>
                 favorite
               </span>
               {/* Classic Simple Bubbling Hearts */}
-              <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite]`}>favorite</span>
-              <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]`}>favorite</span>
+              <span className={`material-symbols-outlined heart-bubble heart-bubble-1 text-[10px] fill-1 select-none group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite]`}>favorite</span>
+              <span className={`material-symbols-outlined heart-bubble heart-bubble-2 text-[10px] fill-1 select-none group-hover/heart:animate-[bubble-heart_1.5s_ease-out_infinite_0.4s]`}>favorite</span>
             </button>
           </div>
         </div>

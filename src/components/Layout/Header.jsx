@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import useExploreStore from '../../store/useExploreStore';
+import useWishlistStore from '../../store/useWishlistStore';
 
 const Header = () => {
   const { user, logout } = useAuthStore();
   const { setKeyword } = useExploreStore();
+  const { clearWishlist } = useWishlistStore();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
 
@@ -22,6 +24,7 @@ const Header = () => {
 
   const handleLogout = () => {
     logout();
+    clearWishlist();
     navigate('/login');
   };
 

@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
+import useWishlistStore from '../../store/useWishlistStore';
 
 const NAV_ITEMS = [
+// ... (omitting for brevity in this thought but I will provide full replace)
   { icon: 'home', label: 'Home', path: '/', animation: 'group-hover:-translate-y-1' },
   { icon: 'explore', label: 'Explore', path: '/explore', animation: 'group-hover:rotate-45' },
   { 
@@ -25,6 +27,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout, isLoggedIn } = useAuthStore();
+  const { clearWishlist } = useWishlistStore();
 
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
 
@@ -113,7 +116,10 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                 </div>
               </div>
               {!isCollapsed && (
-                <button onClick={logout} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 group/logout">
+                <button 
+                  onClick={() => { logout(); clearWishlist(); }} 
+                  className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 group/logout"
+                >
                   <span className="material-symbols-outlined text-sm transition-transform duration-300 group-hover/logout:-translate-x-1">logout</span>
                   LOGOUT_SYSTEM
                 </button>
