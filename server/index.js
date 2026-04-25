@@ -197,8 +197,14 @@ const initTravelCache = async () => {
     console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
     
+    // 날짜 정보를 정규화하여 저장
+    const normalizedDirect = directFestivals.map(f => ({
+      ...f,
+      eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
+    }));
+
     // 날짜가 있는 데이터를 우선적으로 배치
-    const combined = [...directFestivals];
+    const combined = [...normalizedDirect];
     const existingIds = new Set(combined.map(f => String(f.contentid)));
     
     // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
@@ -207,8 +213,7 @@ const initTravelCache = async () => {
       if (!existingIds.has(fid)) {
         combined.push({
           ...f,
-          eventstartdate: f.eventstartdate || f.eventStartDate || '',
-          eventenddate: f.eventenddate || f.eventEndDate || ''
+          eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
         });
       }
     });
@@ -287,21 +292,25 @@ app.get('/api/travel/festivals', (req, res) => {
   const limit = parseInt(req.query.limit) || 8;
   const sort = req.query.sort || 'default'; 
   
+  console.log(`🔍 [API] 축제 목록 요청 - 정렬: ${sort}, 페이지: ${page}`);
+  
   let list = [...festivalItems];
 
-  // 정렬 로직 개선: 날짜 데이터가 없는 경우를 명확히 처리
+  // 정렬 로직 개선: 필드명 유연성 확보 및 엄격한 비교
   if (sort === 'date_asc') {
     list.sort((a, b) => {
-      const dateA = String(a.eventstartdate || '99999999');
-      const dateB = String(b.eventstartdate || '99999999');
+      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '99999999');
+      const dateA = getV(a);
+      const dateB = getV(b);
       if (dateA === '99999999' && dateB !== '99999999') return 1;
       if (dateA !== '99999999' && dateB === '99999999') return -1;
       return dateA.localeCompare(dateB);
     });
   } else if (sort === 'date_desc') {
     list.sort((a, b) => {
-      const dateA = String(a.eventstartdate || '00000000');
-      const dateB = String(b.eventstartdate || '00000000');
+      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '00000000');
+      const dateA = getV(a);
+      const dateB = getV(b);
       if (dateA === '00000000' && dateB !== '00000000') return 1;
       if (dateA !== '00000000' && dateB === '00000000') return -1;
       return dateB.localeCompare(dateA);
