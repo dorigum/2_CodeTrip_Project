@@ -50,21 +50,29 @@ const Explore = () => {
 
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
-  useLayoutEffect(() => {
-    if (!initialized) return;
-    const target = getExploreScrollY();
-    if (target === 0) return;
-    const el = document.getElementById('main-scroll');
-    if (!el) return;
-    el.scrollTop = target;
-    if (el.scrollTop !== target) {
-      requestAnimationFrame(() => { el.scrollTop = target; });
-    }
-  }, []);
-
   useEffect(() => {
     if (!initialized) fetchPosts();
   }, []);
+
+  // DOM 변경 이전에 실행되는 cleanup으로 정확한 scrollTop 저장
+  useLayoutEffect(() => {
+    return () => {
+      const el = document.getElementById('main-scroll');
+      if (el) setExploreScrollY(el.scrollTop);
+    };
+  }, []);
+
+  // DOM 반영 후 스크롤 복원 (즉시 + rAF 재시도로 브라우저 scroll anchor 덮어씀)
+  useLayoutEffect(() => {
+    if (!initialized) return;
+    const target = getExploreScrollY();
+    if (!target) return;
+    const el = document.getElementById('main-scroll');
+    if (!el) return;
+    el.scrollTop = target;
+    const raf = requestAnimationFrame(() => { el.scrollTop = target; });
+    return () => cancelAnimationFrame(raf);
+  }, [initialized]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -72,14 +80,6 @@ const Explore = () => {
     const el = document.getElementById('main-scroll');
     if (el) el.scrollTop = 0;
   }, [currentPage]);
-
-  useEffect(() => {
-    const el = document.getElementById('main-scroll');
-    if (!el) return;
-    const handleScroll = () => setExploreScrollY(el.scrollTop);
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const handlePageInputSubmit = (e) => {
     e.preventDefault();
