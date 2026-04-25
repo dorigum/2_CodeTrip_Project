@@ -3,103 +3,66 @@ import wishlistApi from '../api/wishlistApi';
 
 const useWishlistStore = create((set, get) => ({
   wishlistIds: new Set(),
-  wishlistItems: [],
+  wishlistItems: [], // 모든 위시리스트 아이템 데이터 (중앙 집중 관리)
   folders: [],
   initialized: false,
   loading: false,
 
-  // 초기화: 명칭을 MyPage.jsx에 맞춰 initWishlist로 변경
-  initWishlist: async () => {
-    if (get().initialized) return;
+  // 서버에서 전체 상태(아이템 + 폴더)를 동기화하는 핵심 함수
+  syncWithServer: async () => {
     set({ loading: true });
     try {
-      const [wishResponse, folderResponse] = await Promise.all([
+      const [wishRes, folderRes] = await Promise.all([
         wishlistApi.fetchWishlistDetails(),
         wishlistApi.getFolders()
       ]);
       
-      const items = wishResponse.data;
-      const ids = new Set(items.map(item => String(item.content_id)));
+      const items = Array.isArray(wishRes.data) ? wishRes.data : [];
+      const folders = Array.isArray(folderRes.data) ? folderRes.data : [];
+      
+      // 모든 형태의 ID 필드를 지원하도록 Set 구성
+      const ids = new Set(items.map(item => String(item.contentid || item.content_id || item.contentId)));
       
       set({ 
         wishlistItems: items, 
         wishlistIds: ids,
-        folders: folderResponse.data,
-        initialized: true 
+        folders: folders,
+        initialized: true,
+        loading: false
       });
+      return { items, folders };
     } catch (error) {
-      console.error('Failed to initialize wishlist:', error);
-    } finally {
+      console.error('Wishlist sync failed:', error);
       set({ loading: false });
+      return { items: [], folders: [] };
     }
   },
 
-  // 폴더 목록 새로고침
+  // 호환성용 별칭 추가
   fetchFolders: async () => {
-    try {
-      const response = await wishlistApi.getFolders();
-      set({ folders: response.data });
-    } catch (error) {
-      console.error('Failed to fetch folders:', error);
-    }
+    return await get().syncWithServer();
   },
 
-  // 새 폴더 생성
-  createFolder: async (name) => {
-    try {
-      const response = await wishlistApi.createFolder(name);
-      const newFolder = response.data;
-      set(state => ({ folders: [...state.folders, newFolder] }));
-      return newFolder;
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-      return null;
-    }
+  // 페이지 진입 시 최초 1회만 호출
+  initWishlist: async () => {
+    if (get().initialized) return;
+    await get().syncWithServer();
   },
 
-  // 폴더 삭제
-  deleteFolder: async (folderId) => {
-    try {
-      await wishlistApi.deleteFolder(folderId);
-      set(state => ({
-        folders: state.folders.filter(f => f.id !== folderId),
-        wishlistItems: state.wishlistItems.map(item => 
-          item.folder_id === folderId ? { ...item, folder_id: null } : item
-        )
-      }));
-    } catch (error) {
-      console.error('Failed to delete folder:', error);
-    }
-  },
-
-  // 아이템 폴더 이동 (MyPage.jsx 명칭 moveItem에 맞춤)
-  moveItem: async (contentId, folderId) => {
-    try {
-      await wishlistApi.moveWishlistItem(contentId, folderId);
-      set(state => ({
-        wishlistItems: state.wishlistItems.map(item => 
-          String(item.contentid) === String(contentId) ? { ...item, folder_id: folderId } : item
-        )
-      }));
-    } catch (error) {
-      console.error('Failed to move item:', error);
-    }
-  },
-
-  // 위시리스트 토글
+  // 위시리스트 토글 (추가/삭제)
   toggleWishlist: async (travelData, folderId = null) => {
-    const contentId = String(travelData.contentid);
+    const rawId = travelData.contentid || travelData.content_id || travelData.contentId;
+    const contentId = String(rawId);
+    
+    if (!contentId || contentId === 'undefined') return;
+
     const isAdding = !get().wishlistIds.has(contentId);
 
     try {
       await wishlistApi.toggleWishlist(travelData, folderId);
       
-      // 즉각적인 데이터 갱신을 위해 API 재호출
-      const response = await wishlistApi.fetchWishlistDetails();
-      const items = response.data;
-      const ids = new Set(items.map(item => String(item.content_id)));
-      
-      set({ wishlistItems: items, wishlistIds: ids });
+      // 토글 성공 후 즉시 서버와 데이터 동기화 (가장 확실함)
+      await get().syncWithServer();
       
       if (isAdding) {
         alert('위시리스트에 추가되었습니다!');
@@ -107,18 +70,35 @@ const useWishlistStore = create((set, get) => ({
         alert('위시리스트에서 삭제되었습니다.');
       }
     } catch (error) {
-      console.error('Toggle wishlist failed:', error);
+      console.error('Toggle failed:', error);
       alert('요청을 처리하는 중 오류가 발생했습니다.');
     }
   },
 
+  // 폴더 CRUD 액션
+  createFolder: async (name) => {
+    try {
+      await wishlistApi.createFolder(name);
+      await get().syncWithServer();
+    } catch (e) { console.error(e); }
+  },
+
+  deleteFolder: async (folderId) => {
+    try {
+      await wishlistApi.deleteFolder(folderId);
+      await get().syncWithServer();
+    } catch (e) { console.error(e); }
+  },
+
+  moveItem: async (contentId, folderId) => {
+    try {
+      await wishlistApi.moveWishlistItem(contentId, folderId);
+      await get().syncWithServer();
+    } catch (e) { console.error(e); }
+  },
+
   clearWishlist: () => {
-    set({ 
-      wishlistIds: new Set(), 
-      wishlistItems: [], 
-      folders: [],
-      initialized: false 
-    });
+    set({ wishlistIds: new Set(), wishlistItems: [], folders: [], initialized: false });
   }
 }));
 

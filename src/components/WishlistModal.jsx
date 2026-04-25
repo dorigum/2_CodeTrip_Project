@@ -15,7 +15,13 @@ const WishlistModal = ({ isOpen, onClose, travelData }) => {
   if (!isOpen) return null;
 
   const handleSelectFolder = async (folderId) => {
-    await toggleWishlist(travelData, folderId);
+    // travelData에서 필요한 정보를 명시적으로 추출하여 전달
+    const travelInfo = {
+      contentId: travelData.contentid || travelData.content_id || travelData.contentId,
+      title: travelData.title || travelData.facltNm,
+      imageUrl: travelData.firstimage || travelData.image_url || travelData.firstImage
+    };
+    await toggleWishlist(travelInfo, folderId);
     onClose();
   };
 

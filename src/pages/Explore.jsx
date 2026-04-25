@@ -264,7 +264,7 @@ const Explore = () => {
                   >
                     <div 
                       className="relative h-64 overflow-hidden bg-surface-container-low cursor-pointer"
-                      onDoubleClick={() => handleImageDoubleClick(post.contentid)}
+                      onDoubleClick={() => handleImageDoubleClick(post)}
                     >
                       <img
                         src={post.firstimage || FALLBACK_IMAGE}
@@ -283,7 +283,7 @@ const Explore = () => {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleHeartToggle(post.contentid);
+                            handleHeartToggle(post);
                           }}
                           className={`group/heart relative flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-sm active:scale-75 select-none outline-none cursor-pointer ${
                             wishlistIds.has(String(post.contentid)) 
