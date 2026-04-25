@@ -54,10 +54,10 @@ const Home = () => {
 
       // 2. 지역 기반 데이터 (isProvinceChanged 일 때만 셔플 및 업데이트)
       if (isProvinceChanged || !isUpdate) {
-        const [tops, near, fests] = await Promise.all([
+        const [tops, near, festData] = await Promise.all([
           getPhotoList(null, 20),
           getCityBasedPlaces(locProv),
-          getFestivalList(10)
+          getFestivalList(1, 10) // 1페이지에서 10개 요청
         ]);
 
         if (tops.length > 0) setTopImgList(tops);
@@ -71,7 +71,8 @@ const Home = () => {
         }
         setLoading(prev => ({ ...prev, nearby: false }));
 
-        const festItems = (fests || []).slice(0, 3).map(f => ({
+        const fests = festData?.items || festData || [];
+        const festItems = fests.slice(0, 3).map(f => ({
           type: 'festival', 
           icon: 'celebration', 
           title: f.title, 
