@@ -1,37 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getFestivalList } from '../api/travelApi';
+import { getDetailIntro } from '../api/travelInfoApi';
 
 const Festivals = () => {
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'date_asc', 'date_desc'
   const [totalPages, setTotalPages] = useState(0);
   const ITEMS_PER_PAGE = 8;
 
   useEffect(() => {
     const fetchFestivals = async () => {
       setLoading(true);
-      const data = await getFestivalList(page, ITEMS_PER_PAGE);
-      setFestivals(data.items || []);
+      const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
+      let items = data.items || [];
+      
+      // 날짜 정보가 없는 항목들에 대해 상세 정보를 추가로 호출하여 보정 (Hydration)
+      const hydratedItems = await Promise.all(items.map(async (item) => {
+        if (!item.eventstartdate || String(item.eventstartdate).length < 8) {
+          try {
+            // 상세 페이지에서 사용하는 것과 동일한 API 호출
+            const intro = await getDetailIntro(item.contentid, '15');
+            if (intro) {
+              return {
+                ...item,
+                eventstartdate: intro.eventstartdate || intro.eventStartDate || item.eventstartdate,
+                eventenddate: intro.eventenddate || intro.eventEndDate || item.eventenddate
+              };
+            }
+          } catch (e) { console.warn('Hydration failed for:', item.contentid); }
+        }
+        return item;
+      }));
+
+      setFestivals(hydratedItems);
       setTotalPages(data.totalPages || 0);
       setLoading(false);
-      // 페이지 변경 시 상단으로 스크롤
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     fetchFestivals();
-  }, [page]);
+  }, [page, sortOrder]);
 
   return (
     <div className="p-6 lg:p-10 space-y-8 flex-1 flex flex-col bg-background">
       {/* Header 섹션 */}
-      <div className="space-y-2 border-b border-outline-variant/20 pb-6">
-        <div className="flex items-center gap-3 text-primary font-bold">
-          <span className="material-symbols-outlined">celebration</span>
-          <p className="text-[11px] uppercase tracking-[0.2em] font-label">SYSTEM_EVENTS.EXE</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/20 pb-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 text-primary font-bold">
+            <span className="material-symbols-outlined">celebration</span>
+            <p className="text-[11px] uppercase tracking-[0.2em] font-label">SYSTEM_EVENTS.EXE</p>
+          </div>
+          <h2 className="text-3xl font-headline font-bold text-slate-900">전국 축제 및 행사 정보</h2>
+          <p className="text-slate-500 font-body text-sm">대한민국 곳곳에서 열리는 활기찬 축제 데이터를 탐색하세요.</p>
         </div>
-        <h2 className="text-3xl font-headline font-bold text-slate-900">전국 축제 및 행사 정보</h2>
-        <p className="text-slate-500 font-body text-sm">대한민국 곳곳에서 열리는 활기찬 축제 데이터를 탐색하세요.</p>
+
+        {/* 정렬 드롭다운 (위시리스트 디자인 적용) */}
+        <div className="flex items-center gap-3 shrink-0">
+          <select 
+            value={sortOrder}
+            onChange={(e) => {
+              setSortOrder(e.target.value);
+              setPage(1); // 정렬 변경 시 1페이지로 리셋
+            }}
+            className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10 cursor-pointer uppercase font-bold tracking-tighter"
+          >
+            <option value="default">DEFAULT_NODES</option>
+            <option value="date_asc">DATE_ASCENDING</option>
+            <option value="date_desc">DATE_DESCENDING</option>
+          </select>
+        </div>
       </div>
 
       {/* 리스트 섹션 */}
@@ -61,12 +100,16 @@ const Festivals = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'; }}
                   />
-                  <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-white/10 uppercase font-mono tracking-tight flex items-center gap-1.5 shadow-lg z-10">
-                    <span className="material-symbols-outlined text-[12px] text-primary-container">calendar_today</span>
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200/50 uppercase font-mono tracking-tight flex items-center gap-1.5 shadow-lg z-10">
+                    <span className="material-symbols-outlined text-[12px] text-primary">calendar_today</span>
                     <span>
-                      {fest.eventstartdate ? (
-                        `${fest.eventstartdate.slice(4, 6)}.${fest.eventstartdate.slice(6, 8)} - ${fest.eventenddate?.slice(4, 6)}.${fest.eventenddate?.slice(6, 8)}`
-                      ) : 'UPCOMING'}
+                      {fest.eventstartdate && String(fest.eventstartdate).length >= 8 ? (
+                        `${String(fest.eventstartdate).slice(4, 6)}.${String(fest.eventstartdate).slice(6, 8)} - ${
+                          fest.eventenddate && String(fest.eventenddate).length >= 8
+                            ? `${String(fest.eventenddate).slice(4, 6)}.${String(fest.eventenddate).slice(6, 8)}`
+                            : '진행중'
+                        }`
+                      ) : '날짜정보없음'}
                     </span>
                   </div>
                 </div>

@@ -137,47 +137,39 @@ const fetchFestivals = async (numOfRows = 1000) => {
     MobileApp: 'CodeTrip',
     _type: 'json',
     arrange: 'A',
-    eventStartDate: '20250101', 
+    listYN: 'Y',
+    eventStartDate: '20250101'
   };
 
   try {
-    console.log(`📡 축제 정보 요청 중...`);
-    // KorService2에서는 festivalList2 대신 festivalList가 더 안정적일 수 있으므로 순차적으로 시도
-    let response;
-    try {
-      response = await axios.get(`${TRAVEL_API_BASE}/festivalList2`, { params });
-    } catch (e) {
-      console.warn('⚠️ festivalList2 실패, festivalList로 재시도합니다.');
-      response = await axios.get(`${TRAVEL_API_BASE}/festivalList`, { params });
-    }
+    console.log(`📡 축제 정보 요청 중 (searchFestival2)...`);
+    const response = await axios.get(`${TRAVEL_API_BASE}/searchFestival2`, { params });
     
     const body = response.data?.response?.body;
-    if (!body) {
-      console.warn('⚠️ API 응답 본문이 비어 있습니다. API 키 또는 서비스 상태를 확인하세요.');
-      if (response.data) console.log('응답 본문:', JSON.stringify(response.data).slice(0, 200));
-    }
-
     const rawItems = body?.items?.item;
     const list = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
     
-    return list.map(item => ({
-      ...item,
-      contentid: item.contentid || item.contentId,
-      title: item.title,
-      firstimage: (item.firstimage || item.originimgurl || '')?.replace('http://', 'https://'),
-      eventstartdate: item.eventstartdate, 
-      eventenddate: item.eventenddate,     
-      addr1: item.addr1,
-      areacode: item.areacode || item.areaCode
-    }));
+    console.log(`✅ 축제 API 응답 수: ${list.length}개`);
+    
+    return list.map(item => {
+      const getField = (obj, target) => {
+        const key = Object.keys(obj).find(k => k.toLowerCase() === target.toLowerCase());
+        return key ? obj[key] : undefined;
+      };
+
+      return {
+        ...item,
+        contentid: getField(item, 'contentid') || getField(item, 'contentId'),
+        title: getField(item, 'title'),
+        firstimage: (getField(item, 'firstimage') || getField(item, 'originimgurl') || '')?.replace('http://', 'https://'),
+        eventstartdate: String(getField(item, 'eventstartdate') || getField(item, 'eventStartDate') || ''), 
+        eventenddate: String(getField(item, 'eventenddate') || getField(item, 'eventEndDate') || ''),     
+        addr1: getField(item, 'addr1'),
+        areacode: getField(item, 'areacode') || getField(item, 'areaCode')
+      };
+    });
   } catch (err) {
-    console.error('❌ 축제 정보 가져오기 상세 에러:');
-    if (err.response) {
-      console.error(`- 상태: ${err.response.status}`);
-      console.error(`- 본문:`, JSON.stringify(err.response.data).slice(0, 300));
-    } else {
-      console.error(`- 메시지: ${err.message}`);
-    }
+    console.error(`❌ [fetchFestivals] 에러: ${err.response?.status || err.message}`);
     return [];
   }
 };
@@ -213,7 +205,11 @@ const initTravelCache = async () => {
     filteredFestivals.forEach(f => {
       const fid = String(f.contentid || f.contentId);
       if (!existingIds.has(fid)) {
-        combined.push(f);
+        combined.push({
+          ...f,
+          eventstartdate: f.eventstartdate || f.eventStartDate || '',
+          eventenddate: f.eventenddate || f.eventEndDate || ''
+        });
       }
     });
 
@@ -289,18 +285,38 @@ app.get('/api/travel/festivals', (req, res) => {
   
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 8;
+  const sort = req.query.sort || 'default'; 
+  
+  let list = [...festivalItems];
+
+  // 정렬 로직 개선: 날짜 데이터가 없는 경우를 명확히 처리
+  if (sort === 'date_asc') {
+    list.sort((a, b) => {
+      const dateA = String(a.eventstartdate || '99999999');
+      const dateB = String(b.eventstartdate || '99999999');
+      if (dateA === '99999999' && dateB !== '99999999') return 1;
+      if (dateA !== '99999999' && dateB === '99999999') return -1;
+      return dateA.localeCompare(dateB);
+    });
+  } else if (sort === 'date_desc') {
+    list.sort((a, b) => {
+      const dateA = String(a.eventstartdate || '00000000');
+      const dateB = String(b.eventstartdate || '00000000');
+      if (dateA === '00000000' && dateB !== '00000000') return 1;
+      if (dateA !== '00000000' && dateB === '00000000') return -1;
+      return dateB.localeCompare(dateA);
+    });
+  }
+
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
-
-  // 전체 데이터가 무작위로 섞여서 제공되는 것을 원한다면 처음 1회 섞은 후 캐싱하거나, 
-  // 여기서는 일관된 페이지네이션을 위해 정렬된 상태로 제공합니다.
-  const list = festivalItems.slice(startIndex, endIndex);
+  const paginatedList = list.slice(startIndex, endIndex);
   
   res.json({
-    items: list,
-    totalCount: festivalItems.length,
+    items: paginatedList,
+    totalCount: list.length,
     currentPage: page,
-    totalPages: Math.ceil(festivalItems.length / limit)
+    totalPages: Math.ceil(list.length / limit)
   });
 });
 

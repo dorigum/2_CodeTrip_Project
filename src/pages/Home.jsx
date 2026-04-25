@@ -75,7 +75,9 @@ const Home = () => {
           type: 'festival', 
           icon: 'celebration', 
           title: f.title, 
-          subtitle: f.eventstartdate || 'NOW',
+          subtitle: f.eventstartdate && typeof f.eventstartdate === 'string' && f.eventstartdate.length >= 8 
+            ? `${f.eventstartdate.slice(4, 6)}.${f.eventstartdate.slice(6, 8)}` 
+            : 'NOW',
           location: f.addr1?.split(' ')[0] || '전국', 
           image: f.firstimage,
           contentid: f.contentid
