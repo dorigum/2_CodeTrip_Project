@@ -56,13 +56,15 @@ export const searchKeywordPlaces = async () => {
 
 // 나머지 유틸리티 함수들 유지...
 // 축제/행사 정보 (우리 서버 캐시 활용)
-export const getFestivalList = async () => {
+export const getFestivalList = async (page = 1, limit = 8) => {
   try {
-    const response = await axiosInstance.get('/travel/festivals');
+    const response = await axiosInstance.get('/travel/festivals', {
+      params: { page, limit }
+    });
     return response.data;
   } catch (error) {
     console.error('Festival list error:', error);
-    return [];
+    return { items: [], totalCount: 0, totalPages: 0 };
   }
 };
 

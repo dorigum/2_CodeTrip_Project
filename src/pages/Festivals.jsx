@@ -5,16 +5,22 @@ import { getFestivalList } from '../api/travelApi';
 const Festivals = () => {
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const ITEMS_PER_PAGE = 8;
 
   useEffect(() => {
     const fetchFestivals = async () => {
       setLoading(true);
-      const data = await getFestivalList(100); // 전체 리스트를 위해 더 많이 가져옴
-      setFestivals(data);
+      const data = await getFestivalList(page, ITEMS_PER_PAGE);
+      setFestivals(data.items || []);
+      setTotalPages(data.totalPages || 0);
       setLoading(false);
+      // 페이지 변경 시 상단으로 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     fetchFestivals();
-  }, []);
+  }, [page]);
 
   return (
     <div className="p-6 lg:p-10 space-y-8 flex-1 flex flex-col bg-background">
@@ -29,7 +35,7 @@ const Festivals = () => {
       </div>
 
       {/* 리스트 섹션 */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-[600px]">
         {loading ? (
           <div className="h-64 flex flex-col items-center justify-center gap-4 opacity-50">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -55,8 +61,11 @@ const Festivals = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'; }}
                   />
-                  <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md text-white text-[9px] font-bold px-2 py-1 rounded-md border border-white/20 uppercase font-mono tracking-tighter">
-                    {fest.eventstartdate || 'NOW'}
+                  <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-white/20 uppercase font-mono tracking-tight flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                    {fest.eventstartdate ? (
+                      `${fest.eventstartdate.slice(4, 6)}.${fest.eventstartdate.slice(6, 8)} - ${fest.eventenddate?.slice(4, 6)}.${fest.eventenddate?.slice(6, 8)}`
+                    ) : 'NOW'}
                   </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
@@ -80,6 +89,50 @@ const Festivals = () => {
           </div>
         )}
       </div>
+
+      {/* 페이지네이션 UI */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-10 pb-6">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">chevron_left</span>
+          </button>
+          
+          <div className="flex items-center gap-1">
+            {[...Array(Math.min(5, totalPages))].map((_, i) => {
+              // 현재 페이지 주변의 번호들을 보여주는 로직 (간소화)
+              let pageNum = page <= 3 ? i + 1 : page + i - 2;
+              if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+              if (pageNum <= 0) return null;
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`w-10 h-10 rounded-lg font-mono text-sm transition-all ${
+                    page === pageNum 
+                      ? 'bg-primary text-white font-bold shadow-lg shadow-primary/20' 
+                      : 'hover:bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">chevron_right</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

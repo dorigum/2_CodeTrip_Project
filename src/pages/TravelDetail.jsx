@@ -229,6 +229,17 @@ const TravelDetail = () => {
     };
     if (common?.tel) push('call', '전화번호', common.tel);
     if (common?.addr1) push('location_on', '주소', `${common.addr1} ${common.addr2 || ''}`);
+    
+    // 축제 기간 표시 추가
+    if (String(common?.contenttypeid) === '15') {
+      const start = intro?.eventstartdate || common?.eventstartdate;
+      const end = intro?.eventenddate || common?.eventenddate;
+      if (start) {
+        const formattedDate = `${start.slice(0, 4)}.${start.slice(4, 6)}.${start.slice(6, 8)} ~ ${end ? `${end.slice(0, 4)}.${end.slice(4, 6)}.${end.slice(6, 8)}` : '미정'}`;
+        push('calendar_month', '축제 기간', formattedDate);
+      }
+    }
+
     if (intro) {
       Object.entries(intro).forEach(([key, value]) => {
         const meta = INTRO_FIELD_MAP[key];

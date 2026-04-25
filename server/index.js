@@ -41,7 +41,8 @@ const fetchCombination = async ({ region, theme, keyword, numOfRows, pageNo, arr
       })),
       totalCount: Number(body?.totalCount || 0),
     };
-  } catch {
+  } catch (err) {
+    console.error(`❌ [fetchCombination] 오류: ${err.message}`);
     return { items: [], totalCount: 0 };
   }
 };
@@ -72,7 +73,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only images are allowed'));
+    else cb(new Error('이미지 파일만 업로드 가능합니다.'));
   }
 });
 
@@ -89,7 +90,7 @@ const pool = mysql.createPool({
 const initDB = async () => {
   try {
     const conn = await pool.getConnection();
-    console.log('✅ Database connected');
+    console.log('✅ 데이터베이스 연결 성공');
     
     await conn.query('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, profile_img VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
     await conn.query('CREATE TABLE IF NOT EXISTS comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
@@ -119,13 +120,67 @@ const initDB = async () => {
       )
     `);
 
-    console.log('✅ Tables initialized');
+    console.log('✅ 테이블 초기화 완료');
     conn.release();
   } catch (err) {
-    console.error('❌ DB init failed:', err.message);
+    console.error('❌ DB 초기화 실패:', err.message);
   }
 };
 initDB();
+
+const fetchFestivals = async (numOfRows = 1000) => {
+  const params = {
+    serviceKey: TRAVEL_SERVICE_KEY,
+    numOfRows,
+    pageNo: 1,
+    MobileOS: 'ETC',
+    MobileApp: 'CodeTrip',
+    _type: 'json',
+    arrange: 'A',
+    eventStartDate: '20250101', 
+  };
+
+  try {
+    console.log(`📡 축제 정보 요청 중...`);
+    // KorService2에서는 festivalList2 대신 festivalList가 더 안정적일 수 있으므로 순차적으로 시도
+    let response;
+    try {
+      response = await axios.get(`${TRAVEL_API_BASE}/festivalList2`, { params });
+    } catch (e) {
+      console.warn('⚠️ festivalList2 실패, festivalList로 재시도합니다.');
+      response = await axios.get(`${TRAVEL_API_BASE}/festivalList`, { params });
+    }
+    
+    const body = response.data?.response?.body;
+    if (!body) {
+      console.warn('⚠️ API 응답 본문이 비어 있습니다. API 키 또는 서비스 상태를 확인하세요.');
+      if (response.data) console.log('응답 본문:', JSON.stringify(response.data).slice(0, 200));
+    }
+
+    const rawItems = body?.items?.item;
+    const list = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
+    
+    return list.map(item => ({
+      ...item,
+      contentid: item.contentid || item.contentId,
+      title: item.title,
+      firstimage: (item.firstimage || item.originimgurl || '')?.replace('http://', 'https://'),
+      eventstartdate: item.eventstartdate, 
+      eventenddate: item.eventenddate,     
+      addr1: item.addr1,
+      areacode: item.areacode || item.areaCode
+    }));
+  } catch (err) {
+    console.error('❌ 축제 정보 가져오기 상세 에러:');
+    if (err.response) {
+      console.error(`- 상태: ${err.response.status}`);
+      console.error(`- 본문:`, JSON.stringify(err.response.data).slice(0, 300));
+    } else {
+      console.error(`- 메시지: ${err.message}`);
+    }
+    return [];
+  }
+};
 
 let allTravelItems = null;
 let mainTopImages = null;
@@ -133,13 +188,37 @@ let festivalItems = null;
 
 const initTravelCache = async () => {
   try {
-    console.log('⏳ Loading Travel Cache...');
+    console.log('⏳ 여행 데이터 캐시 로딩 중...');
     const result = await fetchCombination({ region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O' });
     allTravelItems = result.items;
-    mainTopImages = allTravelItems.filter(item => item.firstimage).slice(0, 100).map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
-    festivalItems = allTravelItems.filter(item => item.firstimage && String(item.contenttypeid) === '15');
-    console.log(`✅ Cached ${allTravelItems.length} items (Festivals: ${festivalItems.length})`);
-  } catch (err) { console.error('❌ Cache failed:', err.message); }
+    
+    mainTopImages = allTravelItems
+      .filter(item => item.firstimage)
+      .slice(0, 100)
+      .map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
+
+    const filteredFestivals = allTravelItems.filter(item => {
+      const typeId = String(item.contenttypeid || item.contentTypeId || '');
+      return item.firstimage && typeId === '15';
+    });
+
+    console.log(`⏳ 축제 전용 데이터 추가 확보 중...`);
+    const directFestivals = await fetchFestivals(2000);
+    
+    const combined = [...filteredFestivals];
+    const existingIds = new Set(combined.map(f => String(f.contentid)));
+    
+    directFestivals.forEach(f => {
+      if (!existingIds.has(String(f.contentid)) && f.firstimage) {
+        combined.push(f);
+      }
+    });
+
+    festivalItems = combined;
+    console.log(`✅ 캐시 완료: 총 ${allTravelItems.length}개 항목 (축제: ${festivalItems.length}개)`);
+  } catch (err) { 
+    console.error('❌ 캐시 로딩 실패:', err.message); 
+  }
 };
 initTravelCache();
 
@@ -204,14 +283,30 @@ app.get('/api/travel/near', (req, res) => {
 
 app.get('/api/travel/festivals', (req, res) => {
   if (!festivalItems) return res.status(503).json({ message: 'Loading...' });
-  const limit = parseInt(req.query.limit) || 50;
-  const list = festivalItems.sort(() => 0.5 - Math.random()).slice(0, limit);
-  res.json(list);
+  
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 8;
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  // 전체 데이터가 무작위로 섞여서 제공되는 것을 원한다면 처음 1회 섞은 후 캐싱하거나, 
+  // 여기서는 일관된 페이지네이션을 위해 정렬된 상태로 제공합니다.
+  const list = festivalItems.slice(startIndex, endIndex);
+  
+  res.json({
+    items: list,
+    totalCount: festivalItems.length,
+    currentPage: page,
+    totalPages: Math.ceil(festivalItems.length / limit)
+  });
 });
 
 app.get('/api/travel/random', (req, res) => {
   if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
-  const filtered = allTravelItems.filter(item => item.firstimage && String(item.contenttypeid) === '12');
+  const filtered = allTravelItems.filter(item => {
+    const typeId = String(item.contenttypeid || item.contentTypeId || '');
+    return item.firstimage && typeId === '12';
+  });
   res.json(filtered.sort(() => 0.5 - Math.random()).slice(0, 30));
 });
 
@@ -225,7 +320,10 @@ app.get('/api/travel', (req, res) => {
 
   let filtered = allTravelItems;
   if (regions.length) filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
-  if (themes.length) filtered = filtered.filter(item => themes.includes(String(item.contenttypeid)));
+  if (themes.length) filtered = filtered.filter(item => {
+    const typeId = String(item.contenttypeid || item.contentTypeId || '');
+    return themes.includes(typeId);
+  });
   if (keyword) filtered = filtered.filter(item => item.title?.toLowerCase().includes(keyword));
 
   res.json({ items: filtered.slice((pageNo - 1) * numOfRows, pageNo * numOfRows), totalCount: filtered.length });
