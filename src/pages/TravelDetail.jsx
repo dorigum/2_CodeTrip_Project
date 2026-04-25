@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
-import { getComments, postComment, updateComment, deleteComment, toggleCommentLike } from '../api/commentApi';
+import { getTravelComments, postTravelComment, updateTravelComment, deleteTravelComment, toggleTravelCommentLike } from '../api/travelCommentApi';
 import useAuthStore from '../store/useAuthStore';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
@@ -31,12 +31,12 @@ const TravelDetail = () => {
   const [infoItems, setInfoItems] = useState([]);
   const [images, setImages] = useState([]);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [travelCommentText, setTravelCommentText] = useState('');
+  const [travelComments, setTravelComments] = useState([]);
+  const [travelCommentSubmitting, setTravelCommentSubmitting] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
+  const [travelCommentEditingId, setTravelCommentEditingId] = useState(null);
+  const [travelCommentEditText, setTravelCommentEditText] = useState('');
 
   const { isLoggedIn, user } = useAuthStore();
 
@@ -79,17 +79,17 @@ const TravelDetail = () => {
         setCommon(commonData);
 
         const cTypeId = commonData.contenttypeid;
-        const [introData, infoData, imageData, commentsData] = await Promise.all([
+        const [introData, infoData, imageData, travelCommentsData] = await Promise.all([
           getDetailIntro(contentId, cTypeId),
           getDetailInfo(contentId, cTypeId),
           getDetailImage(contentId),
-          getComments(contentId),
+          getTravelComments(contentId),
         ]);
 
         setIntro(introData);
         setInfoItems(infoData?.items ?? []);
         setImages(imageData?.items ?? []);
-        setComments(commentsData ?? []);
+        setTravelComments(travelCommentsData ?? []);
       } catch (err) {
         console.error('Fetch detail error:', err);
       } finally {
@@ -100,67 +100,67 @@ const TravelDetail = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [contentId]);
 
-  const handleCommentFocus = (e) => {
+  const handleTravelCommentFocus = (e) => {
     if (!isLoggedIn) {
       e.target.blur();
       setShowLoginDialog(true);
     }
   };
 
-  const handleCommentSubmit = async () => {
-    if (!isLoggedIn || !commentText.trim() || submitting) return;
+  const handleTravelCommentSubmit = async () => {
+    if (!isLoggedIn || !travelCommentText.trim() || travelCommentSubmitting) return;
     try {
-      setSubmitting(true);
-      await postComment({ contentId, nickname: user.name, body: commentText.trim() });
-      setCommentText('');
-      const updated = await getComments(contentId);
-      setComments(updated);
+      setTravelCommentSubmitting(true);
+      await postTravelComment({ contentId, nickname: user.name, body: travelCommentText.trim() });
+      setTravelCommentText('');
+      const updated = await getTravelComments(contentId);
+      setTravelComments(updated);
     } catch (err) {
       console.error('Comment post error:', err);
     } finally {
-      setSubmitting(false);
+      setTravelCommentSubmitting(false);
     }
   };
 
-  const handleEditStart = (comment) => {
-    setEditingId(comment.id);
-    setEditText(comment.body);
+  const handleTravelCommentEditStart = (comment) => {
+    setTravelCommentEditingId(comment.id);
+    setTravelCommentEditText(comment.body);
   };
 
-  const handleEditCancel = () => {
-    setEditingId(null);
-    setEditText('');
+  const handleTravelCommentEditCancel = () => {
+    setTravelCommentEditingId(null);
+    setTravelCommentEditText('');
   };
 
-  const handleEditSubmit = async (id) => {
-    if (!editText.trim()) return;
+  const handleTravelCommentEditSubmit = async (id) => {
+    if (!travelCommentEditText.trim()) return;
     try {
-      await updateComment(id, editText.trim());
-      setEditingId(null);
-      setEditText('');
-      setComments(await getComments(contentId));
+      await updateTravelComment(id, travelCommentEditText.trim());
+      setTravelCommentEditingId(null);
+      setTravelCommentEditText('');
+      setTravelComments(await getTravelComments(contentId));
     } catch (err) {
       console.error('Comment update error:', err);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleTravelCommentDelete = async (id) => {
     if (!window.confirm('코멘트를 삭제하시겠습니까?')) return;
     try {
-      await deleteComment(id);
-      setComments(await getComments(contentId));
+      await deleteTravelComment(id);
+      setTravelComments(await getTravelComments(contentId));
     } catch (err) {
       console.error('Comment delete error:', err);
     }
   };
 
-  const handleLike = async (commentId) => {
+  const handleTravelCommentLike = async (commentId) => {
     if (!isLoggedIn) {
       setShowLoginDialog(true);
       return;
     }
     // 낙관적 업데이트
-    setComments((prev) =>
+    setTravelComments((prev) =>
       prev.map((c) =>
         c.id === commentId
           ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
@@ -168,13 +168,13 @@ const TravelDetail = () => {
       )
     );
     try {
-      const { liked, likes } = await toggleCommentLike(commentId);
-      setComments((prev) =>
+      const { liked, likes } = await toggleTravelCommentLike(commentId);
+      setTravelComments((prev) =>
         prev.map((c) => (c.id === commentId ? { ...c, liked, likes } : c))
       );
     } catch (err) {
       // 실패 시 롤백
-      setComments((prev) =>
+      setTravelComments((prev) =>
         prev.map((c) =>
           c.id === commentId
             ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
@@ -333,31 +333,31 @@ const TravelDetail = () => {
                     className="flex-1 bg-transparent font-mono text-sm text-on-surface placeholder:text-outline resize-none outline-none leading-relaxed"
                     rows={3}
                     placeholder="// 여행 후기를 남겨주세요..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onFocus={handleCommentFocus}
+                    value={travelCommentText}
+                    onChange={(e) => setTravelCommentText(e.target.value)}
+                    onFocus={handleTravelCommentFocus}
                   />
                 </div>
                 <div className="flex justify-end">
                   <button
-                    onClick={handleCommentSubmit}
-                    disabled={submitting || !commentText.trim()}
+                    onClick={handleTravelCommentSubmit}
+                    disabled={travelCommentSubmitting || !travelCommentText.trim()}
                     className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold font-label hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {submitting ? '// posting...' : 'COMMIT_COMMENT.SH'}
+                    {travelCommentSubmitting ? '// posting...' : 'COMMIT_COMMENT.SH'}
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Comment List */}
-            {comments.length === 0 ? (
+            {travelComments.length === 0 ? (
               <p className="text-sm font-mono text-outline text-center py-6">// 아직 코멘트가 없습니다.</p>
             ) : (
               <div className="space-y-4">
-                {comments.map((comment) => {
+                {travelComments.map((comment) => {
                   const isOwner = user?.id && comment.user_id === user.id;
-                  const isEditing = editingId === comment.id;
+                  const isEditing = travelCommentEditingId === comment.id;
                   return (
                     <div key={comment.id} className="bg-white rounded-xl p-5 border border-outline-variant/10 shadow-sm">
                       <div className="flex items-start gap-3">
@@ -376,13 +376,13 @@ const TravelDetail = () => {
                               {isOwner && !isEditing && (
                                 <>
                                   <button
-                                    onClick={() => handleEditStart(comment)}
+                                    onClick={() => handleTravelCommentEditStart(comment)}
                                     className="text-[11px] font-mono text-outline hover:text-primary transition-colors flex items-center gap-0.5"
                                   >
                                     <span className="material-symbols-outlined text-sm">edit</span>
                                   </button>
                                   <button
-                                    onClick={() => handleDelete(comment.id)}
+                                    onClick={() => handleTravelCommentDelete(comment.id)}
                                     className="text-[11px] font-mono text-outline hover:text-error transition-colors flex items-center gap-0.5"
                                   >
                                     <span className="material-symbols-outlined text-sm">delete</span>
@@ -390,7 +390,7 @@ const TravelDetail = () => {
                                 </>
                               )}
                               <button
-                                onClick={() => handleLike(comment.id)}
+                                onClick={() => handleTravelCommentLike(comment.id)}
                                 className={`flex items-center gap-1 transition-colors text-[11px] font-mono ${comment.liked ? 'text-primary' : 'text-outline hover:text-primary'}`}
                               >
                                 <span className={`material-symbols-outlined text-sm ${comment.liked ? 'filled' : ''}`}>
@@ -406,20 +406,20 @@ const TravelDetail = () => {
                               <textarea
                                 className="w-full bg-surface-container-low font-mono text-sm text-on-surface resize-none outline-none leading-relaxed rounded-lg p-3 border border-primary/30 focus:border-primary transition-colors"
                                 rows={3}
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
+                                value={travelCommentEditText}
+                                onChange={(e) => setTravelCommentEditText(e.target.value)}
                                 autoFocus
                               />
                               <div className="flex justify-end gap-2 mt-2">
                                 <button
-                                  onClick={handleEditCancel}
+                                  onClick={handleTravelCommentEditCancel}
                                   className="px-3 py-1.5 text-xs font-bold font-label border border-outline-variant/30 rounded-lg text-on-secondary-container hover:bg-surface-container-high transition-all"
                                 >
                                   CANCEL
                                 </button>
                                 <button
-                                  onClick={() => handleEditSubmit(comment.id)}
-                                  disabled={!editText.trim()}
+                                  onClick={() => handleTravelCommentEditSubmit(comment.id)}
+                                  disabled={!travelCommentEditText.trim()}
                                   className="px-3 py-1.5 text-xs font-bold font-label bg-primary text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-40"
                                 >
                                   SAVE.SH

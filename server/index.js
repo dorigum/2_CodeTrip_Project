@@ -117,7 +117,7 @@ const initDB = async () => {
     await conn.query('ALTER TABLE users MODIFY profile_img VARCHAR(255)');
 
     await conn.query(`
-      CREATE TABLE IF NOT EXISTS comments (
+      CREATE TABLE IF NOT EXISTS travel_comments (
         id INT AUTO_INCREMENT PRIMARY KEY,
         content_id VARCHAR(50) NOT NULL,
         user_id INT,
@@ -125,17 +125,17 @@ const initDB = async () => {
         body TEXT NOT NULL,
         likes INT NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_content_id (content_id)
+        INDEX idx_travel_comment_content_id (content_id)
       )
     `);
 
     await conn.query(`
-      CREATE TABLE IF NOT EXISTS comment_likes (
+      CREATE TABLE IF NOT EXISTS travel_comment_likes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         comment_id INT NOT NULL,
         user_id INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_comment_user (comment_id, user_id)
+        UNIQUE KEY uq_travel_comment_user (comment_id, user_id)
       )
     `);
 
@@ -416,10 +416,10 @@ app.delete('/api/boards/:id', async (req, res) => {
   }
 });
 
-// --- Comment Routes ---
+// --- Travel Comment Routes ---
 
 // 코멘트 조회 (좋아요 수 + 현재 유저 좋아요 여부 포함)
-app.get('/api/comments/:contentId', async (req, res) => {
+app.get('/api/travel-comments/:contentId', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   let userId = null;
@@ -432,8 +432,8 @@ app.get('/api/comments/:contentId', async (req, res) => {
       SELECT c.id, c.content_id, c.user_id, c.nickname, c.body, c.created_at,
         COUNT(cl.id) AS likes,
         COALESCE(MAX(CASE WHEN cl.user_id = ? THEN 1 ELSE 0 END), 0) AS liked
-      FROM comments c
-      LEFT JOIN comment_likes cl ON cl.comment_id = c.id
+      FROM travel_comments c
+      LEFT JOIN travel_comment_likes cl ON cl.comment_id = c.id
       WHERE c.content_id = ?
       GROUP BY c.id
       ORDER BY c.created_at DESC
@@ -446,21 +446,21 @@ app.get('/api/comments/:contentId', async (req, res) => {
 });
 
 // 코멘트 좋아요 토글
-app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+app.post('/api/travel-comments/:id/like', authenticateToken, async (req, res) => {
   const commentId = req.params.id;
   const userId = req.user.id;
   try {
     const [existing] = await pool.query(
-      'SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?',
+      'SELECT id FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?',
       [commentId, userId]
     );
     if (existing.length > 0) {
-      await pool.query('DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?', [commentId, userId]);
+      await pool.query('DELETE FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?', [commentId, userId]);
     } else {
-      await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
+      await pool.query('INSERT INTO travel_comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
     }
     const [[{ likes }]] = await pool.query(
-      'SELECT COUNT(*) AS likes FROM comment_likes WHERE comment_id = ?',
+      'SELECT COUNT(*) AS likes FROM travel_comment_likes WHERE comment_id = ?',
       [commentId]
     );
     res.json({ liked: existing.length === 0, likes: Number(likes) });
@@ -470,17 +470,17 @@ app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
 });
 
 // 코멘트 작성
-app.post('/api/comments', authenticateToken, async (req, res) => {
+app.post('/api/travel-comments', authenticateToken, async (req, res) => {
   const { content_id, nickname, body } = req.body;
   if (!content_id || !body || !body.trim()) {
     return res.status(400).json({ message: '필수 항목이 누락되었습니다.' });
   }
   try {
     const [result] = await pool.query(
-      'INSERT INTO comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)',
+      'INSERT INTO travel_comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)',
       [content_id, req.user.id, nickname || '익명', body.trim()]
     );
-    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [result.insertId]);
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -488,18 +488,18 @@ app.post('/api/comments', authenticateToken, async (req, res) => {
 });
 
 // 코멘트 수정
-app.put('/api/comments/:id', authenticateToken, async (req, res) => {
+app.put('/api/travel-comments/:id', authenticateToken, async (req, res) => {
   const { body } = req.body;
   if (!body || !body.trim()) {
     return res.status(400).json({ message: '내용을 입력해주세요.' });
   }
   try {
-    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
     if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '수정 권한이 없습니다.' });
 
-    await pool.query('UPDATE comments SET body = ? WHERE id = ?', [body.trim(), req.params.id]);
-    const [updated] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    await pool.query('UPDATE travel_comments SET body = ? WHERE id = ?', [body.trim(), req.params.id]);
+    const [updated] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
     res.json(updated[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -507,13 +507,13 @@ app.put('/api/comments/:id', authenticateToken, async (req, res) => {
 });
 
 // 코멘트 삭제
-app.delete('/api/comments/:id', authenticateToken, async (req, res) => {
+app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
     if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '삭제 권한이 없습니다.' });
 
-    await pool.query('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM travel_comments WHERE id = ?', [req.params.id]);
     res.json({ message: '삭제되었습니다.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
