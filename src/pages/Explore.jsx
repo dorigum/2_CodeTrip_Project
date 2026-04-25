@@ -135,16 +135,19 @@ const Explore = () => {
               {/* Region */}
               <section>
                 <div
-                  className="flex items-center justify-between mb-2 cursor-pointer select-none"
+                  className="flex items-center gap-1 mb-2 cursor-pointer select-none"
                   onClick={() => setRegionOpen(!regionOpen)}
                 >
-                  <span className="syntax-keyword text-sm">Region</span>
-                  <span className={`material-symbols-outlined text-xs text-outline transition-transform ${regionOpen ? 'rotate-90' : ''}`}>
-                    expand_more
+                  <span className={`material-symbols-outlined text-sm text-outline transition-transform duration-150 ${regionOpen ? 'rotate-45' : ''}`}>
+                    chevron_right
                   </span>
+                  <span className="material-symbols-outlined text-sm text-yellow-500">
+                    {regionOpen ? 'folder_open' : 'folder'}
+                  </span>
+                  <span className="syntax-keyword text-sm">Region</span>
                 </div>
                 {regionOpen && (
-                  <ul className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2">
+                  <ul className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2 ml-4 border-l border-outline-variant/30 pl-4">
                     {regions.map((r) => (
                       <li
                         key={r.code}
@@ -164,13 +167,16 @@ const Explore = () => {
               {/* Theme */}
               <section>
                 <div
-                  className="flex items-center justify-between mb-2 cursor-pointer select-none"
+                  className="flex items-center gap-1 mb-2 cursor-pointer select-none"
                   onClick={() => setThemeOpen(!themeOpen)}
                 >
-                  <span className="syntax-keyword text-sm">Theme</span>
-                  <span className={`material-symbols-outlined text-xs text-outline transition-transform ${themeOpen ? 'rotate-90' : ''}`}>
-                    expand_more
+                  <span className={`material-symbols-outlined text-sm text-outline transition-transform duration-150 ${themeOpen ? 'rotate-45' : ''}`}>
+                    chevron_right
                   </span>
+                  <span className="material-symbols-outlined text-sm text-yellow-500">
+                    {themeOpen ? 'folder_open' : 'folder'}
+                  </span>
+                  <span className="syntax-keyword text-sm">Theme</span>
                 </div>
                 {themeOpen && (
                   <ul className="ml-4 space-y-2 border-l border-outline-variant/30 pl-4">
