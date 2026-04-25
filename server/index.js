@@ -202,14 +202,17 @@ const initTravelCache = async () => {
       return item.firstimage && typeId === '15';
     });
 
-    console.log(`⏳ 축제 전용 데이터 추가 확보 중...`);
+    console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
     
-    const combined = [...filteredFestivals];
+    // 날짜가 있는 데이터를 우선적으로 배치
+    const combined = [...directFestivals];
     const existingIds = new Set(combined.map(f => String(f.contentid)));
     
-    directFestivals.forEach(f => {
-      if (!existingIds.has(String(f.contentid)) && f.firstimage) {
+    // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
+    filteredFestivals.forEach(f => {
+      const fid = String(f.contentid || f.contentId);
+      if (!existingIds.has(fid)) {
         combined.push(f);
       }
     });

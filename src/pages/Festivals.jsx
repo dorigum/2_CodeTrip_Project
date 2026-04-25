@@ -61,11 +61,13 @@ const Festivals = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'; }}
                   />
-                  <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-white/20 uppercase font-mono tracking-tight flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[12px]">calendar_today</span>
-                    {fest.eventstartdate ? (
-                      `${fest.eventstartdate.slice(4, 6)}.${fest.eventstartdate.slice(6, 8)} - ${fest.eventenddate?.slice(4, 6)}.${fest.eventenddate?.slice(6, 8)}`
-                    ) : 'NOW'}
+                  <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-white/10 uppercase font-mono tracking-tight flex items-center gap-1.5 shadow-lg z-10">
+                    <span className="material-symbols-outlined text-[12px] text-primary-container">calendar_today</span>
+                    <span>
+                      {fest.eventstartdate ? (
+                        `${fest.eventstartdate.slice(4, 6)}.${fest.eventstartdate.slice(6, 8)} - ${fest.eventenddate?.slice(4, 6)}.${fest.eventenddate?.slice(6, 8)}`
+                      ) : 'UPCOMING'}
+                    </span>
                   </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
