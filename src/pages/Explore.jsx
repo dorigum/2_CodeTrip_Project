@@ -4,6 +4,7 @@ import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
 import useWishlistStore from '../store/useWishlistStore';
 import useAuthStore from '../store/useAuthStore';
+import WishlistModal from '../components/WishlistModal';
 
 const CONTENT_TYPE_MAP = {
   '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
@@ -37,44 +38,50 @@ const Explore = () => {
   } = useExploreStore();
 
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
+  const [selectedTravel, setSelectedTravel] = useState(null); // 모달용
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
-  const handleHeartToggle = async (postId) => {
+  const handleHeartToggle = async (post) => {
     if (!isLoggedIn) {
       setShowLoginDialog(true);
       return;
     }
 
+    const postId = String(post.contentid);
     if (wishlistLoadingId === postId) return;
 
-    try {
-      setWishlistLoadingId(postId);
-      const result = await toggleWishlist(postId);
-      if (result.wishlisted) {
-        alert('위시리스트에 추가되었습니다!');
-      } else {
-        alert('위시리스트에서 삭제되었습니다.');
+    // 이미 찜한 상태라면 즉시 삭제
+    if (wishlistIds.has(postId)) {
+      try {
+        setWishlistLoadingId(postId);
+        await toggleWishlist(post);
+      } catch (error) {
+        console.error('Wishlist error:', error);
+      } finally {
+        setWishlistLoadingId(null);
       }
-    } catch (error) {
-      console.error('Wishlist error:', error);
-      alert('위시리스트 처리 중 오류가 발생했습니다. 네트워크 상태를 확인해 주세요.');
-    } finally {
-      setWishlistLoadingId(null);
+    } else {
+      // 처음 찜하는 상태라면 폴더 선택 모달 오픈
+      setSelectedTravel(post);
+      setIsModalOpen(true);
     }
   };
 
-  const handleImageDoubleClick = (postId) => {
-    if (!isLoggedIn) return; // 로그인 안 되어 있으면 무시
+  const handleImageDoubleClick = (post) => {
+    if (!isLoggedIn) {
+      setShowLoginDialog(true);
+      return;
+    }
     
-    // 위시리스트에 없는 상태에서 더블 클릭 시 애니메이션 강제 트리거
-    if (!wishlistIds.has(String(postId))) {
+    const postId = String(post.contentid);
+    // 위시리스트에 없는 상태에서 더블 클릭 시 애니메이션 트리거 및 모달 오픈
+    if (!wishlistIds.has(postId)) {
       setActiveAnimId(postId);
-      handleHeartToggle(postId);
-      
-      // 1.5초 후 강제 애니메이션 상태 초기화
+      handleHeartToggle(post);
       setTimeout(() => setActiveAnimId(null), 1500);
     } else {
-      // 이미 위시리스트 상태라면 그냥 취소 (애니메이션 없이)
-      handleHeartToggle(postId);
+      handleHeartToggle(post);
     }
   };
 
@@ -376,6 +383,16 @@ const Explore = () => {
           )}
         </div>
       </div>
+
+      {/* 위시리스트 폴더 선택 모달 */}
+      <WishlistModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedTravel(null);
+        }}
+        travelData={selectedTravel}
+      />
     </div>
   );
 };

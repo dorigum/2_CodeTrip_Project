@@ -391,8 +391,14 @@ app.get('/api/travel/near', (req, res) => {
 // 3. 랜덤 픽 (Random Pick)
 app.get('/api/travel/random', (req, res) => {
   if (!allTravelItems) return res.status(503).json({ message: '데이터 로딩 중입니다.' });
-  const hasImage = allTravelItems.filter(item => item.firstimage);
-  const randomItems = hasImage.sort(() => 0.5 - Math.random()).slice(0, 30);
+  
+  // 이미지가 있고, 오직 관광지(12) 카테고리인 데이터만 추출
+  const filtered = allTravelItems.filter(item => 
+    item.firstimage && 
+    String(item.contenttypeid) === '12'
+  );
+  
+  const randomItems = filtered.sort(() => 0.5 - Math.random()).slice(0, 30);
   res.json(randomItems);
 });
 
@@ -644,7 +650,7 @@ app.get('/api/wishlist', authenticateToken, async (req, res) => {
 
 // 4. 위시리스트 토글 (추가/삭제)
 app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
-  const { contentId } = req.body;
+  const { contentId, folderId } = req.body; // folderId 추가
   const userId = req.user.id;
   if (!contentId) return res.status(400).json({ message: 'contentId가 필요합니다.' });
 
@@ -654,7 +660,8 @@ app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
       await pool.query('DELETE FROM wishlists WHERE user_id = ? AND content_id = ?', [userId, contentId]);
       res.json({ wishlisted: false, message: '위시리스트에서 제거되었습니다.' });
     } else {
-      await pool.query('INSERT INTO wishlists (user_id, content_id) VALUES (?, ?)', [userId, contentId]);
+      // folderId가 있을 경우 함께 저장
+      await pool.query('INSERT INTO wishlists (user_id, content_id, folder_id) VALUES (?, ?, ?)', [userId, contentId, folderId || null]);
       res.json({ wishlisted: true, message: '위시리스트에 추가되었습니다.' });
     }
   } catch (err) {

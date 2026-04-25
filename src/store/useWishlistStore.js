@@ -1,110 +1,125 @@
 import { create } from 'zustand';
-import { 
-  fetchWishlistIds, 
-  toggleWishlist as toggleApi, 
-  fetchFolders, 
-  createFolder as createFolderApi, 
-  deleteFolder as deleteFolderApi,
-  moveWishlistItem as moveItemApi
-} from '../api/wishlistApi';
+import wishlistApi from '../api/wishlistApi';
 
 const useWishlistStore = create((set, get) => ({
   wishlistIds: new Set(),
+  wishlistItems: [],
   folders: [],
-  loading: false,
   initialized: false,
+  loading: false,
 
-  // 위시리스트 초기화
+  // 초기화: 명칭을 MyPage.jsx에 맞춰 initWishlist로 변경
   initWishlist: async () => {
-    if (get().loading) return;
+    if (get().initialized) return;
     set({ loading: true });
     try {
-      const [ids, folders] = await Promise.all([
-        fetchWishlistIds(),
-        fetchFolders()
+      const [wishResponse, folderResponse] = await Promise.all([
+        wishlistApi.fetchWishlistDetails(),
+        wishlistApi.getFolders()
       ]);
-      console.log('Wishlist initialized with IDs:', ids, 'Folders:', folders);
+      
+      const items = wishResponse.data;
+      const ids = new Set(items.map(item => String(item.content_id)));
+      
       set({ 
-        wishlistIds: new Set(ids.map(String)), 
-        folders,
+        wishlistItems: items, 
+        wishlistIds: ids,
+        folders: folderResponse.data,
         initialized: true 
       });
     } catch (error) {
-      console.error('Failed to init wishlist:', error);
+      console.error('Failed to initialize wishlist:', error);
     } finally {
       set({ loading: false });
     }
   },
 
-  // 폴더 생성
+  // 폴더 목록 새로고침
+  fetchFolders: async () => {
+    try {
+      const response = await wishlistApi.getFolders();
+      set({ folders: response.data });
+    } catch (error) {
+      console.error('Failed to fetch folders:', error);
+    }
+  },
+
+  // 새 폴더 생성
   createFolder: async (name) => {
     try {
-      const newFolder = await createFolderApi(name);
-      set((state) => ({ folders: [...state.folders, newFolder] }));
+      const response = await wishlistApi.createFolder(name);
+      const newFolder = response.data;
+      set(state => ({ folders: [...state.folders, newFolder] }));
       return newFolder;
     } catch (error) {
       console.error('Failed to create folder:', error);
-      throw error;
+      return null;
     }
   },
 
   // 폴더 삭제
   deleteFolder: async (folderId) => {
     try {
-      await deleteFolderApi(folderId);
-      set((state) => ({ folders: state.folders.filter(f => f.id !== folderId) }));
+      await wishlistApi.deleteFolder(folderId);
+      set(state => ({
+        folders: state.folders.filter(f => f.id !== folderId),
+        wishlistItems: state.wishlistItems.map(item => 
+          item.folder_id === folderId ? { ...item, folder_id: null } : item
+        )
+      }));
     } catch (error) {
       console.error('Failed to delete folder:', error);
-      throw error;
     }
   },
 
-  // 아이템 폴더 이동
+  // 아이템 폴더 이동 (MyPage.jsx 명칭 moveItem에 맞춤)
   moveItem: async (contentId, folderId) => {
     try {
-      await moveItemApi(contentId, folderId);
-      // 상세 데이터가 store에 없으므로 (MyPage local state 사용), 
-      // 이 store에서는 전역 상태 동기화가 필요한 경우만 업데이트함
+      await wishlistApi.moveWishlistItem(contentId, folderId);
+      set(state => ({
+        wishlistItems: state.wishlistItems.map(item => 
+          String(item.contentid) === String(contentId) ? { ...item, folder_id: folderId } : item
+        )
+      }));
     } catch (error) {
       console.error('Failed to move item:', error);
-      throw error;
     }
   },
 
   // 위시리스트 토글
-  toggleWishlist: async (contentId) => {
-// ... (기존 로직 유지)
+  toggleWishlist: async (travelData, folderId = null) => {
+    const contentId = String(travelData.contentid);
+    const isAdding = !get().wishlistIds.has(contentId);
 
-    const idStr = String(contentId);
-    console.log('Toggling wishlist for ID:', idStr);
     try {
-      const result = await toggleApi(idStr);
-      console.log('Toggle result from server:', result);
+      await wishlistApi.toggleWishlist(travelData, folderId);
       
-      // 서버 응답 기반으로 상태 업데이트
-      set((state) => {
-        const next = new Set(state.wishlistIds);
-        if (result.wishlisted) {
-          next.add(idStr);
-        } else {
-          next.delete(idStr);
-        }
-        return { wishlistIds: next };
-      });
-      return result;
+      // 즉각적인 데이터 갱신을 위해 API 재호출
+      const response = await wishlistApi.fetchWishlistDetails();
+      const items = response.data;
+      const ids = new Set(items.map(item => String(item.content_id)));
+      
+      set({ wishlistItems: items, wishlistIds: ids });
+      
+      if (isAdding) {
+        alert('위시리스트에 추가되었습니다!');
+      } else {
+        alert('위시리스트에서 삭제되었습니다.');
+      }
     } catch (error) {
-      console.error('Failed to toggle wishlist:', error);
-      throw error; 
+      console.error('Toggle wishlist failed:', error);
+      alert('요청을 처리하는 중 오류가 발생했습니다.');
     }
   },
 
-  // 위시리스트 여부 확인
-  isWishlisted: (contentId) => {
-    return get().wishlistIds.has(String(contentId));
-  },
-
-  // 위시리스트 비우기 (로그아웃 시 호출)
-  clearWishlist: () => set({ wishlistIds: new Set(), initialized: false }),
+  clearWishlist: () => {
+    set({ 
+      wishlistIds: new Set(), 
+      wishlistItems: [], 
+      folders: [],
+      initialized: false 
+    });
+  }
 }));
 
 export default useWishlistStore;
