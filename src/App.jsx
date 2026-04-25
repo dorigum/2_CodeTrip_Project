@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './components/Layout/Header';
 import SideBar from './components/Layout/SideBar';
 import Footer from './components/Layout/Footer';
+import useRegionStore from './store/useRegionStore';
 import './App.css';
 
 const App = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    useRegionStore.getState().fetchRegions();
+  }, []);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);

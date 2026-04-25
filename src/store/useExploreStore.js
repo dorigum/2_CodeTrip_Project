@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getTravelList, getRegions } from '../api/travelInfoApi';
+import { getTravelList } from '../api/travelInfoApi';
 
 const NUM_OF_ROWS = 10;
 
@@ -8,8 +8,6 @@ export const getExploreScrollY = () => exploreScrollY;
 export const setExploreScrollY = (y) => { exploreScrollY = y; };
 
 const useExploreStore = create((set, get) => ({
-  regions: [{ code: '', name: '전국' }],
-
   selectedRegions: new Set(['']),
   selectedThemes: new Set(['']),
 
@@ -100,17 +98,6 @@ const useExploreStore = create((set, get) => ({
     }
   },
 
-  fetchRegions: async () => {
-    if (get().regions.length > 1) return;
-    try {
-      const items = await getRegions();
-      const mapped = items.map((item) => ({
-        code: String(item.code || ''),
-        name: item.name || '',
-      }));
-      set({ regions: [{ code: '', name: '전국' }, ...mapped] });
-    } catch {}
-  },
 }));
 
 export { NUM_OF_ROWS };

@@ -2,39 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getTravelList } from '../api/travelInfoApi';
 import useBoardWriteStore from '../store/useBoardWriteStore';
-
-const THEMES = [
-  { code: '', name: '전체' },
-  { code: '12', name: '관광지' },
-  { code: '14', name: '문화시설' },
-  { code: '15', name: '축제/행사' },
-  { code: '25', name: '여행코스' },
-  { code: '28', name: '레포츠' },
-  { code: '32', name: '숙박' },
-  { code: '38', name: '쇼핑' },
-  { code: '39', name: '음식점' },
-];
-
-const REGIONS = [
-  { code: '', name: '전국' },
-  { code: '11', name: '서울' },
-  { code: '26', name: '부산' },
-  { code: '27', name: '대구' },
-  { code: '28', name: '인천' },
-  { code: '29', name: '광주' },
-  { code: '30', name: '대전' },
-  { code: '31', name: '울산' },
-  { code: '36', name: '세종' },
-  { code: '41', name: '경기' },
-  { code: '42', name: '강원' },
-  { code: '43', name: '충북' },
-  { code: '44', name: '충남' },
-  { code: '45', name: '전북' },
-  { code: '46', name: '전남' },
-  { code: '47', name: '경북' },
-  { code: '48', name: '경남' },
-  { code: '50', name: '제주' },
-];
+import useRegionStore from '../store/useRegionStore';
+import { DEFAULT_THEMES } from '../constants/themes';
 
 const NUM_OF_ROWS = 12;
 
@@ -42,6 +11,7 @@ const TravelTagSearch = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { tags, setTags } = useBoardWriteStore();
+  const { regions } = useRegionStore();
 
   // 기존 태그를 초기 선택 상태로
   const [selectedMap, setSelectedMap] = useState(() => {
@@ -205,7 +175,7 @@ const TravelTagSearch = () => {
           <div className="mb-3">
             <p className="text-[10px] font-mono text-outline uppercase tracking-widest mb-2">region</p>
             <div className="flex flex-wrap gap-1.5">
-              {REGIONS.map((r) => (
+              {regions.map((r) => (
                 <button
                   key={r.code}
                   onClick={() => { setSelectedRegion(r.code); setCurrentPage(1); }}
@@ -225,7 +195,7 @@ const TravelTagSearch = () => {
           <div>
             <p className="text-[10px] font-mono text-outline uppercase tracking-widest mb-2">theme</p>
             <div className="flex flex-wrap gap-1.5">
-              {THEMES.map((t) => (
+              {DEFAULT_THEMES.map((t) => (
                 <button
                   key={t.code}
                   onClick={() => { setSelectedTheme(t.code); setCurrentPage(1); }}

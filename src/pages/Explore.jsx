@@ -2,15 +2,8 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
-
-const CONTENT_TYPE_MAP = {
-  '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
-  '28': '레포츠', '32': '숙박', '38': '쇼핑', '39': '음식점',
-};
-const THEME_LIST = [
-  { code: '', name: '전체' },
-  ...Object.entries(CONTENT_TYPE_MAP).map(([code, name]) => ({ code, name })),
-];
+import useRegionStore from '../store/useRegionStore';
+import { DEFAULT_THEMES } from '../constants/themes';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
@@ -21,14 +14,15 @@ const Explore = () => {
   const [activeAnimId, setActiveAnimId] = useState(null); // 강제 애니메이션 트리거용 ID
   const [pageInput, setPageInput] = useState('');
 
+  const { regions } = useRegionStore();
+
   const {
-    regions,
     selectedRegions, toggleRegion,
     selectedThemes, toggleTheme,
     posts, loading, totalCount, currentPage,
     keyword, clearKeyword,
     initialized,
-    fetchPosts, fetchRegions, applyFilter, changePage,
+    fetchPosts, applyFilter, changePage,
   } = useExploreStore();
 
   const handleHeartToggle = (postId) => {
@@ -69,7 +63,6 @@ const Explore = () => {
   }, []);
 
   useEffect(() => {
-    fetchRegions();
     if (!initialized) fetchPosts();
   }, []);
 
@@ -181,7 +174,7 @@ const Explore = () => {
                 </div>
                 {themeOpen && (
                   <ul className="ml-4 space-y-2 border-l border-outline-variant/30 pl-4">
-                    {THEME_LIST.map((t) => (
+                    {DEFAULT_THEMES.map((t) => (
                       <li
                         key={t.code}
                         className="flex items-center gap-2 cursor-pointer group"
