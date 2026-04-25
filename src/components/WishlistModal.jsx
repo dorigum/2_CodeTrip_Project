@@ -37,83 +37,80 @@ const WishlistModal = ({ isOpen, onClose, travelData }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-pink-500">folder_heart</span>
-            위시리스트 폴더 선택
-          </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-
-        <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
-          <div className="grid gap-3">
-            {/* 기본 미분류 폴더 */}
-            <button
-              onClick={() => handleSelectFolder(null)}
-              className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-pink-500/50 hover:bg-slate-800 transition-all group"
-            >
-              <div className="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center group-hover:bg-pink-500/20 transition-colors">
-                <span className="material-symbols-outlined text-slate-400 group-hover:text-pink-500">inventory_2</span>
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">미분류</div>
-                <div className="text-xs text-slate-500">기본 저장소</div>
-              </div>
-            </button>
-
-            {/* 사용자 정의 폴더 목록 */}
-            {folders.map(folder => (
-              <button
-                key={folder.id}
-                onClick={() => handleSelectFolder(folder.id)}
-                className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 transition-all group"
-              >
-                <div className="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                  <span className="material-symbols-outlined text-slate-400 group-hover:text-blue-500">folder</span>
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold text-white">{folder.name}</div>
-                  <div className="text-xs text-slate-500">{new Date(folder.created_at).toLocaleDateString()} 생성</div>
-                </div>
-              </button>
-            ))}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-outline-variant/20 animate-in fade-in zoom-in duration-200">
+        {/* Terminal Style Header */}
+        <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ba1a1a' }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#5a5f65' }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#00b8d4' }} />
           </div>
+          <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">save_to_folder.sh</span>
+          <button onClick={onClose} className="material-symbols-outlined text-slate-400 hover:text-on-surface transition-colors text-lg">close</button>
         </div>
 
-        <div className="p-6 bg-slate-800/30 border-t border-slate-800">
+        <div className="p-6 max-h-[350px] overflow-y-auto custom-scrollbar space-y-2">
+          {/* 기본 미분류 폴더 */}
+          <button
+            onClick={() => handleSelectFolder(null)}
+            className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary/30 hover:bg-white hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">inventory_2</span>
+              <span className="font-mono text-xs font-bold text-slate-600 uppercase tracking-tight group-hover:text-on-surface">UNCATEGORIZED</span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">SELECT_NODE</span>
+          </button>
+
+          {/* 사용자 정의 폴더 목록 */}
+          {folders.map(folder => (
+            <button
+              key={folder.id}
+              onClick={() => handleSelectFolder(folder.id)}
+              className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary/30 hover:bg-white hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">folder</span>
+                <span className="font-mono text-xs font-bold text-slate-600 uppercase tracking-tight group-hover:text-on-surface truncate max-w-[150px]">{folder.name}</span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">SELECT_NODE</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 bg-slate-50/50 border-t border-slate-100">
           {!isCreating ? (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition-all"
+              className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:text-primary hover:border-primary/30 hover:bg-white transition-all font-mono text-[11px] font-bold uppercase tracking-widest"
             >
-              <span className="material-symbols-outlined">add_circle</span>
-              새 폴더 만들기
+              <span className="material-symbols-outlined text-lg">add_circle</span>
+              create_new_folder
             </button>
           ) : (
-            <div className="flex gap-2 animate-in slide-in-from-bottom-2 duration-200">
+            <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-200">
               <input
                 type="text"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="폴더 이름 입력..."
-                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-pink-500 transition-colors"
+                placeholder="새 폴더 이름 입력..."
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-body focus:outline-none focus:border-primary transition-all shadow-inner"
                 autoFocus
               />
-              <button
-                onClick={handleCreateAndSave}
-                className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-bold transition-colors"
-              >
-                생성
-              </button>
-              <button
-                onClick={() => setIsCreating(false)}
-                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl transition-colors"
-              >
-                취소
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsCreating(false)}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-500 rounded-lg font-body text-[11px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCreateAndSave}
+                  className="flex-1 py-2.5 bg-primary text-white rounded-lg font-body text-[11px] font-bold uppercase tracking-widest hover:brightness-110 shadow-md transition-all"
+                >
+                  확인
+                </button>
+              </div>
             </div>
           )}
         </div>

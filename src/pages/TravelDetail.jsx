@@ -4,6 +4,7 @@ import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '
 import { getComments, postComment, updateComment, deleteComment, toggleCommentLike } from '../api/commentApi';
 import useAuthStore from '../store/useAuthStore';
 import useWishlistStore from '../store/useWishlistStore';
+import WishlistModal from '../components/WishlistModal';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 
@@ -38,6 +39,10 @@ const TravelDetail = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState('');
+  
+  // 모달 관련 상태 추가
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTravel, setSelectedTravel] = useState(null);
 
   const { isLoggedIn, user } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
@@ -54,15 +59,20 @@ const TravelDetail = () => {
       setShowLoginDialog(true);
       return;
     }
-    try {
-      const result = await toggleWishlist(contentId);
-      if (result.wishlisted) {
-        alert('위시리스트에 추가되었습니다!');
-      } else {
-        alert('위시리스트에서 삭제되었습니다.');
+    
+    const id = String(contentId);
+    
+    // 이미 찜한 상태라면 즉시 삭제
+    if (wishlistIds.has(id)) {
+      try {
+        await toggleWishlist(common);
+      } catch (error) {
+        console.error('Wishlist toggle error:', error);
       }
-    } catch (error) {
-      alert('오류가 발생했습니다. 다시 시도해주세요.');
+    } else {
+      // 처음 찜하는 상태라면 폴더 선택 모달 오픈
+      setSelectedTravel(common);
+      setIsModalOpen(true);
     }
   };
 
@@ -544,6 +554,16 @@ const TravelDetail = () => {
           )}
         </div>
       </div>
+
+      {/* 위시리스트 폴더 선택 모달 */}
+      <WishlistModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedTravel(null);
+        }}
+        travelData={selectedTravel}
+      />
     </div>
   );
 };

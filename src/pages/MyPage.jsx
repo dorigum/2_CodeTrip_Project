@@ -72,6 +72,18 @@ const MyPage = () => {
 
   if (!isLoggedIn) return null;
 
+  // 날짜 형식화 함수 복구
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
+
+  const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
+
   return (
     <div className="flex-1 bg-background overflow-y-auto custom-scrollbar">
       {/* Folder Creation Modal */}
@@ -134,6 +146,30 @@ const MyPage = () => {
               ))}
             </nav>
           </section>
+
+          {/* FOLDER_METADATA 복구 */}
+          {selectedFolder && (
+            <section className="bg-inverse-surface text-inverse-on-surface p-5 rounded-xl font-mono text-[10px] leading-relaxed shadow-lg animate-in slide-in-from-left-4 duration-300">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3 mb-4">
+                <span className="material-symbols-outlined text-primary-container text-sm">info</span>
+                <span className="uppercase opacity-60 tracking-widest">Folder_Metadata</span>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="opacity-40">CREATED_AT:</span>
+                  <span className="text-emerald-400 font-bold">{formatDate(selectedFolder.created_at)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="opacity-40">LAST_UPDATED:</span>
+                  <span className="text-emerald-400 font-bold">{formatDate(selectedFolder.updated_at || selectedFolder.created_at)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-white/5 pt-2 mt-2">
+                  <span className="opacity-40">NODE_COUNT:</span>
+                  <span className="text-primary-container font-bold">{wishlistItems.filter(i => Number(i.folder_id) === Number(selectedFolderId)).length}</span>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* COMPACT_SYNC_STATUS */}
           <section className="mt-4 pt-6 border-t border-dashed border-outline-variant/20">

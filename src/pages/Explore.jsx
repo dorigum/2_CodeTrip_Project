@@ -180,7 +180,7 @@ const Explore = () => {
                   className="flex items-center justify-between mb-2 cursor-pointer select-none"
                   onClick={() => setRegionOpen(!regionOpen)}
                 >
-                  <span className="text-[13px] font-mono font-bold text-tertiary">Region</span>
+                  <span className="text-[13px] font-mono font-bold syntax-keyword">Region</span>
                   <span className={`material-symbols-outlined text-xs text-outline transition-transform ${regionOpen ? 'rotate-90' : ''}`}>
                     expand_more
                   </span>
@@ -209,7 +209,7 @@ const Explore = () => {
                   className="flex items-center justify-between mb-2 cursor-pointer select-none"
                   onClick={() => setThemeOpen(!themeOpen)}
                 >
-                  <span className="text-[13px] font-mono font-bold text-tertiary">Theme</span>
+                  <span className="text-[13px] font-mono font-bold syntax-keyword">Theme</span>
                   <span className={`material-symbols-outlined text-xs text-outline transition-transform ${themeOpen ? 'rotate-90' : ''}`}>
                     expand_more
                   </span>
