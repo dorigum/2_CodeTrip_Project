@@ -5,10 +5,11 @@ import useAuthStore from '../../store/useAuthStore';
 const NAV_ITEMS = [
   { icon: 'home', label: 'Home', path: '/', animation: 'group-hover:-translate-y-1' },
   { icon: 'explore', label: 'Explore', path: '/explore', animation: 'group-hover:rotate-45' },
-  { 
-    icon: 'favorite', 
-    label: 'Wishlist', 
-    path: '/mypage', 
+  { icon: 'article', label: 'Board', path: '/board', animation: 'group-hover:-translate-y-0.5' },
+  {
+    icon: 'favorite',
+    label: 'Wishlist',
+    path: '/mypage',
     animation: 'group-hover:text-red-500',
     extra: (
       <>
