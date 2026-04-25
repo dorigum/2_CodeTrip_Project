@@ -168,10 +168,10 @@ const Explore = () => {
       <div className="grid grid-cols-12 gap-8">
         {/* Sidebar Filters */}
         <aside className="col-span-12 lg:col-span-3 xl:col-span-2">
-          <div className="bg-surface-container-low rounded-xl p-6 font-mono text-sm sticky top-8 border border-outline-variant/10 shadow-sm">
+          <div className="bg-surface-container-low rounded-xl p-5 sticky top-8 border border-outline-variant/10 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-outline-variant/20 pb-4">
               <span className="material-symbols-outlined text-primary text-lg">settings_ethernet</span>
-              <span className="font-bold text-on-surface font-headline text-sm">filters.config</span>
+              <span className="font-bold text-on-surface font-mono text-sm uppercase tracking-tight">FILTERS.CONFIG</span>
             </div>
             <div className="space-y-6">
               {/* Region */}
@@ -180,7 +180,7 @@ const Explore = () => {
                   className="flex items-center justify-between mb-2 cursor-pointer select-none"
                   onClick={() => setRegionOpen(!regionOpen)}
                 >
-                  <span className="syntax-keyword text-sm">Region</span>
+                  <span className="text-[13px] font-mono font-bold text-primary">Region</span>
                   <span className={`material-symbols-outlined text-xs text-outline transition-transform ${regionOpen ? 'rotate-90' : ''}`}>
                     expand_more
                   </span>
@@ -194,8 +194,8 @@ const Explore = () => {
                         onClick={() => toggleRegion(r.code)}
                       >
                         <span className={`w-1.5 h-1.5 flex-shrink-0 transition-colors ${r.code === '' ? 'rounded-sm' : 'rounded-full'} ${selectedRegions.has(String(r.code)) ? 'bg-primary' : 'bg-outline-variant group-hover:bg-primary'}`} />
-                        <span className={`text-xs truncate transition-colors ${selectedRegions.has(String(r.code)) ? 'text-primary font-medium' : 'text-on-secondary-container group-hover:text-primary'}`}>
-                          #{r.name}
+                        <span className={`text-[12px] font-body truncate transition-colors ${selectedRegions.has(String(r.code)) ? 'text-primary font-bold' : 'text-slate-500 group-hover:text-primary'}`}>
+                          {r.name}
                         </span>
                       </li>
                     ))}
@@ -209,7 +209,7 @@ const Explore = () => {
                   className="flex items-center justify-between mb-2 cursor-pointer select-none"
                   onClick={() => setThemeOpen(!themeOpen)}
                 >
-                  <span className="syntax-keyword text-sm">Theme</span>
+                  <span className="text-[13px] font-mono font-bold text-primary">Theme</span>
                   <span className={`material-symbols-outlined text-xs text-outline transition-transform ${themeOpen ? 'rotate-90' : ''}`}>
                     expand_more
                   </span>
@@ -223,8 +223,8 @@ const Explore = () => {
                         onClick={() => toggleTheme(t.code)}
                       >
                         <span className={`w-1.5 h-1.5 transition-colors flex-shrink-0 ${t.code === '' ? 'rounded-sm' : 'rounded-full'} ${selectedThemes.has(String(t.code)) ? 'bg-primary' : 'bg-outline-variant group-hover:bg-primary'}`} />
-                        <span className={`text-xs transition-colors ${selectedThemes.has(String(t.code)) ? 'text-primary font-medium' : 'text-on-secondary-container group-hover:text-primary'}`}>
-                          #{t.name}
+                        <span className={`text-[12px] font-body transition-colors ${selectedThemes.has(String(t.code)) ? 'text-primary font-bold' : 'text-slate-500 group-hover:text-primary'}`}>
+                          {t.name}
                         </span>
                       </li>
                     ))}
@@ -234,7 +234,7 @@ const Explore = () => {
 
               <button
                 onClick={applyFilter}
-                className="w-full py-2 bg-primary text-white rounded-lg font-label text-xs font-bold hover:brightness-110 transition-all shadow-md"
+                className="w-full py-2.5 bg-primary text-white rounded-lg font-mono text-[11px] font-bold hover:brightness-110 transition-all shadow-md tracking-tighter"
               >
                 RUN_FILTER.SH
               </button>
@@ -252,7 +252,7 @@ const Explore = () => {
           ) : filteredPosts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-on-secondary-container">
               <span className="material-symbols-outlined text-5xl mb-4 opacity-30">search_off</span>
-              <p className="font-label text-sm syntax-comment">// no results found.</p>
+              <p className="font-body text-sm text-slate-400 font-bold">// NO_RESULTS_FOUND</p>
             </div>
           ) : (
             <>
@@ -274,10 +274,10 @@ const Explore = () => {
                       />
                     </div>
                     <div className="p-6">
-                      <h3 className="text-xl font-bold text-on-surface mb-1 truncate font-headline">{post.title}</h3>
-                      <div className="flex items-center gap-1 text-outline text-xs font-mono mb-4">
-                        <span className="material-symbols-outlined text-sm">location_on</span>
-                        <span className="truncate">{post.addr1}</span>
+                      <h3 className="text-[18px] font-body font-bold text-on-surface mb-1 truncate tracking-tight">{post.title}</h3>
+                      <div className="flex items-center gap-1 text-slate-400 text-[12px] font-body mb-4">
+                        <span className="material-symbols-outlined text-[14px]">location_on</span>
+                        <span className="truncate font-bold">{post.addr1}</span>
                       </div>
                       <div className="mt-6 flex justify-between items-center">
                         <button 
@@ -301,7 +301,7 @@ const Explore = () => {
                         <Link
                           to={`/explore/${post.contentid}`}
                           state={{ firstimage: post.firstimage }}
-                          className="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold font-label hover:brightness-110 transition-all shadow-sm"
+                          className="px-5 py-2 bg-primary text-white rounded-lg text-[12px] font-body font-bold hover:brightness-110 transition-all shadow-md"
                         >
                           상세보기
                         </Link>

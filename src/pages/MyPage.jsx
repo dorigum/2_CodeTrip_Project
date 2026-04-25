@@ -114,25 +114,50 @@ const MyPage = () => {
             </div>
             
             <nav className="flex flex-col gap-1">
-              <button onClick={() => setSelectedFolderId(null)} className={`flex justify-between px-3 py-2.5 rounded-lg text-xs font-mono transition-all ${!selectedFolderId ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                <span>ALL_NODES</span>
-                <span className="opacity-60">{wishlistItems.length}</span>
+              <button onClick={() => setSelectedFolderId(null)} className={`flex justify-between px-3 py-3 rounded-lg text-[13px] font-body font-bold tracking-tight transition-all ${!selectedFolderId ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
+                <span className="font-mono uppercase">ALL_NODES</span>
+                <span className="opacity-60 font-mono text-[11px]">{wishlistItems.length}</span>
               </button>
-              <button onClick={() => setSelectedFolderId('UNCATEGORIZED')} className={`flex justify-between px-3 py-2.5 rounded-lg text-xs font-mono transition-all ${selectedFolderId === 'UNCATEGORIZED' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                <span>UNCATEGORIZED</span>
-                <span className="opacity-60">{wishlistItems.filter(i => !i.folder_id).length}</span>
+              <button onClick={() => setSelectedFolderId('UNCATEGORIZED')} className={`flex justify-between px-3 py-3 rounded-lg text-[13px] font-body font-bold tracking-tight transition-all ${selectedFolderId === 'UNCATEGORIZED' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
+                <span className="font-mono uppercase">UNCATEGORIZED</span>
+                <span className="opacity-60 font-mono text-[11px]">{wishlistItems.filter(i => !i.folder_id).length}</span>
               </button>
               <div className="h-2" />
               {folders.map(folder => (
-                <button key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className={`flex justify-between items-center px-3 py-2.5 rounded-lg text-xs font-mono group transition-all ${selectedFolderId === folder.id ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                  <span className="truncate pr-2">{folder.name}</span>
-                  <div className="flex items-center gap-1.5">
+                <button key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className={`flex justify-between items-center px-3 py-3 rounded-lg text-[13px] font-body font-bold tracking-tight group transition-all ${selectedFolderId === folder.id ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  <span className="truncate pr-2 uppercase">{folder.name}</span>
+                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
                     <span className="opacity-60">{wishlistItems.filter(i => Number(i.folder_id) === Number(folder.id)).length}</span>
-                    <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 hover:text-red-500">delete</span>
+                    <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 hover:text-red-500">delete</span>
                   </div>
                 </button>
               ))}
             </nav>
+          </section>
+
+          {/* COMPACT_SYNC_STATUS */}
+          <section className="mt-4 pt-6 border-t border-dashed border-outline-variant/20">
+            <div className="bg-slate-50/50 rounded-xl p-4 border border-outline-variant/10 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Sync_Active</span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-600 font-bold bg-white px-2 py-0.5 rounded border border-emerald-100 shadow-sm">200_OK</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+                  <span className="text-primary/70 font-bold">ENDPOINT:</span>
+                  <span className="truncate">GET /api/wishlist/details</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-body leading-relaxed">
+                  사용자의 데이터 노드가 원격 서버와 <br/>실시간으로 동기화되고 있습니다.
+                </p>
+              </div>
+            </div>
           </section>
         </aside>
 

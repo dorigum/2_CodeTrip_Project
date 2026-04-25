@@ -132,7 +132,7 @@ const TravelList = () => {
           <div className="bg-surface-container-low rounded-xl p-6 font-mono text-sm sticky top-24">
             <div className="flex items-center gap-2 mb-6 border-b border-outline-variant/20 pb-4">
               <span className="material-symbols-outlined text-primary text-lg">settings_ethernet</span>
-              <span className="font-bold text-on-surface font-headline text-sm">filters.config</span>
+              <span className="font-bold text-on-surface font-mono text-sm uppercase tracking-tight">FILTERS.CONFIG</span>
             </div>
             <div className="space-y-6">
               {/* Region */}
