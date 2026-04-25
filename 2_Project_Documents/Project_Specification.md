@@ -22,6 +22,8 @@
     - wishlistApi.js — **폴더 기반 위시리스트 관리** 및 아이템 이동 시스템
     - 카카오 맵 API — 여행지 위치 시각화 및 SDK 동적 로딩
     - Open-Meteo & Nominatim — 실시간 날씨 및 좌표 기반 지역명 변환
+- **Dev Tools**: 
+    - `debug_wishlist.cjs` — 위시리스트 DB 상태 즉석 검증 및 테이블 구조 확인용 CLI 유틸리티
 
 ### 1.2 개발 환경 설정 (Environment Variables)
 프로젝트 구동을 위해 다음 환경 변수가 설정되어야 합니다.
@@ -29,6 +31,7 @@
 ```text
 2_Code_Trip/
 ├── server/                       # Express Backend
+│   ├── debug_wishlist.cjs        # DB 디버깅 스크립트
 ├── src/
 │   ├── api/
 │   │   ├── weatherApi.js         # 실시간 날씨, 역지오코딩 ({ name, state } 반환)
@@ -38,7 +41,7 @@
 │   ├── store/
 │   │   ├── useAuthStore.js       # 사용자 인증 스토어
 │   │   ├── useExploreStore.js    # 여행 탐색/필터 상태 스토어
-│   │   └── useWishlistStore.js   # 위시리스트 및 폴더 관리 스토어
+│   │   └── useWishlistStore.js   # 위시리스트(아이템+폴더) 통합 동기화 스토어
 │   ├── components/               
 │   │   ├── WishlistModal.jsx     # 폴더 선택 및 생성 모달
 ```
@@ -46,10 +49,12 @@
 ---
 ## 2. 주요 기능 및 아키텍처
 
-### 2.1 위시리스트 폴더 시스템 (Folder-based Wishlist)
+### 2.1 위시리스트 통합 관리 시스템 (Integrated Wishlist & Folder)
+- **Zustand 기반 중앙 동기화**: `syncWithServer` 단일 엔드포인트를 통해 아이템 목록과 폴더 상태를 한 번에 동기화하여 UI 전역의 정합성 유지.
+- **성능 최적화**: 위시리스트 등록 여부 판별 시 `Set` 객체를 활용하여 대량의 데이터에서도 즉각적인 UI 피드백 제공.
+- **유연한 데이터 매핑**: 공공데이터와 자체 DB 간의 상이한 필드명(`contentid` vs `content_id`)을 스토어 계층에서 정규화하여 처리.
 - **폴더 선택 모달**: 하트 버튼 클릭 시 저장할 폴더를 선택하거나 즉석에서 새 폴더를 생성할 수 있는 원스톱 워크플로우.
 - **분류 관리**: '미분류' 기본 저장소와 사용자 정의 폴더 간의 자유로운 아이템 이동(`moveItem`) 지원.
-- **데이터 무결성**: MySQL 외래 키 제약 조건을 활용한 폴더 삭제 시 아이템 자동 미분류 처리.
 
 ### 2.2 고성능 데이터 캐싱 및 필터링
 - **Server-side Caching**: 서버 기동 시 관광공사 API 6만 건 데이터를 메모리에 적재하여 외부 API 호출 최소화 및 응답 속도 ms 단위 단축.
@@ -61,4 +66,4 @@
 
 ---
 
-*최종 업데이트: 2026-04-25 (위시리스트 폴더 시스템 완결 및 시스템 긴급 복구 완료)*
+*최종 업데이트: 2026-04-25 (위시리스트 스토어 리팩토링 및 시스템 안정화 완료)*
