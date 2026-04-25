@@ -10,6 +10,7 @@
 ### 1. 여행지 탐색 페이지 (Explore.jsx) UI 복구 및 개선
 - **FILTERS.CONFIG 스타일 복구**: 왼쪽 사이드바의 필터 헤더를 사용자의 요청에 따라 한 줄 구조로 복구.
 - **디자인 정밀 조정**: `font-mono`와 대문자(`FILTERS.CONFIG`)를 적용하여 기술적이고 깔끔한 브랜딩 강화.
+- **필터 라벨 색상 복구**: 사용자의 취향에 맞춰 'Region' 및 'Theme' 라벨의 색상을 이전의 붉은 계열(`text-tertiary`)로 복구.
 - **일관성 확보**: `Explore.jsx`와 `TravelPic.jsx`의 필터 헤더 스타일을 동기화하여 서비스 전반의 시각적 통일성 유지.
 
 ### 2. 마이페이지 (MyPage.jsx) UI/UX 고도화
