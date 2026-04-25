@@ -27,7 +27,7 @@ const fetchCombination = async ({ region, theme, keyword, numOfRows, pageNo, arr
   };
   if (keyword) params.keyword = keyword;
   if (theme) params.contentTypeId = theme;
-  if (region) params.lDongRegnCd = region;
+  if (region) params.areaCode = region;
 
   try {
     const response = await axios.get(`${TRAVEL_API_BASE}/${endpoint}`, { params });
@@ -95,7 +95,6 @@ const initDB = async () => {
     await conn.query('CREATE TABLE IF NOT EXISTS comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
     await conn.query('CREATE TABLE IF NOT EXISTS comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
     
-    // Wishlist Table with Title/Image Fallback
     await conn.query(`
       CREATE TABLE IF NOT EXISTS wishlists (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -130,6 +129,7 @@ initDB();
 
 let allTravelItems = null;
 let mainTopImages = null;
+let festivalItems = null;
 
 const initTravelCache = async () => {
   try {
@@ -137,7 +137,8 @@ const initTravelCache = async () => {
     const result = await fetchCombination({ region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O' });
     allTravelItems = result.items;
     mainTopImages = allTravelItems.filter(item => item.firstimage).slice(0, 100).map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
-    console.log(`✅ Cached ${allTravelItems.length} items`);
+    festivalItems = allTravelItems.filter(item => item.firstimage && String(item.contenttypeid) === '15');
+    console.log(`✅ Cached ${allTravelItems.length} items (Festivals: ${festivalItems.length})`);
   } catch (err) { console.error('❌ Cache failed:', err.message); }
 };
 initTravelCache();
@@ -175,6 +176,39 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Travel API Routes ---
+app.get('/api/travel/top-images', (req, res) => {
+  if (!mainTopImages) return res.status(503).json({ message: 'Loading...' });
+  res.json(mainTopImages);
+});
+
+app.get('/api/travel/near', (req, res) => {
+  if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
+  const areaCode = String(req.query.areaCode || '1');
+  
+  // 지역 코드 매핑 로직 강화: areacode 필드 뿐만 아니라 addr1의 텍스트도 보조적으로 활용
+  const AREA_NAME_MAP = { '1': '서울', '31': '경기', '32': '강원', '2': '인천' }; // 예시
+  const targetName = AREA_NAME_MAP[areaCode] || '';
+
+  const filtered = allTravelItems.filter(item => {
+    const itemAreaCode = String(item.areacode || item.areaCode || '');
+    const isCodeMatch = itemAreaCode === areaCode;
+    // 만약 코드가 없거나 안맞을 경우 addr1에 지역명이 포함되어 있는지 확인 (울산 방지)
+    const isAddrMatch = targetName && item.addr1?.includes(targetName);
+    
+    return (isCodeMatch || isAddrMatch) && item.firstimage;
+  }).slice(0, 30);
+  
+  console.log(`📍 Near filter: AreaCode ${areaCode} (${targetName}), Found ${filtered.length} items`);
+  res.json(filtered);
+});
+
+app.get('/api/travel/festivals', (req, res) => {
+  if (!festivalItems) return res.status(503).json({ message: 'Loading...' });
+  const limit = parseInt(req.query.limit) || 50;
+  const list = festivalItems.sort(() => 0.5 - Math.random()).slice(0, limit);
+  res.json(list);
+});
+
 app.get('/api/travel/random', (req, res) => {
   if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
   const filtered = allTravelItems.filter(item => item.firstimage && String(item.contenttypeid) === '12');
@@ -190,15 +224,40 @@ app.get('/api/travel', (req, res) => {
   const themes = (req.query.themes || '').split(',').filter(Boolean);
 
   let filtered = allTravelItems;
-  if (regions.length) filtered = filtered.filter(item => regions.includes(item.lDongRegnCd));
+  if (regions.length) filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
   if (themes.length) filtered = filtered.filter(item => themes.includes(String(item.contenttypeid)));
   if (keyword) filtered = filtered.filter(item => item.title?.toLowerCase().includes(keyword));
 
   res.json({ items: filtered.slice((pageNo - 1) * numOfRows, pageNo * numOfRows), totalCount: filtered.length });
 });
 
-// --- Wishlist Core Routes (FIXED) ---
+// --- Comment Routes (FIXED 404) ---
+app.get('/api/comments/:contentId', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM comments WHERE content_id = ? ORDER BY created_at DESC', [req.params.contentId]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
+app.post('/api/comments', authenticateToken, async (req, res) => {
+  const { contentId, body, nickname } = req.body;
+  try {
+    const [result] = await pool.query('INSERT INTO comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)', [contentId, req.user.id, nickname || req.user.name || '익명', body]);
+    res.status(201).json({ id: result.insertId, content_id: contentId, user_id: req.user.id, nickname, body, likes: 0 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const [existing] = await pool.query('SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (existing.length > 0) return res.status(400).json({ message: 'Already liked' });
+    await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [req.params.id, req.user.id]);
+    await pool.query('UPDATE comments SET likes = likes + 1 WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Wishlist Core Routes ---
 app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT content_id as contentId, title, image_url as imageUrl, folder_id FROM wishlists WHERE user_id = ?', [req.user.id]);

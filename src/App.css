@@ -98,20 +98,11 @@
   white-space: nowrap;
 }
 
-/* Instagram Live Style Heart Animation - Classic Simple */
+/* Instagram Live Style Heart Animation */
 @keyframes bubble-heart {
-  0% {
-    transform: translateY(0) scale(0.5);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-    transform: translateY(-10px) scale(1.2);
-  }
-  100% {
-    transform: translateY(-60px) translateX(var(--random-x)) scale(0.8);
-    opacity: 0;
-  }
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-10px) scale(1.2); }
+  100% { transform: translateY(-60px) translateX(var(--random-x)) scale(0.8); opacity: 0; }
 }
 
 .heart-bubble {
@@ -121,14 +112,36 @@
   transform: translateX(-50%) scale(0);
   pointer-events: none;
   opacity: 0;
-  color: #ef4444; /* text-red-500 */
+  color: #ef4444;
   will-change: transform, opacity;
 }
-
 
 .heart-bubble-1 { --random-x: -15px; }
 .heart-bubble-2 { --random-x: 15px; }
 .heart-bubble-3 { --random-x: -5px; }
 
+/* Firework Sparks for Festivals (Visual Sparks, No Text) */
+.firework-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: currentColor;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 8px currentColor;
+  will-change: transform, opacity;
+}
 
+.group:hover .firework-spark {
+  opacity: 1;
+}
 
+.group:hover .spark-1 { transform: translate(-18px, -18px) scale(1.5); color: #FFD700; } /* Gold */
+.group:hover .spark-2 { transform: translate(18px, -18px) scale(1.5); color: #00b8d4; }  /* Cyan */
+.group:hover .spark-3 { transform: translate(0, -22px) scale(1.8); color: #ff8285; }    /* Pink */
+.group:hover .spark-4 { transform: translate(-12px, 8px) scale(1.2); color: #a8edff; }   /* Light Blue */

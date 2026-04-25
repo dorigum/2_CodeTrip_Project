@@ -24,15 +24,22 @@ export const getPhotoList = async () => {
 // 지역 기반 추천 (우리 서버 캐시 활용)
 export const getCityBasedPlaces = async (areaName) => {
   try {
-    let areaCode = '1';
+    let areaCode = '1'; // 기본값 서울
     const nameStr = String(areaName || '서울');
+    
+    // 더 정교한 매핑: 입력받은 이름에 포함되어 있는지 확인
     for (const [name, code] of Object.entries(AREA_CODES)) {
-      if (nameStr.includes(name)) { areaCode = code; break; }
+      if (nameStr.includes(name)) { 
+        areaCode = code; 
+        break; 
+      }
     }
 
+    console.log(`📍 Requesting near places for: ${nameStr} (Code: ${areaCode})`);
     const response = await axiosInstance.get('/travel/near', { params: { areaCode } });
     return response.data;
   } catch (error) {
+    console.error('City based places error:', error);
     return [];
   }
 };
@@ -48,22 +55,15 @@ export const searchKeywordPlaces = async () => {
 };
 
 // 나머지 유틸리티 함수들 유지...
-export const getFestivalList = async (numOfRows = 10) => {
+// 축제/행사 정보 (우리 서버 캐시 활용)
+export const getFestivalList = async () => {
   try {
-    const response = await axios.get(`${TOUR_BASE_URL}/areaBasedList2`, {
-      params: {
-        serviceKey: SERVICE_KEY, numOfRows, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip',
-        _type: 'json', listYN: 'Y', arrange: 'Q', contentTypeId: '15'
-      },
-    });
-    const items = response.data?.response?.body?.items?.item || [];
-    const list = Array.isArray(items) ? items : [items];
-    return list.map(item => ({
-      ...item,
-      firstimage: (item.firstimage || item.firstimage2 || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2070')?.replace('http://', 'https/'),
-      eventstartdate: item.createdtime?.slice(4, 8) || 'NOW'
-    }));
-  } catch (error) { return []; }
+    const response = await axiosInstance.get('/travel/festivals');
+    return response.data;
+  } catch (error) {
+    console.error('Festival list error:', error);
+    return [];
+  }
 };
 
 export const getWeatherRecommendations = async (keyword) => {

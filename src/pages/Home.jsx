@@ -48,27 +48,33 @@ const Home = () => {
       if (isProvinceChanged) {
         setProvince(locProv);
         currentProvinceRef.current = locProv;
+        setNearbyPlaces([]); // 이전 지역 데이터 즉시 초기화
+        setLoading(prev => ({ ...prev, nearby: true }));
       }
 
       // 2. 지역 기반 데이터 (isProvinceChanged 일 때만 셔플 및 업데이트)
       if (isProvinceChanged || !isUpdate) {
         const [tops, near, fests] = await Promise.all([
           getPhotoList(null, 20),
-          getCityBasedPlaces(locProv, 20),
+          getCityBasedPlaces(locProv),
           getFestivalList(10)
         ]);
 
         if (tops.length > 0) setTopImgList(tops);
 
-        if (near.length > 0) {
+        if (near && near.length > 0) {
           const shuffledNear = [...near].sort(() => Math.random() - 0.5);
           setNearbyPlaces(shuffledNear);
-          setNearbyIndex(0); // 지역 바뀌면 인덱스 초기화
+          setNearbyIndex(0);
+        } else {
+          setNearbyPlaces([]); // 데이터 없을 경우 빈 배열 유지
         }
         setLoading(prev => ({ ...prev, nearby: false }));
 
         const festItems = (fests || []).slice(0, 3).map(f => ({
-          type: 'festival', icon: 'celebration', title: f.title, 
+          type: 'festival', 
+          icon: 'celebration', 
+          title: f.title, 
           subtitle: f.eventstartdate || 'NOW',
           location: f.addr1?.split(' ')[0] || '전국', 
           image: f.firstimage,
@@ -235,7 +241,7 @@ const Home = () => {
         <div className="lg:col-span-1 bg-white p-8 rounded-3xl shadow-xl border border-outline-variant/10 flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-6 shrink-0 border-b border-slate-50 pb-5">
             <h3 className="font-headline text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-7 bg-primary rounded-full"></div>🥁축제 및 행사</h3>
-            <Link to="/explore" className="text-[10px] font-bold text-primary hover:underline uppercase font-label tracking-widest bg-primary/5 px-3 py-1 rounded-full">View_All</Link>
+            <Link to="/festivals" className="text-[10px] font-bold text-primary hover:underline uppercase font-label tracking-widest bg-primary/5 px-3 py-1 rounded-full">View_All</Link>
           </div>
           <div className="space-y-4 overflow-y-auto pr-1 flex-1 custom-scrollbar">
             {loading.trending ? (

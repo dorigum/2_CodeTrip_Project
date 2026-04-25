@@ -4,9 +4,22 @@ import useAuthStore from '../../store/useAuthStore';
 import useWishlistStore from '../../store/useWishlistStore';
 
 const NAV_ITEMS = [
-// ... (omitting for brevity in this thought but I will provide full replace)
   { icon: 'home', label: 'Home', path: '/', animation: 'group-hover:-translate-y-1' },
   { icon: 'explore', label: 'Explore', path: '/explore', animation: 'group-hover:rotate-45' },
+  { 
+    icon: 'celebration', 
+    label: 'Festivals', 
+    path: '/festivals', 
+    animation: 'group-hover:scale-110',
+    extra: (
+      <>
+        <div className="firework-spark spark-1"></div>
+        <div className="firework-spark spark-2"></div>
+        <div className="firework-spark spark-3"></div>
+        <div className="firework-spark spark-4"></div>
+      </>
+    )
+  },
   { 
     icon: 'favorite', 
     label: 'Wishlist', 
@@ -32,14 +45,11 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
 
   const handleNavClick = (e, item) => {
-    // 보호된 경로 설정
     const protectedPaths = ['/mypage', '/settings'];
-    
     if (protectedPaths.includes(item.path) && !isLoggedIn) {
       e.preventDefault();
       alert('회원만 이용 가능한 서비스입니다.');
       navigate('/login');
-      return;
     }
   };
 

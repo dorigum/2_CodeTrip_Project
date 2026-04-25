@@ -10,6 +10,7 @@ import SignUp from './pages/SignUp.jsx'
 import MyPage from './pages/MyPage.jsx'
 import Settings from './pages/Settings.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
+import Festivals from './pages/Festivals.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -25,6 +26,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="mypage" element={<MyPage />} />
           <Route path="settings" element={<Settings />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="festivals" element={<Festivals />} />
         </Route>
       </Routes>
     </BrowserRouter>
