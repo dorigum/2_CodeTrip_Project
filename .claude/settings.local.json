@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/koo/.claude/projects/c--Users-koo-VSCode-Projects-2-Code-Trip/memory/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\koo\\.claude\\projects\\c--Users-koo-VSCode-Projects-2-Code-Trip\\memory"
+    ]
+  }
+}

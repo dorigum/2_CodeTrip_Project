@@ -44,6 +44,20 @@
 - Festivals 메뉴 호버 시 폭죽 스파크 입자 크기 `4px` → `2px`, `box-shadow` `8px` → `4px`로 축소.
 - 이동 거리(translate) 및 scale 값 전반 축소 (최대 이동 `22px` → `13px`, scale `1.8` → `1.0`).
 
+### 6. 위시리스트 403 오류 — 세션 만료 감지 및 자동 로그아웃 처리 (Bug Fix)
+
+**트러블슈팅 배경**: 탐색 페이지에서 위시리스트 추가 시 `403 Forbidden` 오류 발생. `GET /api/wishlist/folders`, `POST /api/wishlist/toggle` 모두 실패하며 "오류가 발생했습니다" 메시지 출력.
+
+**원인 분석**:
+- JWT 토큰 만료(유효기간 24시간) 또는 서버 재시작으로 기존 토큰이 무효화됨.
+- 서버의 `authenticateToken` 미들웨어가 `jwt.verify` 실패 시 `403`을 반환하고 있었으나, `axiosInstance`의 응답 인터셉터는 `401`만 처리(경고 로그만)하고 `403`은 아무 처리도 없었음.
+- 결과적으로 프론트엔드는 만료된 토큰을 localStorage에 그대로 유지한 채 "알 수 없는 오류"만 표시.
+
+**수정 내용**:
+- **`server/index.js`**: `authenticateToken` 미들웨어에서 `jwt.verify` 실패 시 응답 코드를 `403` → `401`로 변경. HTTP 표준상 인증 필요 상태는 401이 올바름 (`403`은 인증은 됐으나 권한 없음을 의미).
+- **`src/api/axiosInstance.js`**: 응답 인터셉터에 401 처리 로직 추가. `trip_token`·`trip_user` localStorage 초기화 → "세션이 만료되었습니다" 알림 → `/login` 리다이렉트 수행. 이후 catch 블록의 중복 처리를 막기 위해 `isAuthError: true` 플래그를 담은 커스텀 에러를 reject.
+- **`src/store/useWishlistStore.js`**: `toggleWishlist`의 catch 블록에서 `error.isAuthError` 여부를 확인하여, 세션 만료로 인한 오류일 때는 중복 알림창 노출을 방지.
+
 ---
 
 ## 2026-04-25 — 메인 페이지 축제 데이터 연동 복구 및 시스템 명세 최신화

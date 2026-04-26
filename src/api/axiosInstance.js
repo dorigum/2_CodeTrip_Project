@@ -32,12 +32,18 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 에러 시 (토큰 만료 등) 인증 관련 데이터 정리 제안
     if (error.response?.status === 401) {
-      console.warn('Unauthorized! Access token might be expired or missing.');
-      // 여기서 강제 로그아웃 처리를 할 수도 있으나, 우선 로깅만 남깁니다.
-      // localStorage.removeItem('trip_user');
-      // localStorage.removeItem('trip_token');
+      // 토큰 만료 또는 무효 → 저장된 인증 정보 초기화 후 로그인 페이지로 이동
+      localStorage.removeItem('trip_token');
+      localStorage.removeItem('trip_user');
+      alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      // 후속 catch 블록에서 중복 처리를 방지하기 위해 특수 플래그를 담아 reject
+      const authErr = new Error('AUTH_REQUIRED');
+      authErr.isAuthError = true;
+      return Promise.reject(authErr);
     }
     return Promise.reject(error);
   }

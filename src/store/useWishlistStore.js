@@ -60,18 +60,21 @@ const useWishlistStore = create((set, get) => ({
 
     try {
       await wishlistApi.toggleWishlist(travelData, folderId);
-      
+
       // 토글 성공 후 즉시 서버와 데이터 동기화 (가장 확실함)
       await get().syncWithServer();
-      
+
       if (isAdding) {
         alert('위시리스트에 추가되었습니다!');
       } else {
         alert('위시리스트에서 삭제되었습니다.');
       }
     } catch (error) {
-      console.error('Toggle failed:', error);
-      alert('요청을 처리하는 중 오류가 발생했습니다.');
+      // isAuthError는 axiosInstance 인터셉터가 세션 만료를 처리한 경우 — 중복 알림 방지
+      if (!error.isAuthError) {
+        console.error('Toggle failed:', error);
+        alert('요청을 처리하는 중 오류가 발생했습니다.');
+      }
     }
   },
 
