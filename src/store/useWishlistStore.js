@@ -79,9 +79,16 @@ const useWishlistStore = create((set, get) => ({
   },
 
   // 폴더 CRUD 액션
-  createFolder: async (name) => {
+  createFolder: async (name, startDate = null, endDate = null) => {
     try {
-      await wishlistApi.createFolder(name);
+      await wishlistApi.createFolder(name, startDate, endDate);
+      await get().syncWithServer();
+    } catch (e) { console.error(e); }
+  },
+
+  updateFolder: async (folderId, name, startDate = null, endDate = null) => {
+    try {
+      await wishlistApi.updateFolder(folderId, name, startDate, endDate);
       await get().syncWithServer();
     } catch (e) { console.error(e); }
   },

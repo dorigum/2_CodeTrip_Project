@@ -21,10 +21,13 @@ const wishlistApi = {
   fetchWishlistDetails,
   // getWishlistDetails 명칭도 지원 (내부 참조용)
   getWishlistDetails: fetchWishlistDetails,
-  getFolders: () => axiosInstance.get('/wishlist/folders'), // /api 제거
-  createFolder: (name) => axiosInstance.post('/wishlist/folders', { name }), // /api 제거
-  deleteFolder: (folderId) => axiosInstance.delete(`/wishlist/folders/${folderId}`), // /api 제거
-  moveWishlistItem: (contentId, folderId) => axiosInstance.put('/wishlist/move', { contentId, folderId }) // /api 제거
+  getFolders: () => axiosInstance.get('/wishlist/folders'),
+  createFolder: (name, startDate = null, endDate = null) =>
+    axiosInstance.post('/wishlist/folders', { name, startDate, endDate }),
+  updateFolder: (folderId, name, startDate = null, endDate = null) =>
+    axiosInstance.put(`/wishlist/folders/${folderId}`, { name, startDate, endDate }),
+  deleteFolder: (folderId) => axiosInstance.delete(`/wishlist/folders/${folderId}`),
+  moveWishlistItem: (contentId, folderId) => axiosInstance.put('/wishlist/move', { contentId, folderId })
 };
 
 export default wishlistApi;

@@ -74,6 +74,106 @@
   - **초기화 기능**: 'Reset_Photo' 버튼을 추가하여 프로필 사진을 기본 상태로 되돌릴 수 있는 기능 구현.
   - **디자인 세밀화**: 'Reset_Photo' 버튼 호버 시 글자색을 청록색(`text-primary`)으로 변경하고 연한 배경색을 적용하여 가독성 및 UI 일관성 향상.
 
+### 8. 위시리스트 폴더 여행 일정 기능 추가
+
+**기능 배경**: 폴더 생성 시 여행 날짜를 함께 기록하고, 마이페이지 사이드바와 메타데이터 패널에서 일정을 한눈에 확인할 수 있도록 요청.
+
+**DB 스키마 확장**:
+- `wishlist_folders` 테이블에 `start_date DATE NULL`, `end_date DATE NULL` 컬럼 추가.
+- 서버 기동 시 `ALTER TABLE ... ADD COLUMN`(예외 무시 방식)으로 기존 DB에 자동 적용.
+
+**수정 파일 및 내용**:
+- **`server/index.js`**: `POST /api/wishlist/folders` 엔드포인트에서 `startDate`, `endDate`를 받아 DB에 저장.
+- **`src/api/wishlistApi.js`**: `createFolder(name, startDate, endDate)` 파라미터 확장.
+- **`src/store/useWishlistStore.js`**: `createFolder` 액션 시그니처에 날짜 파라미터 전달.
+- **`src/pages/MyPage.jsx`**:
+  - 폴더 생성 모달(`mkdir_new_folder.sh`)에 시작일·종료일 `<input type="date">` 추가. 종료일 최솟값을 시작일로 제한하여 잘못된 범위 입력 방지.
+  - 날짜 선택 시 실시간 미리보기 (예: `04.25(토요일) ~ 04.26(일요일) : 1박 2일`) 표시.
+  - 사이드바 각 폴더 버튼 이름 하단에 `formatScheduleShort`으로 여행 일정 한 줄 표시.
+  - 선택된 폴더의 `FOLDER_METADATA` 패널에 `TRAVEL_DATE:` 항목 추가 (`formatScheduleFull`로 연·월·일·요일·박수 표시).
+
+**날짜 헬퍼 함수 3종 추가** (`MyPage.jsx` 내부):
+- `parseLocalDate(str)`: `"YYYY-MM-DD"` 문자열을 UTC 오프셋 없이 로컬 기준 `Date`로 변환.
+- `formatScheduleShort(startStr, endStr)`: 사이드바 폴더 버튼용 압축 일정 문자열 반환.
+- `formatScheduleFull(startStr, endStr)`: 메타데이터 패널용 전체 일정 문자열(개행 포함) 반환.
+
+### 9. 위시리스트 폴더 날짜 NaN 표시 버그 수정 (Bug Fix)
+
+**현상**: 폴더에 날짜를 설정하면 `NaN.NaN.NaN(undefined) ~ NaN.NaN.NaN(undefined) : NaN박 NaN일`로 표시됨.
+
+**원인 분석**: MySQL의 `DATE` 컬럼은 `mysql2` 드라이버에 의해 `"2026-04-25T00:00:00.000Z"` 형식의 ISO 문자열로 직렬화됨. 기존 `parseLocalDate`는 `-` 기준으로 단순 분할(`split('-')`)하여 세 번째 원소가 `"25T00:00:00.000Z"`가 되어 `Number()` 변환 시 `NaN` 발생.
+
+**수정 내용**:
+- **`src/pages/MyPage.jsx`**: `parseLocalDate` 함수에 `String(str).slice(0, 10)` 전처리 추가. ISO 문자열 및 순수 `YYYY-MM-DD` 형식 모두 정상 처리.
+
+### 10. 여행지 탐색 페이지 지역 필터링 무결과 버그 수정 (Bug Fix)
+
+**현상**: 여행지 탐색 페이지에서 지역을 선택하고 필터를 적용하면 항상 결과 없음(`NO_RESULTS_FOUND`) 상태가 됨.
+
+**원인 분석**: `useExploreStore.js`의 `fetchRegions` 함수가 TourAPI의 `ldongCode2` 엔드포인트를 호출하여 지역 코드를 가져오고 있었으나, `ldongCode2`는 행정동 코드(`lDongRegnCd`, 예: `1100000000`)를 반환하는 반면, 서버 캐시의 여행지 데이터(`areaBasedList2` 기반)는 광역시도 코드(`areacode`, 예: `'1'`)를 사용함. 두 코드 체계가 완전히 달라 서버의 `/api/travel` 필터에서 어떤 아이템도 매칭되지 않음. 추가로 `ldongCode2`가 반환하는 응답 필드명은 `lDongRegnCd`·`lDongNm`이지만 코드는 `item.code`·`item.name`으로 읽어 모든 지역 코드가 `''`이 되는 문제도 동반.
+
+**수정 내용**:
+- **`src/store/useExploreStore.js`**:
+  - `getRegions` import 제거.
+  - `regions` 초기 상태를 TourAPI `areaBasedList2`의 `areacode` 값과 완벽히 일치하는 18개 지역 목록(`REGIONS` 상수)으로 하드코딩 (서울 `'1'` ~ 제주 `'39'`).
+  - `fetchRegions` 함수를 no-op(`() => {}`)으로 변경하여 외부 API 의존 완전 제거.
+
+### 11. 위시리스트 폴더 이름·날짜 편집 기능 추가
+
+**기능 배경**: 이미 생성된 폴더의 이름과 여행 일정을 사후에 수정할 수 있는 편집 기능 요청.
+
+**수정 파일 및 내용**:
+- **`server/index.js`**: `PUT /api/wishlist/folders/:id` 엔드포인트 신설. `name`, `start_date`, `end_date`를 갱신하며, `WHERE user_id = ?` 조건으로 본인 폴더만 수정 가능하도록 소유권 검증.
+- **`src/api/wishlistApi.js`**: `updateFolder(folderId, name, startDate, endDate)` API 함수 추가.
+- **`src/store/useWishlistStore.js`**: `updateFolder` 액션 추가. 수정 성공 후 `syncWithServer()`로 전역 상태 동기화.
+- **`src/pages/MyPage.jsx`**:
+  - 사이드바 각 폴더 버튼에 `edit` 아이콘 버튼 추가 (hover 시 표시, 선택 중인 폴더에서는 흰색 계열로 표시).
+  - 편집 모달(`edit_folder.sh`) 추가: 클릭 시 현재 이름·날짜가 미리 채워진 상태로 열림. MySQL ISO 날짜 문자열을 `.slice(0, 10)`으로 변환하여 `<input type="date">` 값으로 정확히 바인딩.
+  - `SAVE_CHANGES` 버튼으로 서버 반영 후 모달 자동 닫힘.
+
+### 12. 위시리스트 목록 헤더에 여행 일정 표시 추가 (`MyPage.jsx`)
+
+- 위시리스트 아이템 목록 상단의 폴더 제목(`h3`) 바로 아래에 해당 폴더의 여행 일정을 파란색 모노 폰트(`text-primary font-mono`)로 추가 표시.
+- `selectedFolder?.start_date`가 존재하는 경우에만 노출되며, 전체(`ALL_NODES`) 및 미분류(`UNCATEGORIZED`) 선택 시에는 표시되지 않음.
+
+### 13. 메인 페이지 지역 기반 추천 콘텐츠 타입 필터링 강화 (`server/index.js`)
+
+- `/api/travel/near` 엔드포인트의 여행지 필터 조건에 콘텐츠 타입 제한 추가.
+- **변경 전**: 지역 코드 일치 + 이미지 있음 (숙박·음식점·레포츠 등 모든 타입 포함)
+- **변경 후**: 지역 코드 일치 + 이미지 있음 + **관광지(`contenttypeid: '12'`) 또는 문화시설(`contenttypeid: '14'`)** 만 반환.
+- 비관광 콘텐츠(숙박 `32`, 음식점 `39`, 쇼핑 `38` 등) 배제로 추천 품질 향상.
+
+### 14. 푸터 SECURITY 항목 SAFESTAY로 개편 (`Footer.jsx`)
+
+- 푸터 우측 링크 목록에서 `Security` 항목 텍스트를 `Safestay`로 변경.
+- 연결 URL을 `https://safestay.visitkorea.or.kr/usr/main/mainSelectList.kto` (한국관광공사 안전여행 포털)로 교체.
+- `target="_blank"` 및 `rel="noopener noreferrer"` 보안 속성 추가 (새 탭 오픈).
+
+### 16. 사이드바 Explore 아이콘 애니메이션 색상 변경 — 시안 → 파란색 (`App.css`)
+
+- `@keyframes explore-spin` 100% 키프레임의 아이콘 color 및 `drop-shadow` 색상을 시안(`#06b6d4`) → 파란색(`#3b82f6`, Tailwind `blue-500`)으로 변경.
+- `.explore-halo` 클래스의 `radial-gradient` 배경색을 `rgba(6,182,212,0.3)` → `rgba(59,130,246,0.3)`으로 변경하여 후광 색상도 동일하게 파란색 계열로 통일.
+
+### 15. 사이드바 Info 서브메뉴 구현 (`SideBar.jsx`)
+
+**변경 배경**: 기존에는 Info 버튼이 `/info` 페이지로 바로 이동하고, 별도의 화살표로만 서브메뉴를 열 수 있었음. Info 버튼 클릭 자체로 서브메뉴가 토글되도록 구조를 개선하고, 서브메뉴 하단에 프로젝트 소개 페이지 항목을 추가하도록 요청.
+
+**수정 내용**:
+- **구조 변경**: Info 항목을 `<Link>`에서 `<button>`으로 전환. 클릭 시 `/info` 이동 없이 서브메뉴 토글만 수행.
+- **`INFO_ITEM` 상수 분리**: 서브메뉴 로직이 필요한 Info 항목을 기존 `NAV_ITEMS` 배열에서 독립 상수(`INFO_ITEM`)로 분리.
+- **`INFO_SUB_ITEMS` 상수 추가**: 3개 서브메뉴 항목 정의.
+
+  | 항목 | 아이콘 | 유형 | 링크 |
+  |------|--------|------|------|
+  | Public_Wifi | `wifi` | 외부 | `wififree.kr` |
+  | Safestay | `health_and_safety` | 외부 | `safestay.visitkorea.or.kr` |
+  | About_CodeTrip | `info` | 내부 | `/info` |
+
+- **외부/내부 링크 분기 렌더링**: `external` 플래그로 외부 링크는 `<a target="_blank">` + `open_in_new` 아이콘으로, 내부 링크는 `<Link>`로 렌더링. 현재 경로 활성화 스타일(`text-primary`) 적용.
+- **`infoSubOpen` 상태 추가** (`useState`): 서브메뉴 열림/닫힘 상태 관리.
+- **슬라이드 애니메이션**: `max-h` 전환(`max-h-0` ↔ `max-h-36`)으로 서브메뉴 부드럽게 펼침/접힘. 화살표 아이콘 180도 회전으로 상태 시각화.
+- **사이드바 접힘 대응**: `isCollapsed` 상태에서 화살표·서브메뉴 미표시.
+
 ---
 
 ## 2026-04-25 — 메인 페이지 축제 데이터 연동 복구 및 시스템 명세 최신화

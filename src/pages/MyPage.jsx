@@ -10,16 +10,22 @@ const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
   
   // 스토어에서 모든 상태와 액션을 가져옴 (로컬 fetch 제거)
-  const { 
+  const {
     wishlistItems, folders, wishlistIds, loading,
-    initWishlist, toggleWishlist, createFolder, deleteFolder, moveItem,
-    initialized: wishlistInitialized 
+    initWishlist, toggleWishlist, createFolder, updateFolder, deleteFolder, moveItem,
+    initialized: wishlistInitialized
   } = useWishlistStore();
 
-  const [sortBy, setSortBy] = useState('CREATED'); 
-  const [selectedFolderId, setSelectedFolderId] = useState(null); 
+  const [sortBy, setSortBy] = useState('CREATED');
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderStart, setNewFolderStart] = useState('');
+  const [newFolderEnd, setNewFolderEnd] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [editFolderName, setEditFolderName] = useState('');
+  const [editFolderStart, setEditFolderStart] = useState('');
+  const [editFolderEnd, setEditFolderEnd] = useState('');
   const [movingItemId, setMovingItemId] = useState(null);
 
   // Authentication & Initial Data Load
@@ -40,11 +46,38 @@ const MyPage = () => {
     }
   };
 
+  const openEditModal = (folder) => {
+    setEditingFolder(folder);
+    setEditFolderName(folder.name);
+    setEditFolderStart(folder.start_date ? String(folder.start_date).slice(0, 10) : '');
+    setEditFolderEnd(folder.end_date ? String(folder.end_date).slice(0, 10) : '');
+  };
+
+  const closeEditModal = () => {
+    setEditingFolder(null);
+    setEditFolderName('');
+    setEditFolderStart('');
+    setEditFolderEnd('');
+  };
+
+  const handleUpdateFolder = async (e) => {
+    e.preventDefault();
+    if (!editFolderName.trim()) return;
+    await updateFolder(editingFolder.id, editFolderName.trim(), editFolderStart || null, editFolderEnd || null);
+    closeEditModal();
+  };
+
   const handleCreateFolder = async (e) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
-    await createFolder(newFolderName.trim());
+    await createFolder(
+      newFolderName.trim(),
+      newFolderStart || null,
+      newFolderEnd || null
+    );
     setNewFolderName('');
+    setNewFolderStart('');
+    setNewFolderEnd('');
     setShowFolderModal(false);
   };
 
@@ -72,7 +105,7 @@ const MyPage = () => {
 
   if (!isLoggedIn) return null;
 
-  // 날짜 형식화 함수 복구
+  // 날짜 형식화 함수
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
@@ -80,6 +113,51 @@ const MyPage = () => {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}.${month}.${day}`;
+  };
+
+  const DAYS_KO = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+  // "YYYY-MM-DD" 또는 MySQL ISO 문자열("YYYY-MM-DDT...Z") → 로컬 기준 Date
+  const parseLocalDate = (str) => {
+    const dateOnly = String(str).slice(0, 10); // "2026-04-25T00:00:00.000Z" → "2026-04-25"
+    const [y, m, d] = dateOnly.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  // 사이드바 폴더 버튼용 짧은 일정 문자열
+  const formatScheduleShort = (startStr, endStr) => {
+    if (!startStr) return null;
+    const s = parseLocalDate(startStr);
+    const sm = String(s.getMonth() + 1).padStart(2, '0');
+    const sd = String(s.getDate()).padStart(2, '0');
+    const startLabel = `${sm}.${sd}(${DAYS_KO[s.getDay()]})`;
+    if (!endStr) return startLabel;
+    const e = parseLocalDate(endStr);
+    const em = String(e.getMonth() + 1).padStart(2, '0');
+    const ed = String(e.getDate()).padStart(2, '0');
+    const endLabel = `${em}.${ed}(${DAYS_KO[e.getDay()]})`;
+    const nights = Math.round((e - s) / 86400000);
+    const duration = nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`;
+    return `${startLabel} ~ ${endLabel} : ${duration}`;
+  };
+
+  // FOLDER_METADATA 패널용 전체 일정 문자열
+  const formatScheduleFull = (startStr, endStr) => {
+    if (!startStr) return null;
+    const s = parseLocalDate(startStr);
+    const sy = s.getFullYear();
+    const sm = String(s.getMonth() + 1).padStart(2, '0');
+    const sd = String(s.getDate()).padStart(2, '0');
+    const startLabel = `${sy}.${sm}.${sd}(${DAYS_KO[s.getDay()]})`;
+    if (!endStr) return startLabel;
+    const e = parseLocalDate(endStr);
+    const ey = e.getFullYear();
+    const em = String(e.getMonth() + 1).padStart(2, '0');
+    const ed = String(e.getDate()).padStart(2, '0');
+    const endLabel = `${ey}.${em}.${ed}(${DAYS_KO[e.getDay()]})`;
+    const nights = Math.round((e - s) / 86400000);
+    const duration = nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`;
+    return `${startLabel}\n~ ${endLabel}\n: ${duration}`;
   };
 
   const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
@@ -94,18 +172,133 @@ const MyPage = () => {
               <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">mkdir_new_folder.sh</span>
               <button onClick={() => setShowFolderModal(false)} className="material-symbols-outlined text-slate-400 hover:text-on-surface transition-colors">close</button>
             </div>
-            <form onSubmit={handleCreateFolder} className="p-8">
-              <input 
-                autoFocus
-                type="text"
-                placeholder="예: 부산 1박 2일 맛집투어"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm mb-6 outline-none focus:border-primary transition-all"
-              />
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowFolderModal(false)} className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">CANCEL</button>
-                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">CREATE_FOLDER</button>
+            <form onSubmit={handleCreateFolder} className="p-6 flex flex-col gap-5">
+              {/* 폴더 이름 */}
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">folder_name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="예: 부산 1박 2일 맛집투어"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all"
+                />
+              </div>
+
+              {/* 여행 일정 */}
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                  travel_schedule <span className="text-slate-300 normal-case">(선택)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={newFolderStart}
+                    onChange={(e) => {
+                      setNewFolderStart(e.target.value);
+                      if (newFolderEnd && e.target.value > newFolderEnd) setNewFolderEnd('');
+                    }}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
+                  />
+                  <span className="text-slate-400 font-mono text-xs shrink-0">~</span>
+                  <input
+                    type="date"
+                    value={newFolderEnd}
+                    min={newFolderStart || undefined}
+                    onChange={(e) => setNewFolderEnd(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                {/* 미리보기 */}
+                {newFolderStart && (
+                  <p className="text-[10px] font-mono text-primary mt-2 leading-relaxed">
+                    {formatScheduleShort(newFolderStart, newFolderEnd)}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowFolderModal(false); setNewFolderName(''); setNewFolderStart(''); setNewFolderEnd(''); }}
+                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl"
+                >
+                  CANCEL
+                </button>
+                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">
+                  CREATE_FOLDER
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Folder Edit Modal */}
+      {editingFolder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-outline-variant/20 animate-in fade-in zoom-in duration-200">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">edit_folder.sh</span>
+              <button onClick={closeEditModal} className="material-symbols-outlined text-slate-400 hover:text-on-surface transition-colors">close</button>
+            </div>
+            <form onSubmit={handleUpdateFolder} className="p-6 flex flex-col gap-5">
+              {/* 폴더 이름 */}
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">folder_name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="폴더 이름"
+                  value={editFolderName}
+                  onChange={(e) => setEditFolderName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all"
+                />
+              </div>
+
+              {/* 여행 일정 */}
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                  travel_schedule <span className="text-slate-300 normal-case">(선택)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={editFolderStart}
+                    onChange={(e) => {
+                      setEditFolderStart(e.target.value);
+                      if (editFolderEnd && e.target.value > editFolderEnd) setEditFolderEnd('');
+                    }}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
+                  />
+                  <span className="text-slate-400 font-mono text-xs shrink-0">~</span>
+                  <input
+                    type="date"
+                    value={editFolderEnd}
+                    min={editFolderStart || undefined}
+                    onChange={(e) => setEditFolderEnd(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                {editFolderStart && (
+                  <p className="text-[10px] font-mono text-primary mt-2 leading-relaxed">
+                    {formatScheduleShort(editFolderStart, editFolderEnd)}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl"
+                >
+                  CANCEL
+                </button>
+                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">
+                  SAVE_CHANGES
+                </button>
               </div>
             </form>
           </div>
@@ -136,11 +329,19 @@ const MyPage = () => {
               </button>
               <div className="h-2" />
               {folders.map(folder => (
-                <button key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className={`flex justify-between items-center px-3 py-3 rounded-lg text-[13px] font-body font-bold tracking-tight group transition-all ${selectedFolderId === folder.id ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
-                  <span className="truncate pr-2 uppercase">{folder.name}</span>
-                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                <button key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className={`flex justify-between items-start px-3 py-3 rounded-lg text-[13px] font-body font-bold tracking-tight group transition-all ${selectedFolderId === folder.id ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  <div className="flex-1 min-w-0 text-left">
+                    <span className="block truncate uppercase">{folder.name}</span>
+                    {folder.start_date && (
+                      <span className={`block text-[10px] font-mono font-normal mt-0.5 truncate ${selectedFolderId === folder.id ? 'text-white/70' : 'text-slate-400'}`}>
+                        {formatScheduleShort(folder.start_date, folder.end_date)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 font-mono text-[11px] shrink-0 ml-2 mt-0.5">
                     <span className="opacity-60">{wishlistItems.filter(i => Number(i.folder_id) === Number(folder.id)).length}</span>
-                    <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 hover:text-red-500">delete</span>
+                    <span onClick={(e) => { e.stopPropagation(); openEditModal(folder); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-white/80' : 'hover:text-primary'}`}>edit</span>
+                    <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-red-300' : 'hover:text-red-500'}`}>delete</span>
                   </div>
                 </button>
               ))}
@@ -163,6 +364,14 @@ const MyPage = () => {
                   <span className="opacity-40">LAST_UPDATED:</span>
                   <span className="text-emerald-400 font-bold">{formatDate(selectedFolder.updated_at || selectedFolder.created_at)}</span>
                 </div>
+                {selectedFolder.start_date && (
+                  <div className="flex flex-col gap-1.5 border-t border-white/5 pt-2 mt-2">
+                    <span className="opacity-40">TRAVEL_DATE:</span>
+                    <span className="text-cyan-400 font-bold text-[10px] leading-relaxed whitespace-pre-line">
+                      {formatScheduleFull(selectedFolder.start_date, selectedFolder.end_date)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center border-t border-white/5 pt-2 mt-2">
                   <span className="opacity-40">NODE_COUNT:</span>
                   <span className="text-primary-container font-bold">{wishlistItems.filter(i => Number(i.folder_id) === Number(selectedFolderId)).length}</span>
@@ -199,9 +408,16 @@ const MyPage = () => {
 
         <div className="flex-1">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="font-headline text-xl font-bold">
-              {selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}
-            </h3>
+            <div>
+              <h3 className="font-headline text-xl font-bold">
+                {selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}
+              </h3>
+              {selectedFolder?.start_date && (
+                <p className="text-[11px] font-mono text-primary mt-1">
+                  {formatScheduleShort(selectedFolder.start_date, selectedFolder.end_date)}
+                </p>
+              )}
+            </div>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
               <option value="CREATED">NEWEST</option>
               <option value="TITLE">TITLE A-Z</option>

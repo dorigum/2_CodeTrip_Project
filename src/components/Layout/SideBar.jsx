@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import useWishlistStore from '../../store/useWishlistStore';
@@ -52,16 +52,24 @@ const NAV_ITEMS = [
     animation: 'account-shake',
     extra: <div className="settings-halo" />,
   },
-  {
-    icon: 'lightbulb',
-    label: 'Info',
-    path: '/info',
-    animation: 'bulb-flicker',
-    extra: <div className="bulb-glow" />,
-  },
+];
+
+const INFO_ITEM = {
+  icon: 'lightbulb',
+  label: 'Info',
+  path: '/info',
+  animation: 'bulb-flicker',
+  extra: <div className="bulb-glow" />,
+};
+
+const INFO_SUB_ITEMS = [
+  { icon: 'wifi', label: 'Public_Wifi', href: 'https://www.wififree.kr/index.do', external: true },
+  { icon: 'health_and_safety', label: 'Safestay', href: 'https://safestay.visitkorea.or.kr/usr/main/mainSelectList.kto', external: true },
+  { icon: 'info', label: 'About_CodeTrip', href: '/info', external: false },
 ];
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
+  const [infoSubOpen, setInfoSubOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout, isLoggedIn } = useAuthStore();
@@ -130,6 +138,63 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
               </span>
             </Link>
           ))}
+
+          {/* Info 아이템 + 서브메뉴 */}
+          <div>
+            <button
+              onClick={() => setInfoSubOpen(prev => !prev)}
+              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 group ${
+                isActive(INFO_ITEM.path)
+                  ? 'text-primary bg-primary/5 border-r-4 border-primary font-semibold'
+                  : 'text-slate-600 hover:text-primary hover:bg-slate-50'
+              }`}
+            >
+              <div className="relative flex items-center justify-center shrink-0">
+                <span className={`material-symbols-outlined ${isActive(INFO_ITEM.path) ? 'fill-1' : ''} transition-all duration-300 ${INFO_ITEM.animation}`}>
+                  {INFO_ITEM.icon}
+                </span>
+                {INFO_ITEM.extra}
+              </div>
+              <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
+                {INFO_ITEM.label}
+              </span>
+              {!isCollapsed && (
+                <span className={`material-symbols-outlined text-base ml-auto text-slate-400 transition-transform duration-300 ${infoSubOpen ? 'rotate-180' : ''}`}>
+                  expand_more
+                </span>
+              )}
+            </button>
+
+            {/* 서브메뉴 */}
+            <div className={`overflow-hidden transition-all duration-300 ${infoSubOpen && !isCollapsed ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`}>
+              {INFO_SUB_ITEMS.map((sub) =>
+                sub.external ? (
+                  <a
+                    key={sub.label}
+                    href={sub.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 pl-14 pr-6 py-2 text-slate-400 hover:text-primary hover:bg-slate-50 transition-all duration-200 group/sub"
+                  >
+                    <span className="material-symbols-outlined text-[16px] shrink-0">{sub.icon}</span>
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-widest truncate">{sub.label}</span>
+                    <span className="material-symbols-outlined text-[12px] ml-auto opacity-0 group-hover/sub:opacity-100 transition-opacity">open_in_new</span>
+                  </a>
+                ) : (
+                  <Link
+                    key={sub.label}
+                    to={sub.href}
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 transition-all duration-200 group/sub ${
+                      isActive(sub.href) ? 'text-primary font-semibold' : 'text-slate-400 hover:text-primary hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px] shrink-0">{sub.icon}</span>
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-widest truncate">{sub.label}</span>
+                  </Link>
+                )
+              )}
+            </div>
+          </div>
         </nav>
 
         {/* User Profile Area */}

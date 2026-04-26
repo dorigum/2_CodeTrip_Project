@@ -18,9 +18,11 @@ const Footer = () => {
             </a>
             <a
               className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
-              href="#"
+              href="https://safestay.visitkorea.or.kr/usr/main/mainSelectList.kto"
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              Security
+              Safestay
             </a>
             <Link
               to="/info"

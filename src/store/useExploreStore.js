@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getTravelList, getRegions } from '../api/travelInfoApi';
+import { getTravelList } from '../api/travelInfoApi';
 
 const NUM_OF_ROWS = 10;
 
@@ -7,8 +7,30 @@ let exploreScrollY = 0;
 export const getExploreScrollY = () => exploreScrollY;
 export const setExploreScrollY = (y) => { exploreScrollY = y; };
 
+// TourAPI areaBasedList2의 areacode 값과 일치하는 지역 목록 (ldongCode2 API 코드와 다름)
+const REGIONS = [
+  { code: '', name: '전국' },
+  { code: '1', name: '서울' },
+  { code: '2', name: '인천' },
+  { code: '3', name: '대전' },
+  { code: '4', name: '대구' },
+  { code: '5', name: '광주' },
+  { code: '6', name: '부산' },
+  { code: '7', name: '울산' },
+  { code: '8', name: '세종' },
+  { code: '31', name: '경기' },
+  { code: '32', name: '강원' },
+  { code: '33', name: '충북' },
+  { code: '34', name: '충남' },
+  { code: '35', name: '전북' },
+  { code: '36', name: '전남' },
+  { code: '37', name: '경북' },
+  { code: '38', name: '경남' },
+  { code: '39', name: '제주' },
+];
+
 const useExploreStore = create((set, get) => ({
-  regions: [{ code: '', name: '전국' }],
+  regions: REGIONS,
 
   selectedRegions: new Set(['']),
   selectedThemes: new Set(['']),
@@ -100,17 +122,7 @@ const useExploreStore = create((set, get) => ({
     }
   },
 
-  fetchRegions: async () => {
-    if (get().regions.length > 1) return;
-    try {
-      const items = await getRegions();
-      const mapped = items.map((item) => ({
-        code: String(item.code || ''),
-        name: item.name || '',
-      }));
-      set({ regions: [{ code: '', name: '전국' }, ...mapped] });
-    } catch {}
-  },
+  fetchRegions: () => {},
 }));
 
 export { NUM_OF_ROWS };

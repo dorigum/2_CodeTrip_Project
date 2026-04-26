@@ -11,7 +11,7 @@
 ## 1. 프로젝트 개요: CodeTrip
 - **프로젝트 명**: CodeTrip (Vibe Board + Tour Info)
 - **목적**: 프리미엄 디자인이 적용된 현대적인 CRUD 게시판 시스템 및 관광 정보 서비스 구축
-- **현상태**: 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료. 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결. 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출). 전국 여행지 탐색 및 상세 페이지 통합 완료. 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료.
+- **현상태**: 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료. 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결. 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출). 전국 여행지 탐색 및 상세 페이지 통합 완료. 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료. 위시리스트 폴더 여행 일정(시작일·종료일) 설정·표시·편집 기능 완료. 탐색 페이지 지역 필터링 코드 정합성 수정(TourAPI areacode 하드코딩). 메인 페이지 지역 기반 추천 관광지·문화시설 한정 필터링 적용.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -31,7 +31,7 @@
 
 ### 1.2 데이터베이스 스키마 (Database Schema)
 - **users**: 이메일, 해시된 비밀번호, 이름, 프로필 이미지 경로.
-- **wishlist_folders**: 유저별 커스텀 폴더 (이름, 생성/수정일).
+- **wishlist_folders**: 유저별 커스텀 폴더 (이름, 여행 시작일 `start_date DATE NULL`·종료일 `end_date DATE NULL`, 생성/수정일).
 - **wishlists**: 여행지 아이템 정보 (`folder_id` 외래키를 통한 분류 관리, `UNIQUE KEY`로 중복 찜 방지).
 - **comments**: 여행지별 독립 댓글창 (`content_id` 인덱싱).
 - **comment_likes**: 댓글 좋아요 관리 (**유저당 1회 제한** 로직 적용).
@@ -174,7 +174,7 @@
     | 메뉴 | 클래스명 | 컬러 | 효과 |
     |------|----------|------|------|
     | Home | `home-glow` | 오렌지 `#f97316` | 바운스 + 원형 후광 |
-    | Explore | `explore-spin` | 시안 `#06b6d4` | 나침반 180도 회전 + 원형 후광 |
+    | Explore | `explore-spin` | 파란색 `#3b82f6` | 나침반 180도 회전 + 원형 후광 |
     | Festivals | `fest-glow` | 핑크↔앰버 교차 | 색상 교차 글로우 (폭죽 스파크 유지) |
     | Wishlist | `heart-glow` | 레드 `#ef4444` | 심장박동 pulse 글로우 (하트 버블 유지) |
     | UserInfo Edit | `account-shake` | 에메랄드 `#10b981` | 좌우 쉐이크 + 원형 후광 |
@@ -183,6 +183,43 @@
 - **폭죽 입자 경량화**: Festivals 호버 시 스파크 입자를 `4px` → `2px`, `box-shadow` `8px` → `4px`로 축소하고 이동 범위를 줄여 더 정밀한 효과로 개선.
 - **푸터(`Footer.jsx`) 링크 개편**: `Privacy` → `Public_Wifi`(공공 와이파이 정보 사이트, 새 탭 오픈), `Terms` → `Info`(내부 라우팅, React Router `<Link>`)로 교체.
 - **아키텍처 분석 문서(`Architecture_Analysis.md`) 신설**: 전체 기술 스택·파일 구조·라우팅·백엔드 API 엔드포인트·DB 스키마·Zustand 상태 관리·디자인 시스템을 종합 정리한 참조 문서 신규 작성.
+- **푸터(`Footer.jsx`) SAFESTAY 링크 개편**: `Security` 항목을 `Safestay`로 변경, 한국관광공사 안전여행 포털(`safestay.visitkorea.or.kr`) 연결, 새 탭 오픈 보안 속성 적용.
+- **사이드바 Info 서브메뉴 도입** (`SideBar.jsx`): Info 버튼 클릭 시 서브메뉴 토글. 서브메뉴 항목은 Public_Wifi(외부), Safestay(외부), About_CodeTrip(내부 `/info`) 3종. 외부 링크는 `open_in_new` 아이콘 표시, 내부 링크는 활성 경로 스타일 적용. `max-h` 슬라이드 애니메이션 및 화살표 회전으로 상태 시각화.
+
+### 2.11 위시리스트 폴더 여행 일정 시스템 및 버그 수정 (2026-04-26 추가)
+
+#### 폴더 여행 일정 설정 기능
+- **DB 스키마 확장**: `wishlist_folders` 테이블에 `start_date DATE NULL`, `end_date DATE NULL` 컬럼 추가. 서버 기동 시 `ALTER TABLE`(예외 무시)으로 기존 DB에 자동 적용.
+- **폴더 생성 모달 (`mkdir_new_folder.sh`)**: 시작일·종료일 날짜 입력(`<input type="date">`) UI 추가. 종료일 최솟값을 시작일로 제한. 날짜 선택 즉시 미리보기 문자열(예: `04.25(토요일) ~ 04.26(일요일) : 1박 2일`) 실시간 렌더링.
+- **사이드바 폴더 목록**: 각 폴더 이름 하단에 `formatScheduleShort` 함수로 압축 일정 문자열 표시. 선택 상태에서는 흰색 계열 텍스트로 가독성 유지.
+- **FOLDER_METADATA 패널**: `TRAVEL_DATE:` 항목 추가. `formatScheduleFull`로 연·월·일·요일·박수를 개행 포함 형식으로 표시.
+- **위시리스트 목록 헤더**: 선택된 폴더의 제목(`h3`) 아래 여행 일정을 파란색 모노 폰트로 추가 표시. 전체·미분류 선택 시 미노출.
+
+#### 날짜 헬퍼 함수 (`MyPage.jsx` 내부)
+| 함수 | 역할 |
+|------|------|
+| `parseLocalDate(str)` | ISO 문자열(`YYYY-MM-DDT...Z`) 또는 `YYYY-MM-DD` → UTC 오프셋 없는 로컬 `Date` |
+| `formatScheduleShort(startStr, endStr)` | 사이드바용 압축 일정 문자열 반환 (당일치기 포함) |
+| `formatScheduleFull(startStr, endStr)` | 메타데이터 패널용 전체 일정 문자열 (개행 포함) |
+
+#### 폴더 편집 기능
+- **`PUT /api/wishlist/folders/:id`** 엔드포인트 신설: `name`, `start_date`, `end_date` 업데이트. `WHERE user_id = ?` 소유권 검증.
+- **`wishlistApi.js`**: `updateFolder(folderId, name, startDate, endDate)` 추가.
+- **`useWishlistStore.js`**: `updateFolder` 액션 추가, 완료 후 `syncWithServer()`.
+- **`MyPage.jsx`**: 사이드바 폴더에 `edit` 아이콘 추가(hover 표시). 편집 모달(`edit_folder.sh`) — 기존 값 미리채움, MySQL ISO 날짜를 `.slice(0, 10)` 변환 후 바인딩, `SAVE_CHANGES`로 반영.
+
+#### 버그 수정
+
+**NaN 날짜 표시 (Bug Fix)**
+- **원인**: `mysql2`가 `DATE` 컬럼을 `"2026-04-25T00:00:00.000Z"` ISO 문자열로 직렬화. 기존 `split('-')` 시 세 번째 원소가 `"25T00:00:00.000Z"` → `NaN`.
+- **수정**: `parseLocalDate`에 `String(str).slice(0, 10)` 전처리 추가.
+
+**탐색 페이지 지역 필터링 무결과 (Bug Fix)**
+- **원인**: `ldongCode2` API는 행정동 코드(`lDongRegnCd`, 10자리)를 반환하지만, 서버 캐시 데이터(`areaBasedList2`)는 광역시도 코드(`areacode`, 1~2자리)를 사용 — 두 체계 불일치로 필터 매칭 실패. 또한 `ldongCode2` 응답 필드명(`lDongRegnCd`)을 `item.code`로 읽어 모든 코드가 `''`이 되는 2차 문제 동반.
+- **수정**: `useExploreStore.js`에서 `getRegions` import 제거. `regions` 초기값을 TourAPI `areacode` 기준 18개 지역 목록(`REGIONS` 상수)으로 하드코딩. `fetchRegions`를 no-op으로 변경.
+
+#### 메인 페이지 지역 기반 추천 필터링 강화
+- **`/api/travel/near`** 엔드포인트에 콘텐츠 타입 조건 추가: 관광지(`'12'`)·문화시설(`'14'`)만 반환. 숙박·음식점·레포츠 등 비관광 콘텐츠 배제.
 
 ---
 ## 3. 성능 최적화 및 전략 (Performance Optimization)
@@ -238,6 +275,14 @@
 | 전체 아키텍처 분석 문서(`Architecture_Analysis.md`) 신설 | ✅ 완료 |
 | 사용자 정보 수정 및 프로필 이미지 업로드 시스템 | ✅ 완료 |
 | 비밀번호 찾기 및 재설정(ForgotPassword) API | ✅ 완료 |
+| 위시리스트 폴더 여행 일정(시작일·종료일) 설정 및 표시 | ✅ 완료 |
+| 위시리스트 목록 헤더 여행 일정 표시 | ✅ 완료 |
+| 위시리스트 폴더 이름·날짜 편집 기능 (`PUT /api/wishlist/folders/:id`) | ✅ 완료 |
+| 탐색 페이지 지역 필터링 코드 정합성 수정 (areacode 하드코딩) | ✅ 완료 |
+| 메인 페이지 지역 추천 관광지·문화시설 한정 필터링 | ✅ 완료 |
+| 푸터 SAFESTAY 링크 연결 (한국관광공사 안전여행 포털) | ✅ 완료 |
+| 사이드바 Info 서브메뉴 (Public_Wifi · Safestay · About_CodeTrip) | ✅ 완료 |
+| 사이드바 Explore 아이콘 애니메이션 색상 파란색(`#3b82f6`)으로 변경 | ✅ 완료 |
 | 스마트 검색 엔진 고도화 | ⏳ 추진중 |
 
 ---
@@ -323,4 +368,4 @@
 ```
 
 ---
-*최종 업데이트: 2026-04-26 (Info 서비스 소개 페이지 신설, 사이드바 전 메뉴 컬러 글로우 애니메이션 고도화, 아키텍처 분석 문서 신설)*
+*최종 업데이트: 2026-04-26 (위시리스트 폴더 여행 일정 설정·편집 기능, NaN 날짜 버그 수정, 탐색 페이지 지역 필터링 코드 정합성 수정, 메인 페이지 지역 추천 콘텐츠 타입 필터링 강화, 푸터 SAFESTAY 개편, 사이드바 Info 서브메뉴 도입, Explore 아이콘 애니메이션 색상 파란색 변경)*

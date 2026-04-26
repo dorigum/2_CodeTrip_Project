@@ -114,11 +114,17 @@ const initDB = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         name VARCHAR(100) NOT NULL,
+        start_date DATE NULL,
+        end_date DATE NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
+
+    // 기존 테이블에 여행 일정 컬럼 추가 (이미 존재하면 조용히 무시)
+    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch (e) {}
+    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NULL'); } catch (e) {}
 
     console.log('✅ 테이블 초기화 완료');
     conn.release();
@@ -344,7 +350,8 @@ app.get('/api/travel/near', (req, res) => {
     // 만약 코드가 없거나 안맞을 경우 addr1에 지역명이 포함되어 있는지 확인 (울산 방지)
     const isAddrMatch = targetName && item.addr1?.includes(targetName);
     
-    return (isCodeMatch || isAddrMatch) && item.firstimage;
+    const typeId = String(item.contenttypeid || item.contentTypeId || '');
+    return (isCodeMatch || isAddrMatch) && item.firstimage && ['12', '14'].includes(typeId);
   }).slice(0, 30);
   
   console.log(`📍 Near filter: AreaCode ${areaCode} (${targetName}), Found ${filtered.length} items`);
@@ -492,8 +499,23 @@ app.get('/api/wishlist/folders', authenticateToken, async (req, res) => {
 
 app.post('/api/wishlist/folders', authenticateToken, async (req, res) => {
   try {
-    const [result] = await pool.query('INSERT INTO wishlist_folders (user_id, name) VALUES (?, ?)', [req.user.id, req.body.name]);
-    res.status(201).json({ id: result.insertId, name: req.body.name });
+    const { name, startDate, endDate } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO wishlist_folders (user_id, name, start_date, end_date) VALUES (?, ?, ?, ?)',
+      [req.user.id, name, startDate || null, endDate || null]
+    );
+    res.status(201).json({ id: result.insertId, name, start_date: startDate || null, end_date: endDate || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/wishlist/folders/:id', authenticateToken, async (req, res) => {
+  try {
+    const { name, startDate, endDate } = req.body;
+    await pool.query(
+      'UPDATE wishlist_folders SET name = ?, start_date = ?, end_date = ? WHERE id = ? AND user_id = ?',
+      [name, startDate || null, endDate || null, req.params.id, req.user.id]
+    );
+    res.json({ id: req.params.id, name, start_date: startDate || null, end_date: endDate || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
