@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Architecture_Analysis.md",
+                "file": "Project_Specification.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Architecture_Analysis"
+              "title": "Project_Specification"
             }
           }
         ]
@@ -185,6 +185,7 @@
   },
   "active": "cabc9d870566ad19",
   "lastOpenFiles": [
+    "Architecture_Analysis.md",
     "CHANGELOG.md.tmp.26936.1777193988657",
     "CHANGELOG.md.tmp.26936.1777193950134",
     "CHANGELOG.md",

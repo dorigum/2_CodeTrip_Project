@@ -258,6 +258,72 @@ app.post('/api/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email, name, newPassword } = req.body;
+  try {
+    // 이메일과 이름이 일치하는 사용자 확인
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ? AND name = ?', [email, name]);
+    if (users.length === 0) {
+      return res.status(404).json({ message: '입력하신 정보와 일치하는 사용자를 찾을 수 없습니다.' });
+    }
+
+    // 새 비밀번호 해싱 및 저장
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, users[0].id]);
+    
+    res.json({ message: '비밀번호가 성공적으로 재설정되었습니다.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- User Profile & Security Routes ---
+
+// 1. 프로필 이미지 업로드 (파일 저장 후 URL 반환)
+app.post('/api/user/upload', authenticateToken, upload.single('profileImage'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: imageUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. 프로필 정보 업데이트 (이름, 이미지 URL)
+app.put('/api/user/update', authenticateToken, async (req, res) => {
+  const { name, profileImg } = req.body;
+  const userId = req.user.id;
+  try {
+    await pool.query('UPDATE users SET name = ?, profile_img = ? WHERE id = ?', [name, profileImg, userId]);
+    res.json({ message: 'Profile updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. 비밀번호 변경
+app.put('/api/user/password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+  try {
+    // 현재 비밀번호 확인
+    const [users] = await pool.query('SELECT password FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, users[0].password);
+    if (!isMatch) return res.status(400).json({ message: '현재 비밀번호가 일치하지 않습니다.' });
+
+    // 새 비밀번호 해싱 및 저장
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, userId]);
+    
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Travel API Routes ---
 app.get('/api/travel/top-images', (req, res) => {
   if (!mainTopImages) return res.status(503).json({ message: 'Loading...' });

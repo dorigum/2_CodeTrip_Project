@@ -148,6 +148,16 @@ const Settings = () => {
                 >
                   Change_Photo
                 </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setProfileImg('');
+                    setProfileMessage({ type: 'success', text: '기본 이미지로 설정되었습니다. 저장 버튼을 눌러 확정하세요.' });
+                  }}
+                  className="text-[10px] font-mono bg-surface-container-highest px-3 py-1 rounded-full text-secondary hover:bg-primary/10 hover:text-primary transition-all uppercase tracking-tighter"
+                >
+                  Reset_Photo
+                </button>
               </div>
 
               {/* Inputs Column */}

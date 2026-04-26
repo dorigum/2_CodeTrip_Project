@@ -45,7 +45,6 @@
 - 이동 거리(translate) 및 scale 값 전반 축소 (최대 이동 `22px` → `13px`, scale `1.8` → `1.0`).
 
 ### 6. 위시리스트 403 오류 — 세션 만료 감지 및 자동 로그아웃 처리 (Bug Fix)
-
 **트러블슈팅 배경**: 탐색 페이지에서 위시리스트 추가 시 `403 Forbidden` 오류 발생. `GET /api/wishlist/folders`, `POST /api/wishlist/toggle` 모두 실패하며 "오류가 발생했습니다" 메시지 출력.
 
 **원인 분석**:
@@ -57,6 +56,23 @@
 - **`server/index.js`**: `authenticateToken` 미들웨어에서 `jwt.verify` 실패 시 응답 코드를 `403` → `401`로 변경. HTTP 표준상 인증 필요 상태는 401이 올바름 (`403`은 인증은 됐으나 권한 없음을 의미).
 - **`src/api/axiosInstance.js`**: 응답 인터셉터에 401 처리 로직 추가. `trip_token`·`trip_user` localStorage 초기화 → "세션이 만료되었습니다" 알림 → `/login` 리다이렉트 수행. 이후 catch 블록의 중복 처리를 막기 위해 `isAuthError: true` 플래그를 담은 커스텀 에러를 reject.
 - **`src/store/useWishlistStore.js`**: `toggleWishlist`의 catch 블록에서 `error.isAuthError` 여부를 확인하여, 세션 만료로 인한 오류일 때는 중복 알림창 노출을 방지.
+
+### 7. 사용자 프로필 수정 및 보안 시스템 최종 구현 (Finalizing Security & Profile)
+
+**작업 배경**: 프로필 설정 페이지(`Settings.jsx`)에서 이미지 업로드 및 비밀번호 변경 시 서버 엔드포인트 누락으로 인한 `404 Not Found` 오류 해결.
+
+**주요 수정 사항**:
+- **사용자 정보 관리 API 구축 (`server/index.js`)**:
+  - `POST /api/user/upload`: Multer를 이용한 서버 직접 이미지 업로드 기능 구축 (접근 URL 반환).
+  - `PUT /api/user/update`: 닉네임 및 프로필 이미지 경로를 DB(`users` 테이블)에 영구 저장하는 엔드포인트 추가.
+  - `PUT /api/user/password`: 현재 비밀번호 검증(`bcrypt.compare`) 후 새 비밀번호를 해싱하여 업데이트하는 보안 로직 구현.
+- **비밀번호 재설정 기능 추가 (`POST /api/auth/forgot-password`)**:
+  - 비밀번호를 잊어버린 경우를 위해 이메일과 이름 일치 여부를 확인하여 본인 인증 후 비밀번호를 재설정할 수 있는 API 신설.
+- **프록시 및 정적 자원 접근 설정 (`vite.config.js`)**:
+  - `/uploads` 경로에 대한 프록시 설정을 추가하여 프론트엔드에서 서버에 저장된 이미지 파일에 직접 접근할 수 있도록 환경 구축.
+- **프로필 UX 개선 (`Settings.jsx`)**:
+  - **초기화 기능**: 'Reset_Photo' 버튼을 추가하여 프로필 사진을 기본 상태로 되돌릴 수 있는 기능 구현.
+  - **디자인 세밀화**: 'Reset_Photo' 버튼 호버 시 글자색을 청록색(`text-primary`)으로 변경하고 연한 배경색을 적용하여 가독성 및 UI 일관성 향상.
 
 ---
 
