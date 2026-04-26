@@ -125,15 +125,15 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 4px;
-  height: 4px;
+  width: 2px;
+  height: 2px;
   border-radius: 50%;
   background-color: currentColor;
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, -50%) scale(0);
   transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 0 8px currentColor;
+  box-shadow: 0 0 4px currentColor;
   will-change: transform, opacity;
 }
 
@@ -141,7 +141,109 @@
   opacity: 1;
 }
 
-.group:hover .spark-1 { transform: translate(-18px, -18px) scale(1.5); color: #FFD700; } /* Gold */
-.group:hover .spark-2 { transform: translate(18px, -18px) scale(1.5); color: #00b8d4; }  /* Cyan */
-.group:hover .spark-3 { transform: translate(0, -22px) scale(1.8); color: #ff8285; }    /* Pink */
-.group:hover .spark-4 { transform: translate(-12px, 8px) scale(1.2); color: #a8edff; }   /* Light Blue */
+.group:hover .spark-1 { transform: translate(-10px, -10px) scale(0.8); color: #FFD700; } /* Gold */
+.group:hover .spark-2 { transform: translate(10px, -10px) scale(0.8); color: #00b8d4; }  /* Cyan */
+.group:hover .spark-3 { transform: translate(0, -13px) scale(1); color: #ff8285; }       /* Pink */
+.group:hover .spark-4 { transform: translate(-7px, 5px) scale(0.7); color: #a8edff; }    /* Light Blue */
+
+/* Lightbulb Flicker for Info */
+@keyframes bulb-flicker {
+  0%   { opacity: 1;   color: inherit; filter: none; }
+  10%  { opacity: 0.2; filter: none; }
+  20%  { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+  30%  { opacity: 0.4; color: #fbbf24; filter: drop-shadow(0 0 2px #fbbf24); }
+  45%  { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 9px #fbbf24); }
+  60%  { opacity: 0.7; color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+  100% { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 8px #fbbf24); }
+}
+
+.group:hover .bulb-flicker {
+  animation: bulb-flicker 0.7s ease forwards;
+}
+
+.bulb-glow {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.35) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.4s ease 0.3s, transform 0.4s ease 0.3s;
+  pointer-events: none;
+}
+
+.group:hover .bulb-glow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Home — warm orange bounce glow */
+@keyframes home-glow {
+  0%   { color: inherit; filter: none; transform: translateY(0); }
+  40%  { color: #f97316; filter: drop-shadow(0 0 7px #f97316); transform: translateY(-4px); }
+  70%  { color: #fb923c; filter: drop-shadow(0 0 4px #f97316); transform: translateY(-2px); }
+  100% { color: #f97316; filter: drop-shadow(0 0 6px #f97316); transform: translateY(-3px); }
+}
+.group:hover .home-glow { animation: home-glow 0.5s ease forwards; }
+.home-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(249,115,22,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+}
+.group:hover .home-halo { opacity: 1; transform: scale(1); }
+
+/* Explore — cyan compass spin glow */
+@keyframes explore-spin {
+  0%   { color: inherit; filter: none; transform: rotate(0deg); }
+  100% { color: #06b6d4; filter: drop-shadow(0 0 8px #06b6d4); transform: rotate(180deg); }
+}
+.group:hover .explore-spin {
+  animation: explore-spin 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+.explore-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(6,182,212,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
+}
+.group:hover .explore-halo { opacity: 1; transform: scale(1); }
+
+/* Festivals — pink↔amber color shift glow */
+@keyframes fest-glow {
+  0%   { color: inherit; filter: none; }
+  30%  { color: #ec4899; filter: drop-shadow(0 0 5px #ec4899); }
+  65%  { color: #f59e0b; filter: drop-shadow(0 0 9px #f59e0b); }
+  100% { color: #ec4899; filter: drop-shadow(0 0 6px #ec4899); }
+}
+.group:hover .fest-glow { animation: fest-glow 0.8s ease forwards; }
+
+/* Wishlist — red heartbeat pulse glow */
+@keyframes heart-glow {
+  0%   { color: inherit; filter: none; transform: scale(1); }
+  30%  { color: #ef4444; filter: drop-shadow(0 0 8px #ef4444); transform: scale(1.25); }
+  55%  { transform: scale(1.05); }
+  75%  { color: #ef4444; filter: drop-shadow(0 0 5px #ef4444); transform: scale(1.2); }
+  100% { color: #ef4444; filter: drop-shadow(0 0 6px #ef4444); transform: scale(1.1); }
+}
+.group:hover .heart-glow { animation: heart-glow 0.6s ease forwards; }
+
+/* Settings — emerald green shake glow */
+@keyframes account-shake {
+  0%   { color: inherit; filter: none; transform: rotate(0deg); }
+  15%  { transform: rotate(-14deg); }
+  30%  { color: #10b981; filter: drop-shadow(0 0 5px #10b981); transform: rotate(11deg); }
+  45%  { transform: rotate(-8deg); }
+  60%  { color: #10b981; filter: drop-shadow(0 0 8px #10b981); transform: rotate(6deg); }
+  75%  { transform: rotate(-3deg); }
+  100% { color: #10b981; filter: drop-shadow(0 0 6px #10b981); transform: rotate(0deg); }
+}
+.group:hover .account-shake { animation: account-shake 0.6s ease forwards; }
+.settings-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(16,185,129,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
+}
+.group:hover .settings-halo { opacity: 1; transform: scale(1); }

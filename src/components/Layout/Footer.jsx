@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
 	return (
@@ -7,15 +8,26 @@ const Footer = () => {
             /* © 2026 Code Trip - System Status: Optimal */
           </div>
           <div className="flex gap-6">
-            {['Privacy', 'Security', 'Terms'].map((link) => (
-              <a
-                key={link}
-                className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
-                href="#"
-              >
-                {link}
-              </a>
-            ))}
+            <a
+              className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
+              href="https://www.wififree.kr/index.do"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Public_Wifi
+            </a>
+            <a
+              className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
+              href="#"
+            >
+              Security
+            </a>
+            <Link
+              to="/info"
+              className="font-label text-xs uppercase tracking-widest text-on-secondary-container opacity-70 hover:opacity-100 hover:underline"
+            >
+              Info
+            </Link>
           </div>
         </footer>
 	);

@@ -4,13 +4,25 @@ import useAuthStore from '../../store/useAuthStore';
 import useWishlistStore from '../../store/useWishlistStore';
 
 const NAV_ITEMS = [
-  { icon: 'home', label: 'Home', path: '/', animation: 'group-hover:-translate-y-1' },
-  { icon: 'explore', label: 'Explore', path: '/explore', animation: 'group-hover:rotate-45' },
-  { 
-    icon: 'celebration', 
-    label: 'Festivals', 
-    path: '/festivals', 
-    animation: 'group-hover:scale-110',
+  {
+    icon: 'home',
+    label: 'Home',
+    path: '/',
+    animation: 'home-glow',
+    extra: <div className="home-halo" />,
+  },
+  {
+    icon: 'explore',
+    label: 'Explore',
+    path: '/explore',
+    animation: 'explore-spin',
+    extra: <div className="explore-halo" />,
+  },
+  {
+    icon: 'celebration',
+    label: 'Festivals',
+    path: '/festivals',
+    animation: 'fest-glow',
     extra: (
       <>
         <div className="firework-spark spark-1"></div>
@@ -18,22 +30,35 @@ const NAV_ITEMS = [
         <div className="firework-spark spark-3"></div>
         <div className="firework-spark spark-4"></div>
       </>
-    )
+    ),
   },
-  { 
-    icon: 'favorite', 
-    label: 'Wishlist', 
-    path: '/mypage', 
-    animation: 'group-hover:text-red-500',
+  {
+    icon: 'favorite',
+    label: 'Wishlist',
+    path: '/mypage',
+    animation: 'heart-glow',
     extra: (
       <>
         <span className="material-symbols-outlined heart-bubble heart-bubble-1 fill-1">favorite</span>
         <span className="material-symbols-outlined heart-bubble heart-bubble-2 fill-1">favorite</span>
         <span className="material-symbols-outlined heart-bubble heart-bubble-3 fill-1">favorite</span>
       </>
-    )
+    ),
   },
-  { icon: 'manage_accounts', label: 'UserInfo Edit', path: '/settings', animation: 'group-hover:scale-110 group-hover:-translate-y-0.5' },
+  {
+    icon: 'manage_accounts',
+    label: 'UserInfo Edit',
+    path: '/settings',
+    animation: 'account-shake',
+    extra: <div className="settings-halo" />,
+  },
+  {
+    icon: 'lightbulb',
+    label: 'Info',
+    path: '/info',
+    animation: 'bulb-flicker',
+    extra: <div className="bulb-glow" />,
+  },
 ];
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
