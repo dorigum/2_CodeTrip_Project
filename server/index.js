@@ -576,8 +576,11 @@ app.get('/api/board/posts', async (req, res) => {
   const offset = (pageNo - 1) * numOfRows;
 
   try {
-    const whereClause = keyword ? 'WHERE p.title LIKE ? OR p.content LIKE ?' : '';
-    const queryParams = keyword ? [`%${keyword}%`, `%${keyword}%`] : [];
+    const whereClause = keyword
+      ? `WHERE p.title LIKE ? OR p.content LIKE ?
+         OR EXISTS (SELECT 1 FROM board_post_tags t WHERE t.post_id = p.id AND t.title LIKE ?)`
+      : '';
+    const queryParams = keyword ? [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`] : [];
 
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM board_posts p ${whereClause}`,
