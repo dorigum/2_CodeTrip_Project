@@ -703,3 +703,7 @@ try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NU
 
 
 ---
+
+### 5. 날씨 엔진 정밀화 및 API 민감도 조정
+- **강수 데이터 판정 기준 강화**: Open-Meteo API의 특성을 고려하여, 기존에 포괄적으로 분류되던 기상 코드를 재배치. 이슬비(51~55), 비(61~65), 소나기(80~82) 코드를 모두 'Rainy' 카테고리로 통합하여 실시간 강수 상황에 대한 시스템 민감도 상향 조정 (src/api/weatherApi.js).
+- **추천 키워드 최적화**: 비 또는 눈이 오는 기상 상황에 맞춰 '미술관', '설경' 등의 적절한 여행 노드 키워드를 자동 매핑하도록 로직 고도화.
