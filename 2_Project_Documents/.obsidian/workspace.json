@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Project_Specification.md",
+                "file": "CHANGELOG.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Project_Specification"
+              "title": "CHANGELOG"
             }
           }
         ]
@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "dbfed928b8a0d5cb",
@@ -186,6 +185,7 @@
   },
   "active": "cabc9d870566ad19",
   "lastOpenFiles": [
+    "Project_Specification.md",
     "Project_Specification.md.bak",
     "Project_Specification.md.tmp.20388.1777251658439",
     "CHANGELOG.md",
@@ -194,7 +194,6 @@
     "Architecture_Analysis.md",
     "2_Code_Trip/환영합니다!.md",
     "2_Code_Trip",
-    "Project_Specification.md",
     "무제.canvas",
     "Project_Sketch.md",
     "img",
@@ -205,7 +204,6 @@
     "Project_Specification.md.tmp.24300.1776828847079",
     "Project_Specification.md.tmp.24300.1776828837185",
     "Project_Specification.md.tmp.24300.1776828820290",
-    "Project_Specification.md.tmp.24300.1776828800209",
     "프로젝트 기획 끄적끄적......✍🏻.md",
     "Project_Specification 1.md",
     "DESIGN.md",
