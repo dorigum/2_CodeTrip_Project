@@ -10,6 +10,9 @@ const TABS = [
   { key: 'travelComments', label: 'Travel Comments',  icon: 'chat' },
 ];
 
+const PAGE_SIZE = 5;
+const VALID_TABS = new Set(TABS.map(t => t.key));
+
 const formatDate = (str) => {
   const d = new Date(str);
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
@@ -22,7 +25,40 @@ const EmptyState = ({ message }) => (
   </div>
 );
 
-const VALID_TABS = new Set(TABS.map(t => t.key));
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-1 mt-6 font-mono">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="p-2 rounded-lg text-on-secondary-container hover:bg-surface-container-high disabled:opacity-30 transition-colors"
+      >
+        <span className="material-symbols-outlined text-sm">chevron_left</span>
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
+            page === currentPage
+              ? 'bg-primary text-white shadow-md scale-110'
+              : 'text-on-secondary-container hover:bg-surface-container-high'
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="p-2 rounded-lg text-on-secondary-container hover:bg-surface-container-high disabled:opacity-30 transition-colors"
+      >
+        <span className="material-symbols-outlined text-sm">chevron_right</span>
+      </button>
+    </div>
+  );
+};
 
 const MyActivity = () => {
   const navigate = useNavigate();
@@ -30,7 +66,11 @@ const MyActivity = () => {
   const { isLoggedIn } = useAuthStore();
 
   const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'posts';
-  const setActiveTab = (key) => setSearchParams({ tab: key }, { replace: true });
+  const currentPage = Math.max(1, parseInt(searchParams.get('page')) || 1);
+
+  const setActiveTab = (key) => setSearchParams({ tab: key, page: '1' }, { replace: true });
+  const setPage = (page) => setSearchParams({ tab: activeTab, page: String(page) }, { replace: true });
+
   const [posts, setPosts] = useState([]);
   const [boardComments, setBoardComments] = useState([]);
   const [travelComments, setTravelComments] = useState([]);
@@ -71,7 +111,18 @@ const MyActivity = () => {
     setTravelComments(prev => prev.filter(c => c.id !== id));
   };
 
+  const paginate = (data) => {
+    const totalPages = Math.ceil(data.length / PAGE_SIZE);
+    const safePage = Math.min(currentPage, Math.max(1, totalPages));
+    const items = data.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    return { items, totalPages, safePage };
+  };
+
   const counts = { posts: posts.length, boardComments: boardComments.length, travelComments: travelComments.length };
+
+  const { items: pagedPosts,          totalPages: postPages,    safePage: postPage }    = paginate(posts);
+  const { items: pagedBoardComments,  totalPages: bcPages,      safePage: bcPage }      = paginate(boardComments);
+  const { items: pagedTravelComments, totalPages: tcPages,      safePage: tcPage }      = paginate(travelComments);
 
   return (
     <div className="p-8 max-w-[1000px] mx-auto min-h-screen">
@@ -114,128 +165,137 @@ const MyActivity = () => {
         <>
           {/* Board Posts */}
           {activeTab === 'posts' && (
-            <div className="space-y-3">
-              {posts.length === 0 ? <EmptyState message="// no_posts_found" /> : posts.map(post => (
-                <div key={post.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
-                  <div className="flex items-start gap-4 p-5">
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to={`/board/${post.id}`}
-                        className="block font-headline font-bold text-on-surface hover:text-primary transition-colors truncate mb-1.5"
-                      >
-                        {post.title}
-                      </Link>
-                      <p className="text-xs text-slate-400 line-clamp-1 font-body mb-3">
-                        {post.content?.replace(/<[^>]+>/g, '') || ''}
-                      </p>
-                      <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">visibility</span>
-                          {post.view_count}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">comment</span>
-                          {post.comment_count}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">schedule</span>
-                          {formatDate(post.created_at)}
-                        </span>
+            <>
+              <div className="space-y-3">
+                {posts.length === 0 ? <EmptyState message="// no_posts_found" /> : pagedPosts.map(post => (
+                  <div key={post.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
+                    <div className="flex items-start gap-4 p-5">
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          to={`/board/${post.id}`}
+                          className="block font-headline font-bold text-on-surface hover:text-primary transition-colors truncate mb-1.5"
+                        >
+                          {post.title}
+                        </Link>
+                        <p className="text-xs text-slate-400 line-clamp-1 font-body mb-3">
+                          {post.content?.replace(/<[^>]+>/g, '') || ''}
+                        </p>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">visibility</span>
+                            {post.view_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">comment</span>
+                            {post.comment_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(post.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link
+                          to={`/board/write`}
+                          state={{ editPost: post }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-sm">edit</span>
+                        </Link>
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link
-                        to={`/board/write`}
-                        state={{ editPost: post }}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all"
-                      >
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </Link>
+                  </div>
+                ))}
+              </div>
+              <Pagination currentPage={postPage} totalPages={postPages} onPageChange={setPage} />
+            </>
+          )}
+
+          {/* Board Comments */}
+          {activeTab === 'boardComments' && (
+            <>
+              <div className="space-y-3">
+                {boardComments.length === 0 ? <EmptyState message="// no_comments_found" /> : pagedBoardComments.map(comment => (
+                  <div key={comment.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
+                    <div className="flex items-start gap-4 p-5">
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          to={`/board/${comment.post_id}`}
+                          className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
+                        >
+                          <span className="material-symbols-outlined text-xs">article</span>
+                          <span className="truncate max-w-xs">{comment.post_title}</span>
+                          <span className="material-symbols-outlined text-xs">open_in_new</span>
+                        </Link>
+                        <p className="text-sm text-slate-700 font-body leading-relaxed">
+                          <span className="text-outline font-mono">"</span>
+                          {comment.body}
+                          <span className="text-outline font-mono">"</span>
+                        </p>
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
+                          <span className="material-symbols-outlined text-xs">schedule</span>
+                          {formatDate(comment.created_at)}
+                        </span>
+                      </div>
                       <button
-                        onClick={() => handleDeletePost(post.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        onClick={() => handleDeleteBoardComment(comment.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 opacity-0 group-hover:opacity-100"
                       >
                         <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Board Comments */}
-          {activeTab === 'boardComments' && (
-            <div className="space-y-3">
-              {boardComments.length === 0 ? <EmptyState message="// no_comments_found" /> : boardComments.map(comment => (
-                <div key={comment.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
-                  <div className="flex items-start gap-4 p-5">
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to={`/board/${comment.post_id}`}
-                        className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
-                      >
-                        <span className="material-symbols-outlined text-xs">article</span>
-                        <span className="truncate max-w-xs">{comment.post_title}</span>
-                        <span className="material-symbols-outlined text-xs">open_in_new</span>
-                      </Link>
-                      <p className="text-sm text-slate-700 font-body leading-relaxed">
-                        <span className="text-outline font-mono">"</span>
-                        {comment.body}
-                        <span className="text-outline font-mono">"</span>
-                      </p>
-                      <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                        <span className="material-symbols-outlined text-xs">schedule</span>
-                        {formatDate(comment.created_at)}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteBoardComment(comment.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <span className="material-symbols-outlined text-sm">delete</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <Pagination currentPage={bcPage} totalPages={bcPages} onPageChange={setPage} />
+            </>
           )}
 
           {/* Travel Comments */}
           {activeTab === 'travelComments' && (
-            <div className="space-y-3">
-              {travelComments.length === 0 ? <EmptyState message="// no_travel_comments_found" /> : travelComments.map(comment => (
-                <div key={comment.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
-                  <div className="flex items-start gap-4 p-5">
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to={`/explore/${comment.content_id}`}
-                        className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
+            <>
+              <div className="space-y-3">
+                {travelComments.length === 0 ? <EmptyState message="// no_travel_comments_found" /> : pagedTravelComments.map(comment => (
+                  <div key={comment.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
+                    <div className="flex items-start gap-4 p-5">
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          to={`/explore/${comment.content_id}`}
+                          className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
+                        >
+                          <span className="material-symbols-outlined text-xs">location_on</span>
+                          <span className="truncate max-w-xs">{comment.title || comment.content_id}</span>
+                          <span className="material-symbols-outlined text-xs">open_in_new</span>
+                        </Link>
+                        <p className="text-sm text-slate-700 font-body leading-relaxed">
+                          <span className="text-outline font-mono">"</span>
+                          {comment.body}
+                          <span className="text-outline font-mono">"</span>
+                        </p>
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
+                          <span className="material-symbols-outlined text-xs">schedule</span>
+                          {formatDate(comment.created_at)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTravelComment(comment.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 opacity-0 group-hover:opacity-100"
                       >
-                        <span className="material-symbols-outlined text-xs">location_on</span>
-                        <span className="truncate max-w-xs">{comment.title || comment.content_id}</span>
-                        <span className="material-symbols-outlined text-xs">open_in_new</span>
-                      </Link>
-                      <p className="text-sm text-slate-700 font-body leading-relaxed">
-                        <span className="text-outline font-mono">"</span>
-                        {comment.body}
-                        <span className="text-outline font-mono">"</span>
-                      </p>
-                      <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                        <span className="material-symbols-outlined text-xs">schedule</span>
-                        {formatDate(comment.created_at)}
-                      </span>
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleDeleteTravelComment(comment.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <span className="material-symbols-outlined text-sm">delete</span>
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <Pagination currentPage={tcPage} totalPages={tcPages} onPageChange={setPage} />
+            </>
           )}
         </>
       )}
