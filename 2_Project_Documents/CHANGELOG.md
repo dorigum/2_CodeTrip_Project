@@ -635,3 +635,7 @@ try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NU
     - 사이드바가 접힌 상태(isCollapsed)에서 서브메뉴가 있는 항목(My Page, Info)에 호버 시 오른쪽으로 메뉴가 튀어나오는 플로팅 레이아웃 구현.
     - 펼쳐진 상태에서는 기존의 부드러운 아코디언 방식을 유지하여 공간 활용도와 UX 가시성을 동시 확보.
     - 접힘 상태 시 overflow-visible 처리를 통해 메뉴 잘림 현상 해결.
+
+### 3. 날씨 API 로직 세분화 및 슬롯머신 UI 개선
+- **날씨 코드 세분화**: Open-Meteo API의 WMO 날씨 코드를 기존에 포괄적으로 처리하던 방식에서 맑음, 구름 조금, 흐림, 안개 등으로 상세하게 분리하여 실시간 날씨 표시 정확도 향상 (src/api/weatherApi.js).
+- **메인 페이지 슬롯머신 UI 최적화**: 날씨 기반 뽑기 카드의 텍스트가 박스 영역을 벗어나 짤리던 현상을 해결하기 위해 제목 크기 축소(	ext-2xl -> 	ext-xl), 문구 간소화 및 min-w-0 flex-1 레이아웃 적용으로 가시성 개선 (src/pages/Home.jsx).

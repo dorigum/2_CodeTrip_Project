@@ -198,9 +198,9 @@ const Home = () => {
           <div className="bg-white p-8 rounded-3xl shadow-xl border border-outline-variant/10 relative overflow-hidden flex flex-col group">
             <div className="flex-1 flex flex-col space-y-5">
               <div className="flex justify-between items-start">
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-primary font-bold"><span className="material-symbols-outlined text-sm">casino</span><p className="text-[9px] uppercase tracking-widest font-label">SLOT MACHINE (WEATHER)</p></div>
-                  <h3 className="font-headline text-2xl font-bold text-slate-900 truncate">🎲날씨 기반 여행지 랜덤 뽑기: {weather.label}</h3>
+                  <h3 className="font-headline text-xl font-bold text-slate-900 truncate">🎲날씨 기반 뽑기: {weather.label}</h3>
                 </div>
                 <button onClick={handleSlotSpin} disabled={isSlotSpinning} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-md ${isSlotSpinning ? 'bg-primary text-white animate-pulse' : 'bg-slate-50 text-slate-900 hover:bg-primary hover:text-white'}`}><span className={`material-symbols-outlined ${isSlotSpinning ? 'animate-bounce' : ''}`}>casino</span></button>
               </div>
