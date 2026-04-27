@@ -39,26 +39,20 @@ const NAV_ITEMS = [
     animation: 'board-pop-flip',
     extra: null,
   },
-  {
-    icon: 'favorite',
-    label: 'Wishlist',
-    path: '/mypage',
-    animation: 'heart-glow',
-    extra: (
-      <>
-        <span className="material-symbols-outlined heart-bubble heart-bubble-1 fill-1">favorite</span>
-        <span className="material-symbols-outlined heart-bubble heart-bubble-2 fill-1">favorite</span>
-        <span className="material-symbols-outlined heart-bubble heart-bubble-3 fill-1">favorite</span>
-      </>
-    ),
-  },
-  {
-    icon: 'manage_accounts',
-    label: 'UserInfo Edit',
-    path: '/settings',
-    animation: 'account-shake',
-    extra: <div className="settings-halo" />,
-  },
+];
+
+const MY_PAGE_ITEM = {
+  icon: 'person',
+  label: 'My Page',
+  paths: ['/mypage', '/settings', '/my-activity'],
+  animation: 'account-shake',
+  extra: <div className="settings-halo" />,
+};
+
+const MY_PAGE_SUB_ITEMS = [
+  { icon: 'favorite', label: 'WishList', href: '/mypage', external: false },
+  { icon: 'history', label: 'My Activity', href: '/my-activity', external: false },
+  { icon: 'manage_accounts', label: 'UserInfo Edit', href: '/settings', external: false },
 ];
 
 const INFO_ITEM = {
@@ -76,6 +70,7 @@ const INFO_SUB_ITEMS = [
 ];
 
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
+  const [myPageSubOpen, setMyPageSubOpen] = useState(false);
   const [infoSubOpen, setInfoSubOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -85,7 +80,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
 
   const handleNavClick = (e, item) => {
-    const protectedPaths = ['/mypage', '/settings'];
+    const protectedPaths = ['/mypage', '/settings', '/my-activity'];
     if (protectedPaths.includes(item.path) && !isLoggedIn) {
       e.preventDefault();
       alert('회원만 이용 가능한 서비스입니다.');
@@ -145,6 +140,48 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
               </span>
             </Link>
           ))}
+
+          {/* My Page 아이템 + 서브메뉴 */}
+          <div>
+            <button
+              onClick={() => setMyPageSubOpen(prev => !prev)}
+              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 group ${
+                MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p))
+                  ? 'text-primary bg-primary/5 border-r-4 border-primary font-semibold'
+                  : 'text-slate-600 hover:text-primary hover:bg-slate-50'
+              }`}
+            >
+              <div className="relative flex items-center justify-center shrink-0">
+                <span className={`material-symbols-outlined ${MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p)) ? 'fill-1' : ''} transition-all duration-300 ${MY_PAGE_ITEM.animation}`}>
+                  {MY_PAGE_ITEM.icon}
+                </span>
+                {MY_PAGE_ITEM.extra}
+              </div>
+              <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
+                {MY_PAGE_ITEM.label}
+              </span>
+              {!isCollapsed && (
+                <span className={`material-symbols-outlined text-base ml-auto text-slate-400 transition-transform duration-300 ${myPageSubOpen ? 'rotate-180' : ''}`}>
+                  expand_more
+                </span>
+              )}
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ${myPageSubOpen && !isCollapsed ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`}>
+              {MY_PAGE_SUB_ITEMS.map((sub) => (
+                <Link
+                  key={sub.label}
+                  to={sub.href}
+                  onClick={(e) => handleNavClick(e, { path: sub.href })}
+                  className={`flex items-center gap-3 pl-14 pr-6 py-2 transition-all duration-200 group/sub ${
+                    isActive(sub.href) ? 'text-primary font-semibold' : 'text-slate-400 hover:text-primary hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px] shrink-0">{sub.icon}</span>
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-widest truncate">{sub.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
 
           {/* Info 아이템 + 서브메뉴 */}
           <div>
@@ -255,11 +292,21 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             <span className={`material-symbols-outlined text-2xl ${isActive(item.path) ? 'fill-1' : ''} transition-all duration-300 ${item.animation}`}>
               {item.icon}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-tighter">
-              {item.label === 'UserInfo Edit' ? 'Settings' : item.label}
-            </span>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">{item.label}</span>
           </Link>
         ))}
+        <Link
+          to="/mypage"
+          onClick={(e) => handleNavClick(e, { path: '/mypage' })}
+          className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all group ${
+            MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p)) ? 'text-primary' : 'text-slate-400'
+          }`}
+        >
+          <span className={`material-symbols-outlined text-2xl ${MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p)) ? 'fill-1' : ''} transition-all duration-300 ${MY_PAGE_ITEM.animation}`}>
+            {MY_PAGE_ITEM.icon}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-tighter">My Page</span>
+        </Link>
       </nav>
     </>
   );

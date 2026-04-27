@@ -78,3 +78,18 @@ export const toggleBoardCommentLike = async (id) => {
   );
   return data;
 };
+
+export const getMyBoardPosts = async () => {
+  const { data } = await axios.get('/api/my/board-posts', { headers: authHeader() });
+  return data;
+};
+
+export const getMyBoardComments = async () => {
+  const { data } = await axios.get('/api/my/board-comments', { headers: authHeader() });
+  return data;
+};
+
+export const getMyTravelComments = async () => {
+  const { data } = await axios.get('/api/my/travel-comments', { headers: authHeader() });
+  return data;
+};
