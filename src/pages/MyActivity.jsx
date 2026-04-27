@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { getMyBoardPosts, getMyBoardComments, getMyTravelComments, deleteBoardPost, deleteBoardComment } from '../api/boardApi';
 import { deleteTravelComment } from '../api/travelCommentApi';
@@ -22,11 +22,15 @@ const EmptyState = ({ message }) => (
   </div>
 );
 
+const VALID_TABS = new Set(TABS.map(t => t.key));
+
 const MyActivity = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isLoggedIn } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState('posts');
+  const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'posts';
+  const setActiveTab = (key) => setSearchParams({ tab: key }, { replace: true });
   const [posts, setPosts] = useState([]);
   const [boardComments, setBoardComments] = useState([]);
   const [travelComments, setTravelComments] = useState([]);
