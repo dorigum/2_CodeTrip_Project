@@ -23,6 +23,7 @@ const WishlistModal = ({ isOpen, onClose, travelData }) => {
       folder_id: folderId
     };
     await toggleWishlist(travelInfo);
+    alert('위시리스트에 추가되었습니다!');
     onClose();
   };
 

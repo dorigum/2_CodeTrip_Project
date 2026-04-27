@@ -35,9 +35,30 @@ export const getLocationName = async (lat, lon) => {
 };
 
 const parseWeatherCode = (code) => {
-  if (code <= 3) return { label: 'Sunny', icon: 'sunny', keyword: '풍경' };
-  if (code <= 48) return { label: 'Cloudy', icon: 'cloud', keyword: '산책' };
-  if (code <= 67) return { label: 'Rainy', icon: 'rainy', keyword: '박물관' };
-  if (code <= 77) return { label: 'Snowy', icon: 'ac_unit', keyword: '설경' };
+  // WMO Weather interpretation codes (WW)
+  if (code === 0) return { label: 'Sunny', icon: 'sunny', keyword: '풍경' };
+  if (code === 1 || code === 2) return { label: 'Partly Cloudy', icon: 'partly_cloudy_day', keyword: '산책' };
+  if (code === 3) return { label: 'Cloudy', icon: 'cloud', keyword: '카페' };
+  if (code === 45 || code === 48) return { label: 'Foggy', icon: 'foggy', keyword: '드라이브' };
+  
+  // 비 관련 코드 통합 (이슬비, 비, 소나기 포함)
+  // 51, 53, 55: Drizzle
+  // 61, 63, 65: Rain
+  // 66, 67: Freezing Rain
+  // 80, 81, 82: Rain showers
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+    return { label: 'Rainy', icon: 'rainy', keyword: '미술관' };
+  }
+  
+  // 눈 관련 코드
+  if (code >= 71 && code <= 77 || code === 85 || code === 86) {
+    return { label: 'Snowy', icon: 'ac_unit', keyword: '설경' };
+  }
+  
+  // 강력한 폭풍우 (뇌우)
+  if (code >= 95 && code <= 99) {
+    return { label: 'Stormy', icon: 'thunderstorm', keyword: '실내놀이터' };
+  }
+  
   return { label: 'Clear', icon: 'sunny', keyword: '여행' };
 };

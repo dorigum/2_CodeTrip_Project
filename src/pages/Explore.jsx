@@ -25,6 +25,7 @@ const Explore = () => {
     selectedThemes, toggleTheme,
     posts, loading, totalCount, currentPage,
     keyword, clearKeyword,
+    sort, setSort,
     initialized,
     fetchPosts, applyFilter, changePage,
   } = useExploreStore();
@@ -48,6 +49,7 @@ const Explore = () => {
       try {
         setWishlistLoadingId(postId);
         await toggleWishlist(post);
+        alert('위시리스트에서 삭제되었습니다.');
       } catch (error) {
         console.error('Wishlist error:', error);
       } finally {
@@ -243,6 +245,24 @@ const Explore = () => {
 
         {/* Content */}
         <div className="col-span-12 lg:col-span-9 xl:col-span-10">
+          {/* Sort Bar */}
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-[11px] font-mono text-outline">
+              {loading ? '// loading...' : `// ${totalCount.toLocaleString()} results`}
+            </span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10 cursor-pointer uppercase font-bold tracking-tighter"
+            >
+              <option value="default">DEFAULT_NODES</option>
+              <option value="createdtime_desc">CREATED_NEWEST</option>
+              <option value="createdtime_asc">CREATED_OLDEST</option>
+              <option value="modifiedtime_desc">MODIFIED_NEWEST</option>
+              <option value="modifiedtime_asc">MODIFIED_OLDEST</option>
+            </select>
+          </div>
+
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />

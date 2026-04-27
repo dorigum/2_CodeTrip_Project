@@ -1,63 +1,86 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getFestivalList } from '../api/travelApi';
-import { getDetailIntro } from '../api/travelInfoApi';
+import useWishlistStore from '../store/useWishlistStore';
+import useAuthStore from '../store/useAuthStore';
+import WishlistModal from '../components/WishlistModal';
 
 const Festivals = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'date_asc', 'date_desc'
   const [totalPages, setTotalPages] = useState(0);
   const ITEMS_PER_PAGE = 8;
+
+  // URL 파라미터에서 현재 상태 읽기
+  const page = parseInt(searchParams.get('page')) || 1;
+  const sortOrder = searchParams.get('sort') || 'default';
+
+  const { isLoggedIn } = useAuthStore();
+  const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
+  
+  const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
+  const [selectedTravel, setSelectedTravel] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchFestivals = async () => {
       setLoading(true);
-      const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
-      let items = data.items || [];
-      
-      // 날짜 정보가 없는 항목들에 대해 상세 정보를 추가로 호출하여 보정 (Hydration)
-      const hydratedItems = await Promise.all(items.map(async (item) => {
-        if (!item.eventstartdate || String(item.eventstartdate).length < 8) {
-          try {
-            // 상세 페이지에서 사용하는 것과 동일한 API 호출
-            const intro = await getDetailIntro(item.contentid, '15');
-            if (intro) {
-              return {
-                ...item,
-                eventstartdate: intro.eventstartdate || intro.eventStartDate || item.eventstartdate,
-                eventenddate: intro.eventenddate || intro.eventEndDate || item.eventenddate
-              };
-            }
-          } catch (e) { console.warn('Hydration failed for:', item.contentid); }
-        }
-        return item;
-      }));
-
-      // hydration 후 클라이언트에서 재정렬 (hydrate로 채워진 날짜 반영)
-      if (sortOrder === 'date_asc' || sortOrder === 'date_desc') {
-        const getDate = (item) => {
-          const d = String(item.eventstartdate || '').trim();
-          return /^\d{8}$/.test(d) ? d : '';
-        };
-        hydratedItems.sort((a, b) => {
-          const da = getDate(a);
-          const db = getDate(b);
-          if (!da && !db) return 0;
-          if (!da) return 1;
-          if (!db) return -1;
-          return sortOrder === 'date_asc' ? da.localeCompare(db) : db.localeCompare(da);
-        });
+      try {
+        const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
+        setFestivals(data.items || []);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Fetch festivals failed:', err);
+      } finally {
+        setLoading(false);
       }
-
-      setFestivals(hydratedItems);
-      setTotalPages(data.totalPages || 0);
-      setLoading(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     fetchFestivals();
   }, [page, sortOrder]);
+
+  useEffect(() => {
+    if (isLoggedIn && !wishlistInitialized) {
+      initWishlist();
+    }
+  }, [isLoggedIn, wishlistInitialized]);
+
+  const handlePageChange = (newPage) => {
+    setSearchParams({ page: newPage, sort: sortOrder });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSortChange = (newSort) => {
+    setSearchParams({ page: 1, sort: newSort }); // 정렬 변경 시 1페이지로
+  };
+
+  const handleHeartToggle = async (e, post) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      return;
+    }
+
+    const postId = String(post.contentid);
+    if (wishlistLoadingId === postId) return;
+
+    if (wishlistIds.has(postId)) {
+      try {
+        setWishlistLoadingId(postId);
+        await toggleWishlist(post);
+        alert('위시리스트에서 삭제되었습니다.');
+      } catch (error) {
+        console.error('Wishlist error:', error);
+      } finally {
+        setWishlistLoadingId(null);
+      }
+    } else {
+      setSelectedTravel(post);
+      setIsModalOpen(true);
+    }
+  };
 
   return (
     <div className="p-6 lg:p-10 space-y-8 flex-1 flex flex-col bg-background">
@@ -72,14 +95,11 @@ const Festivals = () => {
           <p className="text-slate-500 font-body text-sm">대한민국 곳곳에서 열리는 활기찬 축제 데이터를 탐색하세요.</p>
         </div>
 
-        {/* 정렬 드롭다운 (위시리스트 디자인 적용) */}
+        {/* 정렬 드롭다운 */}
         <div className="flex items-center gap-3 shrink-0">
           <select 
             value={sortOrder}
-            onChange={(e) => {
-              setSortOrder(e.target.value);
-              setPage(1); // 정렬 변경 시 1페이지로 리셋
-            }}
+            onChange={(e) => handleSortChange(e.target.value)}
             className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10 cursor-pointer uppercase font-bold tracking-tighter"
           >
             <option value="default">DEFAULT_NODES</option>
@@ -104,48 +124,62 @@ const Festivals = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {festivals.map((fest) => (
-              <Link 
+              <div 
                 key={fest.contentid} 
-                to={`/explore/${fest.contentid}`}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group border border-outline-variant/10 flex flex-col"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group border border-outline-variant/10 flex flex-col relative"
               >
-                <div className="aspect-[4/3] overflow-hidden relative bg-slate-100">
-                  <img 
-                    src={fest.firstimage || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'} 
-                    alt={fest.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'; }}
-                  />
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200/50 uppercase font-mono tracking-tight flex items-center gap-1.5 shadow-lg z-10">
-                    <span className="material-symbols-outlined text-[12px] text-primary">calendar_today</span>
-                    <span>
-                      {fest.eventstartdate && String(fest.eventstartdate).length >= 8 ? (
-                        `${String(fest.eventstartdate).slice(4, 6)}.${String(fest.eventstartdate).slice(6, 8)} - ${
-                          fest.eventenddate && String(fest.eventenddate).length >= 8
-                            ? `${String(fest.eventenddate).slice(4, 6)}.${String(fest.eventenddate).slice(6, 8)}`
-                            : '진행중'
-                        }`
-                      ) : '날짜정보없음'}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <h3 className="font-headline font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-1">{fest.title}</h3>
-                    <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                      <span className="material-symbols-outlined text-sm">location_on</span>
-                      <p className="truncate font-body">{fest.addr1 || '전국 각지'}</p>
+                <button 
+                  onClick={(e) => handleHeartToggle(e, fest)}
+                  className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-75 ${
+                    wishlistIds.has(String(fest.contentid)) 
+                      ? 'bg-red-50 text-red-500' 
+                      : 'bg-white/90 text-slate-400 hover:text-red-500'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-lg ${wishlistIds.has(String(fest.contentid)) ? 'fill-1' : ''}`}>
+                    favorite
+                  </span>
+                </button>
+
+                <Link to={`/explore/${fest.contentid}`} className="flex flex-col h-full">
+                  <div className="aspect-[4/3] overflow-hidden relative bg-slate-100">
+                    <img 
+                      src={fest.firstimage || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'} 
+                      alt={fest.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=2070'; }}
+                    />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200/50 uppercase font-mono tracking-tight flex items-center gap-1.5 shadow-lg z-10">
+                      <span className="material-symbols-outlined text-[12px] text-primary">calendar_today</span>
+                      <span>
+                        {fest.eventstartdate && String(fest.eventstartdate).length >= 8 ? (
+                          `${String(fest.eventstartdate).slice(4, 6)}.${String(fest.eventstartdate).slice(6, 8)} - ${
+                            fest.eventenddate && String(fest.eventenddate).length >= 8
+                              ? `${String(fest.eventenddate).slice(4, 6)}.${String(fest.eventenddate).slice(6, 8)}`
+                              : '진행중'
+                          }`
+                        ) : '날짜정보없음'}
+                      </span>
                     </div>
                   </div>
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-50">
-                    <span className="text-[10px] text-slate-300 font-mono uppercase tracking-tighter">type: 15_fest</span>
-                    <div className="flex items-center gap-1 text-primary group-hover:gap-2 transition-all">
-                      <span className="text-[10px] font-bold tracking-widest font-label uppercase">Explore</span>
-                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <h3 className="font-headline font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-1">{fest.title}</h3>
+                      <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                        <span className="material-symbols-outlined text-sm">location_on</span>
+                        <p className="truncate font-body">{fest.addr1 || '전국 각지'}</p>
+                      </div>
+                    </div>
+                    <div className="pt-2 flex items-center justify-between border-t border-slate-50">
+                      <span className="text-[10px] text-slate-300 font-mono uppercase tracking-tighter">type: 15_fest</span>
+                      <div className="flex items-center gap-1 text-primary group-hover:gap-2 transition-all">
+                        <span className="text-[10px] font-bold tracking-widest font-label uppercase">Explore</span>
+                        <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
         )}
@@ -155,7 +189,7 @@ const Festivals = () => {
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-10 pb-6">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(Math.max(1, page - 1))}
             disabled={page === 1}
             className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
           >
@@ -164,15 +198,14 @@ const Festivals = () => {
           
           <div className="flex items-center gap-1">
             {[...Array(Math.min(5, totalPages))].map((_, i) => {
-              // 현재 페이지 주변의 번호들을 보여주는 로직 (간소화)
-              let pageNum = page <= 3 ? i + 1 : page + i - 2;
-              if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+              let pageNum = page <= 3 ? i + 1 : (page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i);
+              if (pageNum > totalPages) pageNum = totalPages;
               if (pageNum <= 0) return null;
 
               return (
                 <button
                   key={pageNum}
-                  onClick={() => setPage(pageNum)}
+                  onClick={() => handlePageChange(pageNum)}
                   className={`w-10 h-10 rounded-lg font-mono text-sm transition-all ${
                     page === pageNum 
                       ? 'bg-primary text-white font-bold shadow-lg shadow-primary/20' 
@@ -186,7 +219,7 @@ const Festivals = () => {
           </div>
 
           <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
           >
@@ -194,6 +227,15 @@ const Festivals = () => {
           </button>
         </div>
       )}
+
+      <WishlistModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedTravel(null);
+        }}
+        travelData={selectedTravel}
+      />
     </div>
   );
 };
