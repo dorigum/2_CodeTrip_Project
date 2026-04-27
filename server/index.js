@@ -1,7 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
@@ -88,7 +88,8 @@ const pool = mysql.createPool({
   dateStrings: true
 });
 
-const initDB = async () => {
+const initDB = async (retries = 10, delay = 5000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
   try {
     const conn = await pool.getConnection();
     console.log('✅ 데이터베이스 연결 성공');
@@ -223,8 +224,17 @@ const initDB = async () => {
 
     console.log('✅ 테이블 초기화 완료');
     conn.release();
+    return;
   } catch (err) {
-    console.error('❌ DB 초기화 실패:', err.message);
+    console.error(`❌ DB 연결 실패 (${attempt}/${retries}): ${err.message}`);
+    if (attempt < retries) {
+      console.log(`⏳ ${delay / 1000}초 후 재시도...`);
+      await new Promise(r => setTimeout(r, delay));
+    } else {
+      console.error('❌ DB 초기화 최종 실패. 서버를 종료합니다.');
+      process.exit(1);
+    }
+  }
   }
 };
 initDB();
@@ -1189,5 +1199,7 @@ app.post('/api/board/comments/:id/like', authenticateToken, async (req, res) => 
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
