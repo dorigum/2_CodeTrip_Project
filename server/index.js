@@ -231,6 +231,7 @@ const fetchFestivals = async (numOfRows = 1000) => {
 };
 
 let allTravelItems = null;
+let sortedTravelItems = {};
 let mainTopImages = null;
 let festivalItems = null;
 
@@ -239,7 +240,21 @@ const initTravelCache = async () => {
     console.log('⏳ 여행 데이터 캐시 로딩 중...');
     const result = await fetchCombination({ region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O' });
     allTravelItems = result.items;
-    
+
+    // 정렬 변형을 미리 계산해 캐싱 (객체 참조 공유 → 추가 메모리 최소화)
+    const cmp = (field, desc) => (a, b) => {
+      const va = String(a[field] || '0');
+      const vb = String(b[field] || '0');
+      return desc ? vb.localeCompare(va) : va.localeCompare(vb);
+    };
+    sortedTravelItems = {
+      createdtime_desc:  [...allTravelItems].sort(cmp('createdtime',  true)),
+      createdtime_asc:   [...allTravelItems].sort(cmp('createdtime',  false)),
+      modifiedtime_desc: [...allTravelItems].sort(cmp('modifiedtime', true)),
+      modifiedtime_asc:  [...allTravelItems].sort(cmp('modifiedtime', false)),
+    };
+    console.log('✅ 정렬 캐시 완료 (createdtime/modifiedtime × asc/desc)');
+
     mainTopImages = allTravelItems
       .filter(item => item.firstimage)
       .slice(0, 100)
@@ -468,8 +483,10 @@ app.get('/api/travel', (req, res) => {
   const keyword = (req.query.keyword || '').toLowerCase();
   const regions = (req.query.regions || '').split(',').filter(Boolean);
   const themes = (req.query.themes || '').split(',').filter(Boolean);
+  const sort = req.query.sort || 'default';
 
-  let filtered = allTravelItems;
+  const base = sortedTravelItems[sort] ?? allTravelItems;
+  let filtered = base;
   if (regions.length) filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
   if (themes.length) filtered = filtered.filter(item => {
     const typeId = String(item.contenttypeid || item.contentTypeId || '');
@@ -584,8 +601,6 @@ app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- Board Routes ---
-
 // --- Wishlist Core Routes ---
 app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
   try {
@@ -664,7 +679,7 @@ app.put('/api/wishlist/move', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
+// --- Board Routes ---
 
 // 게시글 목록
 app.get('/api/board/posts', async (req, res) => {

@@ -14,7 +14,7 @@ const normalizeItems = (items) => {
 };
 
 // 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
-export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '', sort = 'default' } = {}) => {
   try {
     const response = await axios.get('/api/travel', {
       params: {
@@ -22,6 +22,7 @@ export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1,
         themes: themes.join(','),
         pageNo,
         numOfRows,
+        sort,
         ...(keyword ? { keyword } : {}),
       },
     });
