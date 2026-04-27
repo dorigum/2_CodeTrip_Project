@@ -351,17 +351,43 @@ const TravelDetail = () => {
 
       <div className="px-8 lg:px-12 py-10 grid grid-cols-12 gap-8 max-w-[1600px] mx-auto">
         <div className="col-span-12 lg:col-span-8 space-y-10">
-          <div className="bg-white p-8 rounded-2xl border border-outline-variant/10 shadow-sm font-mono text-sm leading-relaxed">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-50 pb-4">
+          <div className="bg-white rounded-2xl border border-outline-variant/10 shadow-sm font-mono text-sm leading-relaxed overflow-hidden">
+            <div className="flex items-center gap-2 px-8 py-5 border-b border-slate-50">
               <span className="w-2 h-2 rounded-full bg-primary" />
               <p className="text-primary font-bold uppercase tracking-tighter">node_description.log</p>
             </div>
-            {common.overview ? (
-              <div className="text-slate-600 leading-loose" dangerouslySetInnerHTML={{ __html: common.overview }} />
-            ) : (
-              <p className="text-slate-400 italic">// No description available.</p>
-            )}
+            <div className="px-8 py-5">
+              {common.overview ? (
+                <div className="text-slate-600 leading-loose" dangerouslySetInnerHTML={{ __html: common.overview }} />
+              ) : (
+                <p className="text-slate-400 italic">// No description available.</p>
+              )}
+            </div>
           </div>
+
+          {infoItems.length > 0 && (
+            <div className="bg-white rounded-2xl border border-outline-variant/10 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-8 py-5 border-b border-slate-50">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <p className="text-primary font-bold uppercase tracking-tighter font-mono text-sm">detail_info.json</p>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {infoItems
+                  .filter(item => item.infoname && item.infotext && String(item.infotext).trim())
+                  .map((item, i) => (
+                    <div key={i} className="flex gap-4 px-8 py-3.5 hover:bg-slate-50/60 transition-colors">
+                      <span className="text-[11px] font-mono font-bold text-slate-400 uppercase shrink-0 w-36 pt-0.5">
+                        {item.infoname}
+                      </span>
+                      <span
+                        className="text-sm text-slate-700 leading-relaxed font-body flex-1"
+                        dangerouslySetInnerHTML={{ __html: String(item.infotext) }}
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {images.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
@@ -551,6 +577,10 @@ const TravelDetail = () => {
                     draggable={false}
                     zoomable={false}
                     scrollwheel={false}
+                    onCreate={(map) => {
+                      map.relayout();
+                      map.setCenter(new window.kakao.maps.LatLng(Number(common.mapy), Number(common.mapx)));
+                    }}
                   >
                     <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
                   </Map>

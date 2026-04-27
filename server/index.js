@@ -92,9 +92,39 @@ const initDB = async () => {
     const conn = await pool.getConnection();
     console.log('✅ 데이터베이스 연결 성공');
     
-    await conn.query('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, profile_img VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        email VARCHAR(255) NOT NULL UNIQUE, 
+        password VARCHAR(255) NOT NULL, 
+        name VARCHAR(100) NOT NULL, 
+        profile_img VARCHAR(255), 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        content_id VARCHAR(50) NOT NULL, 
+        user_id INT, 
+        nickname VARCHAR(100) NOT NULL DEFAULT "익명", 
+        body TEXT NOT NULL, 
+        likes INT NOT NULL DEFAULT 0, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        INDEX idx_content_id (content_id)
+      )
+    `);
+      
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comment_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        comment_id INT NOT NULL, 
+        user_id INT NOT NULL, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        UNIQUE KEY uq_comment_user (comment_id, user_id)
+      )
+    `);
     
     await conn.query(`
       CREATE TABLE IF NOT EXISTS wishlists (
@@ -206,9 +236,8 @@ const fetchFestivals = async (numOfRows = 1000) => {
     MobileOS: 'ETC',
     MobileApp: 'CodeTrip',
     _type: 'json',
-    arrange: 'A',
-    listYN: 'Y',
-    eventStartDate: '20250101'
+    arrange: 'O',
+    eventStartDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
   };
 
   try {
@@ -245,6 +274,7 @@ const fetchFestivals = async (numOfRows = 1000) => {
 };
 
 let allTravelItems = null;
+let sortedTravelItems = {};
 let mainTopImages = null;
 let festivalItems = null;
 
@@ -253,42 +283,35 @@ const initTravelCache = async () => {
     console.log('⏳ 여행 데이터 캐시 로딩 중...');
     const result = await fetchCombination({ region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O' });
     allTravelItems = result.items;
-    
+
+    // 정렬 변형을 미리 계산해 캐싱 (객체 참조 공유 → 추가 메모리 최소화)
+    const cmp = (field, desc) => (a, b) => {
+      const va = String(a[field] || '0');
+      const vb = String(b[field] || '0');
+      return desc ? vb.localeCompare(va) : va.localeCompare(vb);
+    };
+    sortedTravelItems = {
+      createdtime_desc:  [...allTravelItems].sort(cmp('createdtime',  true)),
+      createdtime_asc:   [...allTravelItems].sort(cmp('createdtime',  false)),
+      modifiedtime_desc: [...allTravelItems].sort(cmp('modifiedtime', true)),
+      modifiedtime_asc:  [...allTravelItems].sort(cmp('modifiedtime', false)),
+    };
+    console.log('✅ 정렬 캐시 완료 (createdtime/modifiedtime × asc/desc)');
+
     mainTopImages = allTravelItems
       .filter(item => item.firstimage)
       .slice(0, 100)
       .map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
 
-    const filteredFestivals = allTravelItems.filter(item => {
-      const typeId = String(item.contenttypeid || item.contentTypeId || '');
-      return item.firstimage && typeId === '15';
-    });
-
     console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
     
     // 날짜 정보를 정규화하여 저장
-    const normalizedDirect = directFestivals.map(f => ({
+    festivalItems = directFestivals.map(f => ({
       ...f,
       eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
     }));
 
-    // 날짜가 있는 데이터를 우선적으로 배치
-    const combined = [...normalizedDirect];
-    const existingIds = new Set(combined.map(f => String(f.contentid)));
-    
-    // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
-    filteredFestivals.forEach(f => {
-      const fid = String(f.contentid || f.contentId);
-      if (!existingIds.has(fid)) {
-        combined.push({
-          ...f,
-          eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
-        });
-      }
-    });
-
-    festivalItems = combined;
     console.log(`✅ 캐시 완료: 총 ${allTravelItems.length}개 항목 (축제: ${festivalItems.length}개)`);
   } catch (err) { 
     console.error('❌ 캐시 로딩 실패:', err.message); 
@@ -515,8 +538,10 @@ app.get('/api/travel', (req, res) => {
   const keyword = (req.query.keyword || '').toLowerCase();
   const regions = (req.query.regions || '').split(',').filter(Boolean);
   const themes = (req.query.themes || '').split(',').filter(Boolean);
+  const sort = req.query.sort || 'default';
 
-  let filtered = allTravelItems;
+  const base = sortedTravelItems[sort] ?? allTravelItems;
+  let filtered = base;
   if (regions.length) filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
   if (themes.length) filtered = filtered.filter(item => {
     const typeId = String(item.contenttypeid || item.contentTypeId || '');
@@ -630,8 +655,6 @@ app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// --- Board Routes ---
 
 // --- Wishlist Core Routes ---
 app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
@@ -751,6 +774,7 @@ app.delete('/api/wishlist/notes/:id', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Board Routes ---
 
 // 게시글 목록
 app.get('/api/board/posts', async (req, res) => {

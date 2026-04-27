@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getFestivalList } from '../api/travelApi';
-import { getDetailIntro } from '../api/travelInfoApi';
 
 const Festivals = () => {
   const [festivals, setFestivals] = useState([]);
@@ -16,42 +15,8 @@ const Festivals = () => {
       setLoading(true);
       const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
       let items = data.items || [];
-      
-      // 날짜 정보가 없는 항목들에 대해 상세 정보를 추가로 호출하여 보정 (Hydration)
-      const hydratedItems = await Promise.all(items.map(async (item) => {
-        if (!item.eventstartdate || String(item.eventstartdate).length < 8) {
-          try {
-            // 상세 페이지에서 사용하는 것과 동일한 API 호출
-            const intro = await getDetailIntro(item.contentid, '15');
-            if (intro) {
-              return {
-                ...item,
-                eventstartdate: intro.eventstartdate || intro.eventStartDate || item.eventstartdate,
-                eventenddate: intro.eventenddate || intro.eventEndDate || item.eventenddate
-              };
-            }
-          } catch (e) { console.warn('Hydration failed for:', item.contentid); }
-        }
-        return item;
-      }));
 
-      // hydration 후 클라이언트에서 재정렬 (hydrate로 채워진 날짜 반영)
-      if (sortOrder === 'date_asc' || sortOrder === 'date_desc') {
-        const getDate = (item) => {
-          const d = String(item.eventstartdate || '').trim();
-          return /^\d{8}$/.test(d) ? d : '';
-        };
-        hydratedItems.sort((a, b) => {
-          const da = getDate(a);
-          const db = getDate(b);
-          if (!da && !db) return 0;
-          if (!da) return 1;
-          if (!db) return -1;
-          return sortOrder === 'date_asc' ? da.localeCompare(db) : db.localeCompare(da);
-        });
-      }
-
-      setFestivals(hydratedItems);
+      setFestivals(items);
       setTotalPages(data.totalPages || 0);
       setLoading(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });

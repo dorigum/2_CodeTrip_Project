@@ -21,8 +21,8 @@ const fetchViaProxy = async (service, params = {}) => {
   }
 };
 
-// 서버 통합 조회 (이미 우리 서버 API를 사용 중이므로 유지)
-export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
+export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '', sort = 'default' } = {}) => {
   try {
     const response = await axios.get('/api/travel', {
       params: {
@@ -30,11 +30,13 @@ export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1,
         themes: themes.join(','),
         pageNo,
         numOfRows,
+        sort,
         ...(keyword ? { keyword } : {}),
       },
     });
     return response.data;
-  } catch {
+  } catch (error) {
+    console.error('API Error:', error);
     return { items: [], totalCount: 0 };
   }
 };
