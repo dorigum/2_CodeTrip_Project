@@ -551,6 +551,10 @@ const TravelDetail = () => {
                     draggable={false}
                     zoomable={false}
                     scrollwheel={false}
+                    onCreate={(map) => {
+                      map.relayout();
+                      map.setCenter(new window.kakao.maps.LatLng(Number(common.mapy), Number(common.mapx)));
+                    }}
                   >
                     <MapMarker position={{ lat: Number(common.mapy), lng: Number(common.mapx) }} />
                   </Map>
