@@ -131,7 +131,23 @@ try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NU
 - ESLint `no-unused-vars` / `no-empty` 규칙에 따라 `catch (e) {}` → `catch { /* column already exists */ }` 형식으로 작성.
 
 ---
+## 2026-04-27 - 원격 브랜치 통합 및 기능 고도화 (최종본)
 
+### 1. 원격 브랜치(feature/explore_sort, feature/mypage) 병합
+- 탐색 페이지 최신 정렬 엔진 및 My Activity(활동 로그) 대시보드 통합.
+- server/index.js, SideBar.jsx 등 주요 파일의 충돌을 원격 코드 기반으로 해결.
+
+### 2. 위시리스트 폴더별 메모 및 체크리스트 추가
+- 폴더별 여행 준비물 리스트(Checklist) 및 자유 메모(Memo) 작성 기능 추가 (wishlist_notes).
+- 날짜 데이터 전송 시 발생하던 '하루 밀림' 현상을 문자열 기반(YYYY-MM-DD) 파이프라인으로 교체하여 완벽 해결.
+
+### 3. 사이드바 및 UX 혁신
+- **플로팅 메뉴(Popover)**: 사이드바 접힘 시 서브메뉴가 우측으로 노출되는 하이브리드 UI 고도화.
+- **교통 예매 허브**: KTX, SRT, 고속버스 공식 예매 사이트 연동 섹션을 Info 페이지와 사이드바에 추가.
+- **날씨 엔진 정밀화**: WMO 코드를 세분화(맑음, 구름조금, 흐림, 안개 등)하여 실시간 기상 상태 표시 정확도 개선.
+- **페이지 상태 유지**: 행사 정보 페이지에서 상세 조회 후 뒤로 가기 시 이전 상태(페이지 번호 및 정렬 상태) 자동 복원 기능 연동.
+
+---
 ## 2026-04-26 — 프로젝트 문서화, Info 페이지 신설, 사이드바 애니메이션 고도화
 
 ### 1. 프로젝트 구조 분석 문서 작성 (`Architecture_Analysis.md`)
@@ -687,19 +703,3 @@ try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NU
 
 
 ---
-
-## 2026-04-27 - 원격 브랜치 통합 및 기능 고도화 (최종본)
-
-### 1. 원격 브랜치(feature/explore_sort, feature/mypage) 병합
-- 탐색 페이지 최신 정렬 엔진 및 My Activity(활동 로그) 대시보드 통합.
-- server/index.js, SideBar.jsx 등 주요 파일의 충돌을 원격 코드 기반으로 해결.
-
-### 2. 위시리스트 폴더별 메모 및 체크리스트 추가
-- 폴더별 여행 준비물 리스트(Checklist) 및 자유 메모(Memo) 작성 기능 추가 (wishlist_notes).
-- 날짜 데이터 전송 시 발생하던 '하루 밀림' 현상을 문자열 기반(YYYY-MM-DD) 파이프라인으로 교체하여 완벽 해결.
-
-### 3. 사이드바 및 UX 혁신
-- **플로팅 메뉴(Popover)**: 사이드바 접힘 시 서브메뉴가 우측으로 노출되는 하이브리드 UI 고도화.
-- **교통 예매 허브**: KTX, SRT, 고속버스 공식 예매 사이트 연동 섹션을 Info 페이지와 사이드바에 추가.
-- **날씨 엔진 정밀화**: WMO 코드를 세분화(맑음, 구름조금, 흐림, 안개 등)하여 실시간 기상 상태 표시 정확도 개선.
-- **페이지 상태 유지**: 행사 정보 페이지에서 상세 조회 후 뒤로 가기 시 이전 상태(페이지 번호 및 정렬 상태) 자동 복원 기능 연동.
