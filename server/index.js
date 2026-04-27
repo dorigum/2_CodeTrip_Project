@@ -222,9 +222,8 @@ const fetchFestivals = async (numOfRows = 1000) => {
     MobileOS: 'ETC',
     MobileApp: 'CodeTrip',
     _type: 'json',
-    arrange: 'A',
-    listYN: 'Y',
-    eventStartDate: '20250101'
+    arrange: 'O',
+    eventStartDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
   };
 
   try {
@@ -290,10 +289,10 @@ const initTravelCache = async () => {
       .slice(0, 100)
       .map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
 
-    const filteredFestivals = allTravelItems.filter(item => {
-      const typeId = String(item.contenttypeid || item.contentTypeId || '');
-      return item.firstimage && typeId === '15';
-    });
+    // const filteredFestivals = allTravelItems.filter(item => {
+    //   const typeId = String(item.contenttypeid || item.contentTypeId || '');
+    //   return item.firstimage && typeId === '15';
+    // });
 
     console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
@@ -309,15 +308,15 @@ const initTravelCache = async () => {
     const existingIds = new Set(combined.map(f => String(f.contentid)));
     
     // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
-    filteredFestivals.forEach(f => {
-      const fid = String(f.contentid || f.contentId);
-      if (!existingIds.has(fid)) {
-        combined.push({
-          ...f,
-          eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
-        });
-      }
-    });
+    // filteredFestivals.forEach(f => {
+    //   const fid = String(f.contentid || f.contentId);
+    //   if (!existingIds.has(fid)) {
+    //     combined.push({
+    //       ...f,
+    //       eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
+    //     });
+    //   }
+    // });
 
     festivalItems = combined;
     console.log(`✅ 캐시 완료: 총 ${allTravelItems.length}개 항목 (축제: ${festivalItems.length}개)`);
