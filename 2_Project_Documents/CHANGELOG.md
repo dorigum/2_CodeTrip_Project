@@ -5,6 +5,150 @@
 
 ---
 
+## 2026-04-27 — 백엔드 모듈화 리팩터링 및 유지보수 구조 개선
+
+### 1. Express 백엔드 단일 파일 구조 분리
+- **배경**: 기존 백엔드는 `server/index.js` 하나에 Express 앱 설정, MySQL 연결, DB 스키마 초기화, JWT 인증, Multer 업로드, TourAPI 호출, 서버 캐시, 위시리스트, 게시판, 댓글, 사용자 활동 API가 모두 모여 있었음.
+- **문제점**:
+  - 기능이 늘어날수록 `index.js`가 1,200줄 이상으로 커져 특정 API나 캐시 로직을 찾기 어려웠음.
+  - 인증, DB, 업로드, 외부 API 프록시, 도메인 라우트가 한 파일에 섞여 있어 수정 범위와 영향도를 판단하기 어려웠음.
+  - 신규 기능 추가 시 기존 라우트와 유틸리티 로직 사이의 경계가 불명확해 머지 충돌과 회귀 위험이 커질 수 있었음.
+- **개선 방향**: 기존 API 경로와 응답 구조는 유지하면서, 내부 구현만 책임별 모듈로 분리하는 방식으로 리팩터링.
+
+### 2. 서버 엔트리포인트 경량화 (`server/index.js`)
+- **변경 전**: 서버 실행 파일이 모든 백엔드 기능을 직접 구현.
+- **변경 후**: `server/index.js`는 다음 역할만 담당하도록 축소.
+  - Express 앱 생성.
+  - CORS, JSON body parser, `/uploads` 정적 파일 서빙 설정.
+  - `/api` prefix 아래 도메인별 라우터 mount.
+  - DB 초기화 실행.
+  - 여행 데이터 캐시 초기화 및 일일 갱신 스케줄 등록.
+  - 서버 listen 시작.
+- **효과**: 서버 시작 흐름을 한눈에 파악할 수 있게 되었고, 각 기능 수정 시 관련 파일만 열면 되는 구조로 개선.
+
+### 3. 공통 설정 모듈 분리 (`server/config`)
+- **`server/config/env.js` 추가**:
+  - `dotenv` 로딩 및 공통 환경값 관리.
+  - `PORT`, `JWT_SECRET`, `TRAVEL_API_BASE`, `TRAVEL_SERVICE_KEY`를 한 곳에서 export.
+- **`server/config/db.js` 추가**:
+  - MySQL connection pool 생성 책임 분리.
+  - `waitForConnections`, `connectionLimit`, `dateStrings` 등 기존 pool 옵션 유지.
+- **`server/config/upload.js` 추가**:
+  - `uploads` 폴더 생성 보장.
+  - Multer disk storage 설정 분리.
+  - 이미지 파일만 허용하고 5MB 제한을 유지.
+- **효과**: 환경 변수, DB 연결, 업로드 설정이 라우트 코드에서 분리되어 재사용성과 가독성이 향상됨.
+
+### 4. DB 초기화 로직 분리 (`server/db/init.js`)
+- 기존 `initDB` 로직을 별도 파일로 이동.
+- 유지된 기능:
+  - `users`
+  - `travel_comments`
+  - `travel_comment_likes`
+  - `wishlists`
+  - `wishlist_folders`
+  - `wishlist_notes`
+  - `board_posts`
+  - `board_post_tags`
+  - `board_comments`
+  - `board_comment_likes`
+- 기존 운영 DB와의 호환을 위해 다음 컬럼 보정 로직 유지:
+  - `wishlists.title`
+  - `wishlists.image_url`
+  - `wishlist_folders.start_date`
+  - `wishlist_folders.end_date`
+- **효과**: DB 스키마 관련 변경은 `server/db/init.js`에서만 확인하면 되도록 책임 경계가 명확해짐.
+
+### 5. 인증 미들웨어 분리 (`server/middleware/auth.js`)
+- **`authenticateToken` 분리**:
+  - JWT Bearer 토큰 검증.
+  - 유효한 토큰이면 `req.user`에 사용자 정보 주입.
+  - 누락/만료/무효 토큰은 401 반환.
+- **`getUserIdFromRequest` 추가**:
+  - 로그인하지 않은 사용자도 볼 수 있는 댓글 목록 API에서 선택적으로 토큰을 읽어 현재 사용자의 좋아요 여부를 계산할 수 있도록 보조 함수 제공.
+- **효과**: 게시판 댓글과 여행지 댓글에서 중복되던 선택적 인증 처리 흐름을 재사용 가능한 helper로 정리.
+
+### 6. TourAPI 및 여행 캐시 서비스 분리 (`server/services`)
+- **`server/services/tourApiService.js` 추가**:
+  - 한국관광공사 TourAPI 호출 로직 분리.
+  - `areaBasedList2`, `searchKeyword2`, `searchFestival2` 호출 로직 관리.
+  - API 응답의 단일 객체/배열 형태 차이를 정규화.
+  - 이미지 URL의 `http://` → `https://` 보정 유지.
+  - 축제 데이터의 `eventstartdate`, `eventStartDate`처럼 대소문자가 다른 필드를 안전하게 정규화.
+- **`server/services/travelCache.js` 추가**:
+  - 서버 시작 시 대량 여행지 데이터 캐싱.
+  - `createdtime`, `modifiedtime` 기준 정렬 캐시 생성.
+  - 여행지 title map 생성.
+  - 메인 상단 이미지 목록 생성.
+  - 축제 전용 데이터 캐싱.
+  - 매일 새벽 3시 캐시 갱신 스케줄 유지.
+- **효과**: 외부 API 호출 계층과 서버 메모리 캐시 계층이 라우트에서 분리되어, 추후 캐시 정책 변경이나 TourAPI 장애 대응 로직을 독립적으로 관리할 수 있게 됨.
+
+### 7. 도메인별 라우트 모듈 분리 (`server/routes`)
+- **`authRoutes.js`**:
+  - `POST /api/signup`
+  - `POST /api/login`
+  - `POST /api/auth/forgot-password`
+- **`userRoutes.js`**:
+  - `POST /api/user/upload`
+  - `PUT /api/user/update`
+  - `PUT /api/user/password`
+- **`travelRoutes.js`**:
+  - `GET /api/travel/top-images`
+  - `GET /api/travel/near`
+  - `GET /api/travel/festivals`
+  - `GET /api/travel/random`
+  - `GET /api/travel/proxy/:service`
+  - `GET /api/travel`
+- **`travelCommentRoutes.js`**:
+  - 여행지 댓글 조회, 작성, 수정, 삭제, 좋아요 토글 API 분리.
+- **`wishlistRoutes.js`**:
+  - 위시리스트 상세 조회.
+  - 찜 토글.
+  - 폴더 생성/조회/수정/삭제.
+  - 여행지 폴더 이동.
+  - 폴더별 메모/체크리스트 조회/작성/완료 토글/삭제.
+- **`activityRoutes.js`**:
+  - 내가 작성한 게시글.
+  - 내가 작성한 게시판 댓글.
+  - 내가 작성한 여행지 댓글.
+- **`boardRoutes.js`**:
+  - 게시글 목록/상세/작성/수정/삭제.
+  - 게시판 댓글 목록/작성/수정/삭제.
+  - 게시판 댓글 좋아요 토글.
+- **효과**: API 도메인별 수정 위치가 명확해졌으며, 신규 기능을 추가할 때 기존 기능과 섞이지 않는 구조로 개선.
+
+### 8. 기존 API 호환성 유지
+- 프론트엔드가 호출하는 URL은 변경하지 않음.
+- 모든 라우터는 `server/index.js`에서 `/api` prefix로 mount하여 기존 경로를 보존.
+- 예시:
+  - `/api/login`
+  - `/api/travel`
+  - `/api/travel/proxy/:service`
+  - `/api/wishlist/details`
+  - `/api/board/posts`
+  - `/api/my/board-posts`
+- **효과**: 프론트엔드 `src/api/*` 파일을 수정하지 않고도 백엔드 내부 구조만 개선.
+
+### 9. 문서 구조 최신화
+- `README.md`의 백엔드 프로젝트 구조 설명을 실제 분리된 디렉터리에 맞게 갱신.
+- 새로 반영된 백엔드 구조:
+  - `server/config`
+  - `server/db`
+  - `server/middleware`
+  - `server/routes`
+  - `server/services`
+
+### 10. 검증
+- `server` 하위 JavaScript 파일 전체에 대해 `node --check` 문법 검사를 수행.
+- 검사 결과: 문법 오류 없음.
+- 실제 서버 실행 및 DB/API 통합 검증은 별도 실행하지 않음.
+- Git 상태 확인 결과:
+  - 현재 브랜치: `doyeon`
+  - 기존 사용자 변경으로 보이는 `2_Project_Documents/.obsidian/workspace.json`은 수정하지 않고 유지.
+
+---
+
 ## 2026-04-27 — 위시리스트 폴더별 메모 및 체크리스트 시스템 구축
 
 ### 1. 폴더별 독립 메모/체크리스트 기능 구현 (`Folder_Notes`)

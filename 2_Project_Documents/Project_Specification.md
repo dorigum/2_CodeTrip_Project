@@ -537,3 +537,236 @@
 ## 11. 업데이트 기록 (2026.04.27 추가 - Part 4)
 1. **날씨 판정 로직 개선**: 이슬비, 소나기 등 미세 강수 상황에 대한 감지 민감도 대폭 향상.
 2. **커뮤니티 및 UX 강화**: 오늘 진행된 모든 문서 복구 및 신규 기능 통합 건에 대한 최종 형상 관리 완료.
+
+---
+
+## 12. 백엔드 모듈화 리팩터링 및 유지보수 구조 개선 (2026.04.27 추가)
+
+### 12.1 개요
+2026.04.27 기준 백엔드 구조를 유지보수하기 좋은 형태로 재정리하였다. 기존에는 `server/index.js` 단일 파일이 Express 앱 설정, MySQL 연결, DB 스키마 초기화, 인증 미들웨어, Multer 업로드, TourAPI 호출, 서버 캐시, 위시리스트, 게시판, 댓글, 사용자 활동 API까지 모두 담당하고 있었다.
+
+이번 개선은 **기존 프론트엔드 API 호출 경로를 변경하지 않고**, 백엔드 내부 구현만 책임별로 분리하는 리팩터링이다. 따라서 `/api/login`, `/api/travel`, `/api/wishlist/details`, `/api/board/posts` 등 기존 엔드포인트는 그대로 유지된다.
+
+### 12.2 변경 후 백엔드 디렉터리 구조
+```text
+server/
+├── index.js                    # Express 앱 조립 및 서버 시작
+├── config/
+│   ├── db.js                   # MySQL connection pool
+│   ├── env.js                  # 환경 변수 및 공통 상수
+│   └── upload.js               # Multer 업로드 설정
+├── db/
+│   └── init.js                 # DB 테이블 생성 및 컬럼 보정
+├── middleware/
+│   └── auth.js                 # JWT 인증 미들웨어 및 선택적 인증 helper
+├── routes/
+│   ├── activityRoutes.js       # 내 활동 API
+│   ├── authRoutes.js           # 회원가입, 로그인, 비밀번호 재설정
+│   ├── boardRoutes.js          # 게시판 및 게시판 댓글 API
+│   ├── travelCommentRoutes.js  # 여행지 댓글 API
+│   ├── travelRoutes.js         # 여행지, 축제, TourAPI 프록시 API
+│   ├── userRoutes.js           # 프로필, 이미지 업로드, 비밀번호 변경
+│   └── wishlistRoutes.js       # 위시리스트, 폴더, 메모, 체크리스트 API
+├── services/
+│   ├── tourApiService.js       # 한국관광공사 TourAPI 호출 및 응답 정규화
+│   └── travelCache.js          # 서버 메모리 캐시 및 일일 갱신 스케줄
+└── uploads/                    # 사용자 업로드 이미지 저장소
+```
+
+### 12.3 `server/index.js`의 역할 축소
+`server/index.js`는 더 이상 모든 기능을 직접 구현하지 않는다. 현재 역할은 다음과 같이 제한된다.
+
+- Express 앱 생성.
+- CORS 설정.
+- JSON body parser 설정.
+- `/uploads` 정적 파일 서빙.
+- 도메인별 라우터를 `/api` prefix 아래 mount.
+- DB 초기화 실행.
+- 여행 데이터 캐시 초기화 실행.
+- 매일 새벽 3시 여행 데이터 캐시 갱신 스케줄 등록.
+- 서버 listen 시작.
+
+이 구조를 통해 서버 시작 흐름과 기능 구현부가 분리되었으며, 특정 API 수정 시 `index.js`가 아니라 해당 도메인의 route 파일을 확인하면 된다.
+
+### 12.4 설정 계층 (`server/config`)
+#### `env.js`
+- `dotenv` 초기화.
+- `PORT`, `JWT_SECRET`, `TRAVEL_API_BASE`, `TRAVEL_SERVICE_KEY` 관리.
+- TourAPI 키는 기존처럼 서버 환경 변수 `TRAVEL_INFO_API_KEY`를 통해 관리한다.
+
+#### `db.js`
+- MySQL connection pool 생성 책임을 분리한다.
+- 기존 옵션을 유지한다.
+  - `waitForConnections: true`
+  - `connectionLimit: 10`
+  - `queueLimit: 0`
+  - `dateStrings: true`
+
+#### `upload.js`
+- `server/uploads` 디렉터리 생성 보장.
+- Multer disk storage 설정.
+- 업로드 파일명에 timestamp와 random suffix를 붙여 충돌을 방지.
+- 이미지 MIME 타입만 허용.
+- 파일 크기 제한 5MB 유지.
+
+### 12.5 DB 초기화 계층 (`server/db/init.js`)
+DB 스키마 초기화와 운영 중 누락될 수 있는 컬럼 보정 로직을 `server/db/init.js`로 분리하였다.
+
+관리 대상 테이블:
+- `users`
+- `travel_comments`
+- `travel_comment_likes`
+- `wishlists`
+- `wishlist_folders`
+- `wishlist_notes`
+- `board_posts`
+- `board_post_tags`
+- `board_comments`
+- `board_comment_likes`
+
+운영 DB 호환을 위한 컬럼 보정:
+- `wishlists.title`
+- `wishlists.image_url`
+- `wishlist_folders.start_date`
+- `wishlist_folders.end_date`
+
+이제 DB 스키마 변경이나 신규 테이블 추가 작업은 `server/db/init.js`에서 관리하는 것을 표준으로 한다.
+
+### 12.6 인증 계층 (`server/middleware/auth.js`)
+인증 관련 공통 로직을 미들웨어로 분리하였다.
+
+#### `authenticateToken`
+- `Authorization: Bearer <token>` 형식의 JWT를 검증.
+- 유효한 경우 `req.user`에 payload를 주입.
+- 토큰 누락, 만료, 무효 상태에서는 401 응답을 반환.
+
+#### `getUserIdFromRequest`
+- 토큰이 있으면 사용자 id를 반환하고, 없거나 유효하지 않으면 `null`을 반환한다.
+- 공개 조회 API에서 “현재 사용자가 좋아요를 눌렀는지”를 계산할 때 사용한다.
+- 적용 대상:
+  - 여행지 댓글 목록 조회.
+  - 게시판 댓글 목록 조회.
+
+### 12.7 서비스 계층 (`server/services`)
+#### `tourApiService.js`
+한국관광공사 TourAPI 호출과 응답 정규화를 담당한다.
+
+주요 책임:
+- `areaBasedList2` / `searchKeyword2` 호출.
+- `searchFestival2` 호출.
+- API 응답의 단일 객체/배열 형태 정규화.
+- `firstimage`, `originimgurl` 이미지 URL의 `http://` → `https://` 보정.
+- 축제 데이터 필드명 정규화.
+  - `contentid` / `contentId`
+  - `eventstartdate` / `eventStartDate`
+  - `eventenddate` / `eventEndDate`
+  - `areacode` / `areaCode`
+
+#### `travelCache.js`
+서버 메모리 캐시를 담당한다.
+
+주요 책임:
+- 서버 시작 시 약 6만 건 규모의 여행지 데이터 캐싱.
+- `createdtime`, `modifiedtime` 기준 정렬 캐시 생성.
+- 여행지 `contentid` → `title` map 생성.
+- 메인 상단 이미지 목록 생성.
+- 축제 전용 데이터 캐싱.
+- 매일 새벽 3시 캐시 갱신 스케줄 실행.
+
+이 계층은 공공 API 호출 제한과 응답 속도 문제를 완화하는 핵심 성능 계층으로 유지된다.
+
+### 12.8 라우트 계층 (`server/routes`)
+도메인별 API를 별도 router 파일로 분리하였다.
+
+#### `authRoutes.js`
+- `POST /api/signup`
+- `POST /api/login`
+- `POST /api/auth/forgot-password`
+
+#### `userRoutes.js`
+- `POST /api/user/upload`
+- `PUT /api/user/update`
+- `PUT /api/user/password`
+
+#### `travelRoutes.js`
+- `GET /api/travel/top-images`
+- `GET /api/travel/near`
+- `GET /api/travel/festivals`
+- `GET /api/travel/random`
+- `GET /api/travel/proxy/:service`
+- `GET /api/travel`
+
+#### `travelCommentRoutes.js`
+- `GET /api/travel-comments/:contentId`
+- `POST /api/travel-comments/:id/like`
+- `POST /api/travel-comments`
+- `PUT /api/travel-comments/:id`
+- `DELETE /api/travel-comments/:id`
+
+#### `wishlistRoutes.js`
+- `GET /api/wishlist/details`
+- `POST /api/wishlist/toggle`
+- `GET /api/wishlist/folders`
+- `POST /api/wishlist/folders`
+- `PUT /api/wishlist/folders/:id`
+- `DELETE /api/wishlist/folders/:id`
+- `PUT /api/wishlist/move`
+- `GET /api/wishlist/folders/:folderId/notes`
+- `POST /api/wishlist/folders/:folderId/notes`
+- `PUT /api/wishlist/notes/:id/toggle`
+- `DELETE /api/wishlist/notes/:id`
+
+#### `activityRoutes.js`
+- `GET /api/my/board-posts`
+- `GET /api/my/board-comments`
+- `GET /api/my/travel-comments`
+
+#### `boardRoutes.js`
+- `GET /api/board/posts`
+- `GET /api/board/posts/:id`
+- `POST /api/board/posts`
+- `PUT /api/board/posts/:id`
+- `DELETE /api/board/posts/:id`
+- `GET /api/board/posts/:id/comments`
+- `POST /api/board/posts/:id/comments`
+- `PUT /api/board/comments/:id`
+- `DELETE /api/board/comments/:id`
+- `POST /api/board/comments/:id/like`
+
+### 12.9 API 호환성
+이번 리팩터링은 내부 파일 구조 변경이며, 프론트엔드 API contract는 유지한다.
+
+유지되는 대표 경로:
+- `/api/signup`
+- `/api/login`
+- `/api/auth/forgot-password`
+- `/api/user/upload`
+- `/api/travel`
+- `/api/travel/proxy/:service`
+- `/api/travel-comments/:contentId`
+- `/api/wishlist/details`
+- `/api/wishlist/folders`
+- `/api/board/posts`
+- `/api/my/board-posts`
+
+따라서 `src/api/authApi.js`, `src/api/travelApi.js`, `src/api/travelInfoApi.js`, `src/api/wishlistApi.js`, `src/api/boardApi.js`의 호출 경로는 변경하지 않았다.
+
+### 12.10 유지보수 기준
+향후 백엔드 기능을 추가할 때는 다음 기준을 따른다.
+
+- 새 API 엔드포인트는 기능 도메인에 맞는 `server/routes/*Routes.js`에 추가한다.
+- DB 테이블 생성 또는 컬럼 보정은 `server/db/init.js`에 추가한다.
+- 외부 API 호출이나 캐시 로직은 route에 직접 넣지 않고 `server/services`에 둔다.
+- 인증이 필요한 API는 `authenticateToken`을 router 단계에서 명시적으로 연결한다.
+- 로그인 여부가 선택적인 조회 API는 `getUserIdFromRequest`를 사용한다.
+- `server/index.js`에는 앱 조립과 서버 시작 흐름만 유지한다.
+
+### 12.11 검증 내역
+- `server` 하위 JavaScript 파일 전체에 대해 `node --check` 문법 검사를 수행하였다.
+- 검사 결과 문법 오류는 발견되지 않았다.
+- 실제 DB 연결 및 외부 TourAPI 통합 실행 검증은 별도 단계로 남겨둔다.
+
+### 12.12 형상 관리 참고
+- 현재 Git 브랜치: `doyeon`.
+- 백엔드 분리 작업 외에 기존 사용자 변경으로 보이는 `2_Project_Documents/.obsidian/workspace.json` 변경이 작업 트리에 존재한다.
+- 해당 Obsidian workspace 파일은 백엔드 리팩터링과 무관하므로 수정하지 않았다.
