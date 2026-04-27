@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getFestivalList } from '../api/travelApi';
-import { getDetailIntro } from '../api/travelInfoApi';
 
 const Festivals = () => {
   const [festivals, setFestivals] = useState([]);
@@ -16,24 +15,6 @@ const Festivals = () => {
       setLoading(true);
       const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
       let items = data.items || [];
-
-      // 날짜 정보가 없는 항목들에 대해 상세 정보를 추가로 호출하여 보정 (Hydration)
-      // const hydratedItems = await Promise.all(items.map(async (item) => {
-      //   if (!item.eventstartdate || String(item.eventstartdate).length < 8) {
-      //     try {
-      //       // 상세 페이지에서 사용하는 것과 동일한 API 호출
-      //       const intro = await getDetailIntro(item.contentid, '15');
-      //       if (intro) {
-      //         return {
-      //           ...item,
-      //           eventstartdate: intro.eventstartdate || intro.eventStartDate || item.eventstartdate,
-      //           eventenddate: intro.eventenddate || intro.eventEndDate || item.eventenddate
-      //         };
-      //       }
-      //     } catch (e) { console.warn('Hydration failed for:', item.contentid); }
-      //   }
-      //   return item;
-      // }));
 
       setFestivals(items);
       setTotalPages(data.totalPages || 0);

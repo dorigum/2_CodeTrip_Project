@@ -289,36 +289,15 @@ const initTravelCache = async () => {
       .slice(0, 100)
       .map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
 
-    // const filteredFestivals = allTravelItems.filter(item => {
-    //   const typeId = String(item.contenttypeid || item.contentTypeId || '');
-    //   return item.firstimage && typeId === '15';
-    // });
-
     console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
     
     // 날짜 정보를 정규화하여 저장
-    const normalizedDirect = directFestivals.map(f => ({
+    festivalItems = directFestivals.map(f => ({
       ...f,
       eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
     }));
 
-    // 날짜가 있는 데이터를 우선적으로 배치
-    const combined = [...normalizedDirect];
-    const existingIds = new Set(combined.map(f => String(f.contentid)));
-    
-    // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
-    // filteredFestivals.forEach(f => {
-    //   const fid = String(f.contentid || f.contentId);
-    //   if (!existingIds.has(fid)) {
-    //     combined.push({
-    //       ...f,
-    //       eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
-    //     });
-    //   }
-    // });
-
-    festivalItems = combined;
     console.log(`✅ 캐시 완료: 총 ${allTravelItems.length}개 항목 (축제: ${festivalItems.length}개)`);
   } catch (err) { 
     console.error('❌ 캐시 로딩 실패:', err.message); 
