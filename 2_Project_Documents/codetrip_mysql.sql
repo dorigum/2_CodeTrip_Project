@@ -19,44 +19,69 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 2. 게시판 테이블 (게시글 저장용)
-CREATE TABLE IF NOT EXISTS boards (
+CREATE TABLE IF NOT EXISTS board_posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
-    author VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    view_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 3. 코멘트 테이블 (여행 상세 페이지 댓글용)
-CREATE TABLE IF NOT EXISTS comments (
+-- 2.1 게시판 게시글 태그
+CREATE TABLE IF NOT EXISTS board_post_tags (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
     content_id VARCHAR(50) NOT NULL,
-    user_id INT,
-    nickname VARCHAR(100) NOT NULL DEFAULT '익명',
+    title VARCHAR(255),
+    firstimage TEXT,
+    INDEX idx_board_post_tags_post_id (post_id)
+);
+
+-- 2.2 게시판 댓글
+CREATE TABLE IF NOT EXISTS board_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
     body TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_content_id (content_id),
-    FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON DELETE SET NULL
-)
+    INDEX idx_board_comments_post_id (post_id)
+);
 
--- 4. 코멘트 좋아요 테이블
-CREATE TABLE IF NOT EXISTS comment_likes (
+-- 2.3 게시판 댓글 좋아요
+CREATE TABLE IF NOT EXISTS board_comment_likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     comment_id INT NOT NULL,
     user_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_comment_user (comment_id , user_id),
-    FOREIGN KEY (comment_id)
-        REFERENCES comments (id)
-        ON DELETE CASCADE,
-    FOREIGN KEY (user_id)
-        REFERENCES users (id)
-        ON DELETE CASCADE
+    UNIQUE KEY uq_board_comment_user (comment_id, user_id)
 );
 
--- 5. 위시리스트 테이블
+-- 3. 코멘트 테이블 (여행 상세 페이지 댓글용)
+CREATE TABLE IF NOT EXISTS travel_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY, 
+    content_id VARCHAR(50) NOT NULL, 
+    user_id INT, 
+    nickname VARCHAR(100) NOT NULL DEFAULT "익명", 
+    body TEXT NOT NULL, 
+    likes INT NOT NULL DEFAULT 0, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    INDEX idx_content_id (content_id)
+);
+
+-- 3.1 코멘트 좋아요 테이블
+CREATE TABLE IF NOT EXISTS travel_comment_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY, 
+    comment_id INT NOT NULL, 
+    user_id INT NOT NULL, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    UNIQUE KEY uq_comment_user (comment_id, user_id)
+);
+
+-- 4. 위시리스트 테이블
 CREATE TABLE IF NOT EXISTS wishlists (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -69,7 +94,7 @@ CREATE TABLE IF NOT EXISTS wishlists (
         ON DELETE CASCADE
 );
 
--- 6. 위시리스트 폴더 테이블
+-- 5. 위시리스트 폴더 테이블
 CREATE TABLE IF NOT EXISTS wishlist_folders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
