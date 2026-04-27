@@ -93,8 +93,8 @@ const initDB = async () => {
     console.log('✅ 데이터베이스 연결 성공');
     
     await conn.query('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, profile_img VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
-    await conn.query('CREATE TABLE IF NOT EXISTS comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
-    await conn.query('CREATE TABLE IF NOT EXISTS comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
+    await conn.query('CREATE TABLE IF NOT EXISTS travel_comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
+    await conn.query('CREATE TABLE IF NOT EXISTS travel_comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
     
     await conn.query(`
       CREATE TABLE IF NOT EXISTS wishlists (
@@ -430,28 +430,28 @@ app.get('/api/travel', (req, res) => {
   res.json({ items: filtered.slice((pageNo - 1) * numOfRows, pageNo * numOfRows), totalCount: filtered.length });
 });
 
-// --- Comment Routes (FIXED 404) ---
-app.get('/api/comments/:contentId', async (req, res) => {
+// --- Travel Comment Routes ---
+app.get('/api/travel-comments/:contentId', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM comments WHERE content_id = ? ORDER BY created_at DESC', [req.params.contentId]);
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE content_id = ? ORDER BY created_at DESC', [req.params.contentId]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/comments', authenticateToken, async (req, res) => {
+app.post('/api/travel-comments', authenticateToken, async (req, res) => {
   const { contentId, body, nickname } = req.body;
   try {
-    const [result] = await pool.query('INSERT INTO comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)', [contentId, req.user.id, nickname || req.user.name || '익명', body]);
+    const [result] = await pool.query('INSERT INTO travel_comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)', [contentId, req.user.id, nickname || req.user.name || '익명', body]);
     res.status(201).json({ id: result.insertId, content_id: contentId, user_id: req.user.id, nickname, body, likes: 0 });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
+app.post('/api/travel-comments/:id/like', authenticateToken, async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    const [existing] = await pool.query('SELECT id FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?', [req.params.id, req.user.id]);
     if (existing.length > 0) return res.status(400).json({ message: 'Already liked' });
-    await pool.query('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)', [req.params.id, req.user.id]);
-    await pool.query('UPDATE comments SET likes = likes + 1 WHERE id = ?', [req.params.id]);
+    await pool.query('INSERT INTO travel_comment_likes (comment_id, user_id) VALUES (?, ?)', [req.params.id, req.user.id]);
+    await pool.query('UPDATE travel_comments SET likes = likes + 1 WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

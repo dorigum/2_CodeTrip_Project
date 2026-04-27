@@ -7,13 +7,13 @@ const authHeader = () => ({
 export const getComments = async (contentId) => {
   const token = localStorage.getItem('trip_token');
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const { data } = await axios.get(`/api/comments/${contentId}`, { headers });
+  const { data } = await axios.get(`/api/travel-comments/${contentId}`, { headers });
   return data;
 };
 
 export const toggleCommentLike = async (commentId) => {
   const { data } = await axios.post(
-    `/api/comments/${commentId}/like`,
+    `/api/travel-comments/${commentId}/like`,
     {},
     { headers: authHeader() }
   );
@@ -22,7 +22,7 @@ export const toggleCommentLike = async (commentId) => {
 
 export const postComment = async ({ contentId, nickname, body }) => {
   const { data } = await axios.post(
-    '/api/comments',
+    '/api/travel-comments',
     { content_id: contentId, nickname, body },
     { headers: authHeader() }
   );
@@ -31,7 +31,7 @@ export const postComment = async ({ contentId, nickname, body }) => {
 
 export const updateComment = async (id, body) => {
   const { data } = await axios.put(
-    `/api/comments/${id}`,
+    `/api/travel-comments/${id}`,
     { body },
     { headers: authHeader() }
   );
@@ -39,5 +39,5 @@ export const updateComment = async (id, body) => {
 };
 
 export const deleteComment = async (id) => {
-  await axios.delete(`/api/comments/${id}`, { headers: authHeader() });
+  await axios.delete(`/api/travel-comments/${id}`, { headers: authHeader() });
 };
