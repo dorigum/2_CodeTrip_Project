@@ -11,7 +11,19 @@
 ## 1. 프로젝트 개요: CodeTrip
 - **프로젝트 명**: CodeTrip (Vibe Board + Tour Info)
 - **목적**: 프리미엄 디자인이 적용된 현대적인 CRUD 게시판 시스템 및 관광 정보 서비스 구축
-- **현상태**: 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료. 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결. 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출). 전국 여행지 탐색 및 상세 페이지 통합 완료. 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료. 위시리스트 폴더 여행 일정(시작일·종료일) 설정·표시·편집 기능 완료. 탐색 페이지 지역 필터링 코드 정합성 수정(TourAPI areacode 하드코딩). 메인 페이지 지역 기반 추천 관광지·문화시설 한정 필터링 적용. **[2026-04-27]** `feature/board` 브랜치 머지 완료: 게시판(CRUD), 마크다운 에디터, 여행지 태그 검색 시스템 통합. 댓글 API를 `travel-comments`로 명칭 통일. 위시리스트 500 오류(DB 컬럼 누락) 수정. 위시리스트 폴더별 메모/체크리스트(LIST/MEMO) 기능 구축 완료.
+- **현상태**:
+	- 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료.
+	- 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결.
+	- 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출).
+	- 전국 여행지 탐색 및 상세 페이지 통합 완료.
+	- 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료.
+	- 위시리스트 폴더 여행 일정(시작일·종료일) 설정·표시·편집 기능 완료.
+	- 탐색 페이지 지역 필터링 코드 정합성 수정(TourAPI areacode 하드코딩).
+	- 메인 페이지 지역 기반 추천 관광지·문화시설 한정 필터링 적용.
+	- **[2026-04-27]** `feature/board` 브랜치 머지 완료: 게시판(CRUD), 마크다운 에디터, 여행지 태그 검색 시스템 통합.
+	- 댓글 API를 `travel-comments`로 명칭 통일.
+	- 위시리스트 500 오류(DB 컬럼 누락) 수정.
+	- 위시리스트 폴더별 메모/체크리스트(LIST/MEMO) 기능 구축 완료.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -308,6 +320,24 @@
 - `PUT /api/wishlist/notes/:id/toggle`
 - `DELETE /api/wishlist/notes/:id`
 
+### 2.14 API 레이어 리팩토링 및 TourAPI 프록시 아키텍처 도입 (2026-04-27 추가)
+
+#### TourAPI 서버 프록시 중계 (`/api/travel/proxy/:service`)
+기존에 클라이언트(`travelInfoApi.js`)가 TourAPI 상세 엔드포인트를 직접 호출하던 방식을 서버 중계 방식으로 전환하여 429 에러를 완전히 차단.
+
+- **신규 엔드포인트**: `GET /api/travel/proxy/:service` (`server/index.js`).
+  - `:service` 파라미터로 `detailCommon2`, `detailIntro2`, `detailImage2` 등 TourAPI 서비스를 동적으로 지정.
+  - 서버의 `TRAVEL_INFO_API_KEY` 환경 변수를 사용하여 API 키가 클라이언트에 노출되지 않도록 보안 강화.
+- **`src/api/travelInfoApi.js` 전면 리팩토링**:
+  - `API_URL`, `SERVICE_KEY` 상수 및 직접 외부 API 호출 로직 완전 제거.
+  - `fetchViaProxy(service, params)` 헬퍼 함수 신규 도입 — 모든 상세 조회를 `/api/travel/proxy/:service` 경유로 처리.
+  - `getDetailCommon`, `getDetailIntro`, `getDetailImage`, `getDetailInfo`, `searchFestival2` 등 모든 상세 함수가 프록시 기반으로 재구현.
+
+#### 위시리스트 API 레이어 인터페이스 정비
+- **`src/api/wishlistApi.js`**: Default export → Named exports 전환. `async/await` + `response.data` 반환 방식으로 표준화. Notes API 4종(`getFolderNotes`, `addNote`, `toggleNote`, `deleteNote`) 추가. `toggleWishlist` 시그니처 변경: `(travelData, folderId)` → `(contentId, title, imageUrl, folderId)`.
+- **`src/store/useWishlistStore.js`**: `toggleWishlist` 수신 인터페이스 변경: `(travelData, folderId)` → `(itemData)` (단일 객체, 내부 `{ contentid, title, firstimage, folder_id }`). `fetchFolders` 별칭 제거, `syncWithServer` 단일 경로로 일원화.
+- **`src/components/WishlistModal.jsx`**: `fetchFolders` → `syncWithServer` 교체. 폴더 선택 시 `travelInfo` 구조를 `{ contentid, title, firstimage, folder_id }` 형식으로 통일.
+
 ---
 ## 3. 성능 최적화 및 전략 (Performance Optimization)
 
@@ -376,6 +406,13 @@
 | 게시판 DB 테이블 4종 신규 생성 (`board_posts`, `board_post_tags`, `board_comments`, `board_comment_likes`) | ✅ 완료 |
 | 위시리스트 `title`/`image_url` 컬럼 누락 자동 복구 (`ALTER TABLE`) | ✅ 완료 |
 | 위시리스트 폴더별 메모 및 체크리스트(LIST/MEMO) 기능 | ✅ 완료 |
+| TourAPI 서버 프록시 중계 (`/api/travel/proxy/:service`) — 429 에러 완전 차단 | ✅ 완료 |
+| `travelInfoApi.js` 프록시 기반 전면 리팩토링 (클라이언트 직접 호출 완전 제거) | ✅ 완료 |
+| `wishlistApi.js` Named Exports 전환 및 Notes API 통합 | ✅ 완료 |
+| `useWishlistStore.js` `toggleWishlist` 인터페이스 단일 객체 방식으로 정비 | ✅ 완료 |
+| 축제 페이지 종료된 행사 자동 필터링 (`eventenddate < today`) | ✅ 완료 |
+| 축제 하이드레이션 완료 후 클라이언트 재정렬 (날짜 기준) | ✅ 완료 |
+| `concurrently` 기반 프론트·백 동시 실행 환경 (`npm run dev:all`) | ✅ 완료 |
 | 스마트 검색 엔진 고도화 | ⏳ 추진중 |
 
 ---
@@ -465,6 +502,9 @@
    5
    6 본문 내용... 여기는 마크다운으로 자유롭게 작성!
 ```
+
+---
+*최종 업데이트: 2026-04-27 (TourAPI 프록시 중계 아키텍처 도입, wishlistApi Named Exports 전환, 위시리스트 메모/체크리스트 시스템, 게시판 시스템 통합, 축제 필터링·정렬 고도화, concurrently 개발 환경 구축)*
 
 ---
 *최종 업데이트: 2026-04-27 (feature/board 머지 — 게시판 시스템 통합, 댓글 API travel-comments 명칭 통일, react-markdown 설치, 위시리스트 500 오류 DB 컬럼 자동 적용, 게시판 DB 테이블 4종 신규, 위시리스트 폴더별 메모/체크리스트 기능 추가, axiosInstance baseURL 중복 경로 404 수정)*

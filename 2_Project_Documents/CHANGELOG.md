@@ -16,6 +16,38 @@
 - **DB 테이블 신설**: `wishlist_notes` 테이블 추가.
 - **404 에러 수정**: `axiosInstance`의 `baseURL` 중복 경로(`/api/api/...`) 문제 해결.
 
+### 3. TourAPI 프록시 중계 엔드포인트 신설 (`server/index.js`) — 429 에러 근본 해결
+
+**배경**: 상세 페이지(`TravelDetail.jsx`) 및 축제 하이드레이션에서 `getDetailCommon2`, `getDetailIntro2` 등 TourAPI 상세 조회 함수가 클라이언트에서 직접 외부 API를 호출하고 있었음. 이로 인해 단시간 다수 진입 시 `429 Too Many Requests` 에러 발생.
+
+**수정 내용**:
+- **`GET /api/travel/proxy/:service`** 엔드포인트 신설 (`server/index.js`): 클라이언트의 TourAPI 상세 조회 요청을 서버가 중계. `service` 파라미터로 `detailCommon2`, `detailIntro2`, `detailImage2` 등 모든 TourAPI 서비스 이름을 동적으로 지원. 서버의 `TRAVEL_INFO_API_KEY`를 사용하여 클라이언트에 API 키 노출 차단.
+- **`src/api/travelInfoApi.js` 전면 리팩토링**:
+  - `API_URL`, `SERVICE_KEY` 상수 제거 — 클라이언트의 직접 TourAPI 호출 로직 완전 삭제.
+  - `fetchViaProxy(service, params)` 헬퍼 함수 신규 추가: `/api/travel/proxy/:service` 엔드포인트를 통해 모든 상세 조회를 서버 경유로 처리.
+  - `getDetailCommon`, `getDetailIntro`, `getDetailImage`, `getDetailInfo`, `getDetailInfo3`, `searchFestival2`, `getRegions` 등 모든 상세 조회 함수가 `fetchViaProxy` 기반으로 재구현.
+  - 기존 `getTravelInfo`, `getTravelInfoByKeyword` (직접 외부 API 호출) 함수 제거.
+
+### 4. 위시리스트 API 레이어 리팩토링 (`wishlistApi.js`, `useWishlistStore.js`)
+
+**배경**: `wishlistApi.js`의 default export 방식이 `useWishlistStore.js`와 `WishlistModal.jsx`에서 import 방식 불일치를 유발하여 런타임 에러 발생. `toggleWishlist` 파라미터 인터페이스도 컴포넌트 간 불일치 존재.
+
+**수정 내용**:
+- **`src/api/wishlistApi.js`**:
+  - Default export 방식 → **Named exports 방식으로 전면 전환** (`import wishlistApi from` → `import * as wishlistApi from`).
+  - 모든 함수를 `async/await` 패턴으로 표준화하고 `response.data` 반환 방식으로 통일.
+  - `fetchWishlistDetails` → `getWishlistDetails`로 명칭 통일.
+  - `toggleWishlist(travelData, folderId)` → `toggleWishlist(contentId, title, imageUrl, folderId)` 시그니처 변경 (명시적 파라미터).
+  - Notes 관련 API 함수 4종 추가: `getFolderNotes`, `addNote`, `toggleNote`, `deleteNote`.
+- **`src/store/useWishlistStore.js`**:
+  - `import wishlistApi from` → `import * as wishlistApi from` 변경.
+  - `toggleWishlist(travelData, folderId)` → `toggleWishlist(itemData)` 로 시그니처 변경. `itemData` 객체 내 `{ contentid, title, firstimage, folder_id }` 구조로 통일.
+  - `fetchFolders` 별칭 제거, `syncWithServer`로 완전 일원화.
+  - `syncWithServer` 내 데이터 정규화 로직 개선: `getWishlistDetails()`, `getFolders()` 병렬 호출 후 ID Set 구성 시 `contentid || content_id` 두 형식만 처리.
+- **`src/components/WishlistModal.jsx`**:
+  - `fetchFolders` 호출 → `syncWithServer` 호출로 교체.
+  - `handleSelectFolder` 내 `travelInfo` 객체 구조를 `{ contentid, title, firstimage, folder_id }` 형식으로 통일 후 `toggleWishlist(travelInfo)` 단일 인자 방식으로 호출.
+
 ---
 
 ## 2026-04-27 — 축제 정보 정렬/필터링 고도화 및 개발 환경 개선
