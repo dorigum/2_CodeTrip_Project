@@ -72,12 +72,16 @@ const INFO_SUB_ITEMS = [
 const SideBar = ({ isCollapsed, toggleSidebar }) => {
   const [myPageSubOpen, setMyPageSubOpen] = useState(false);
   const [infoSubOpen, setInfoSubOpen] = useState(false);
+  const [mobileMyPageOpen, setMobileMyPageOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout, isLoggedIn } = useAuthStore();
   const { clearWishlist } = useWishlistStore();
 
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
+
+  // 페이지 이동 시 모바일 서브메뉴 닫기
+  React.useEffect(() => { setMobileMyPageOpen(false); }, [pathname]);
 
   const handleNavClick = (e, item) => {
     const protectedPaths = ['/mypage', '/settings', '/my-activity'];
@@ -278,6 +282,35 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
         </div>
       </aside>
 
+      {/* Mobile My Page 서브메뉴 팝업 */}
+      {mobileMyPageOpen && (
+        <>
+          {/* 배경 딤 */}
+          <div
+            className="fixed inset-0 z-[54] md:hidden"
+            onClick={() => setMobileMyPageOpen(false)}
+          />
+          {/* 서브메뉴 카드 */}
+          <div className="fixed bottom-16 right-0 z-[56] md:hidden w-48 bg-white border border-outline-variant/20 rounded-tl-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+            {MY_PAGE_SUB_ITEMS.map((sub) => (
+              <Link
+                key={sub.label}
+                to={sub.href}
+                onClick={(e) => { handleNavClick(e, { path: sub.href }); setMobileMyPageOpen(false); }}
+                className={`flex items-center gap-3 px-5 py-3.5 transition-colors ${
+                  isActive(sub.href)
+                    ? 'text-primary bg-primary/5 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-base ${isActive(sub.href) ? 'fill-1' : ''}`}>{sub.icon}</span>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-widest">{sub.label}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/30 z-[55] flex md:hidden items-center justify-around h-16 px-2">
         {NAV_ITEMS.map((item) => (
@@ -295,18 +328,17 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             <span className="text-[10px] font-bold uppercase tracking-tighter">{item.label}</span>
           </Link>
         ))}
-        <Link
-          to="/mypage"
-          onClick={(e) => handleNavClick(e, { path: '/mypage' })}
-          className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all group ${
+        <button
+          onClick={() => setMobileMyPageOpen(prev => !prev)}
+          className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all ${
             MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p)) ? 'text-primary' : 'text-slate-400'
           }`}
         >
           <span className={`material-symbols-outlined text-2xl ${MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p)) ? 'fill-1' : ''} transition-all duration-300 ${MY_PAGE_ITEM.animation}`}>
-            {MY_PAGE_ITEM.icon}
+            {mobileMyPageOpen ? 'close' : MY_PAGE_ITEM.icon}
           </span>
           <span className="text-[10px] font-bold uppercase tracking-tighter">My Page</span>
-        </Link>
+        </button>
       </nav>
     </>
   );
