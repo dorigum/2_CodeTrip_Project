@@ -324,6 +324,27 @@ const initTravelCache = async () => {
 };
 initTravelCache();
 
+// 매일 새벽 3시에 캐시 갱신 (다음 3시까지 남은 ms 계산 후 setTimeout → 이후 24h setInterval)
+const scheduleDailyRefresh = () => {
+  const now = new Date();
+  const next3am = new Date(now);
+  next3am.setHours(3, 0, 0, 0);
+  if (next3am <= now) next3am.setDate(next3am.getDate() + 1);
+  const msUntil3am = next3am - now;
+
+  setTimeout(() => {
+    console.log('🔄 [Daily] 여행 데이터 캐시 갱신 시작...');
+    initTravelCache();
+    setInterval(() => {
+      console.log('🔄 [Daily] 여행 데이터 캐시 갱신 시작...');
+      initTravelCache();
+    }, 24 * 60 * 60 * 1000);
+  }, msUntil3am);
+
+  console.log(`⏰ 다음 캐시 갱신: ${next3am.toLocaleString('ko-KR')} (${Math.round(msUntil3am / 60000)}분 후)`);
+};
+scheduleDailyRefresh();
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
