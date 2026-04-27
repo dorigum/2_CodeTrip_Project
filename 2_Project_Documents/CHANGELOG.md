@@ -5,6 +5,109 @@
 
 ---
 
+## 2026-04-27 — feature/board 브랜치 머지, 게시판 시스템 통합, 위시리스트 500 오류 수정
+
+### 1. 축제 API 404 오류 원인 진단 및 해결 (`server/index.js`)
+
+**현상**: `/api/travel/festivals` 요청 시 404 에러 발생. 프론트엔드 콘솔에 `AxiosError: Request failed with status code 404` 출력.
+
+**원인**: 해당 라우트가 `server/index.js`에 이미 존재하고 있었으나, 서버 프로세스가 라우트 추가 이전에 시작된 상태 그대로 실행 중이었음. 코드 변경 후 서버 재시작이 이루어지지 않아 구 버전의 서버가 계속 요청을 처리 중이었던 단순 미재시작 문제.
+
+**해결**: `cd server && npm run dev`로 서버 재시작하여 정상 복구.
+
+---
+
+### 2. 댓글 API 엔드포인트 명칭 통일 (Pre-merge 정리)
+
+**배경**: 게시판(`feature/board`) 브랜치 머지 전 사전 정리 작업. 게시판 브랜치에서 여행지 댓글 관련 테이블 및 API 경로명을 `travel_comments` / `travel_comment_likes`로 명명하고 있어, 머지 충돌 최소화를 위해 HEAD(`doyeon`) 브랜치의 댓글 코드를 먼저 통일.
+
+**수정 파일**:
+- **`src/api/commentApi.js` → `src/api/travelCommentApi.js`** (파일명 변경):
+  - API URL 전체를 `/api/comments` → `/api/travel-comments`로 변경.
+  - `deleteComment` → `deleteTravelComment`로 함수명 변경.
+  - 함수명 전체 변경: `getTravelComments`, `toggleTravelCommentLike`, `postTravelComment`, `updateTravelComment`, `deleteTravelComment`.
+- **`server/index.js`**: 여행지 댓글 관련 모든 라우트 경로를 `/api/comments` → `/api/travel-comments`로 변경. DB 테이블 참조명 `comments` → `travel_comments`, `comment_likes` → `travel_comment_likes`로 변경.
+
+---
+
+### 3. `origin/feature/board` 브랜치 머지 — 게시판 시스템 통합
+
+**배경**: GitHub의 `feature/board` 브랜치(팀원 작업)를 로컬 `doyeon` 브랜치에 풀+머지. 머지 전 시뮬레이션 결과 8개 파일에서 충돌 예상.
+
+**자동 머지(충돌 없음) 파일** (신규 추가):
+- `src/pages/Board.jsx` — 게시판 목록 페이지
+- `src/pages/BoardDetail.jsx` — 게시글 상세 페이지 (마크다운 렌더링, 댓글, 좋아요)
+- `src/pages/BoardWrite.jsx` — 게시글 작성/수정 페이지 (마크다운 에디터)
+- `src/pages/TravelTagSearch.jsx` — 여행지 태그 검색 연동 페이지
+- `src/components/MarkdownEditor.jsx` — `react-markdown` 기반 에디터 컴포넌트
+- `src/constants/themes.js` — `DEFAULT_THEMES` 상수 (탐색 페이지 테마 목록)
+- `src/constants/regions.js` — `REGIONS` 상수 (TourAPI areacode 기반 지역 목록)
+- `src/store/useBoardWriteStore.js` — 게시글 작성 상태 스토어
+- `src/store/useRegionStore.js` — 지역 선택 상태 스토어
+- `src/api/boardApi.js` — 게시판 CRUD API (게시글·댓글·좋아요)
+
+**충돌 해결 파일 (8종)**:
+
+| 파일 | 충돌 원인 | 해결 방법 |
+|------|-----------|-----------|
+| `server/index.js` | travel_comments 테이블 생성 블록 중복, wishlists 테이블 위치, app.listen 중복 | HEAD의 wishlists 테이블 보존 + board 테이블 4종 추가 + 중복 listen 제거 |
+| `src/main.jsx` | 라우트 구성 충돌 (Festivals/Info vs Board 라우트) | 양측 라우트 모두 유지 |
+| `src/components/Layout/SideBar.jsx` | NAV_ITEMS 구성 차이 (Board 메뉴 누락 vs 글로우 애니메이션 없음) | HEAD의 애니메이션 보존 + Board 메뉴 추가 |
+| `src/App.css` | markdown-body CSS 블록 없음 | HEAD의 기존 CSS 보존 + Board의 markdown-body CSS 전체 추가 |
+| `src/pages/Explore.jsx` | import 구조, 상태 관리, JSX 섹션 다수 충돌 | HEAD의 wishlist 기능 + branch의 DEFAULT_THEMES 통합 |
+| `src/store/useExploreStore.js` | regions/fetchRegions 처리 방식 차이 | HEAD의 하드코딩 regions 유지, fetchRegions no-op 유지 |
+| `src/pages/TravelDetail.jsx` | 댓글 state 변수명 차이 | branch 명칭(`travelCommentEditingId`) + HEAD의 modal 상태 유지 |
+| `src/api/travelCommentApi.js` | 파일 자체가 HEAD에서 신규 생성됨 | HEAD 파일 그대로 유지 |
+
+**`server/index.js` 주요 추가 내용**:
+- **DB 테이블 신규**: `board_posts`, `board_post_tags`, `board_comments`, `board_comment_likes` (서버 기동 시 자동 생성)
+- **게시판 API 전체 추가**:
+  - `GET /api/board/posts` — 게시글 목록 (태그 필터, 검색, 정렬, 페이지네이션)
+  - `POST /api/board/posts` — 게시글 작성 (인증 필요)
+  - `GET /api/board/posts/:id` — 게시글 상세 (조회수 자동 증가)
+  - `PUT /api/board/posts/:id` — 게시글 수정 (작성자 본인만)
+  - `DELETE /api/board/posts/:id` — 게시글 삭제 (작성자 본인만)
+  - `GET /api/board/posts/:id/comments` — 게시글 댓글 목록
+  - `POST /api/board/posts/:id/comments` — 댓글 작성 (인증 필요)
+  - `PUT /api/board/comments/:id` — 댓글 수정 (작성자 본인만)
+  - `DELETE /api/board/comments/:id` — 댓글 삭제 (작성자 본인만)
+  - `POST /api/board/comments/:id/like` — 댓글 좋아요 토글 (인증 필요)
+- **travel-comments API 고도화**: GET 요청 시 `travel_comment_likes` JOIN으로 좋아요 수 및 본인 좋아요 여부 포함. 좋아요 토글(추가/취소) 방식으로 개선.
+
+---
+
+### 4. `react-markdown` + `remark-gfm` 패키지 설치
+
+**배경**: `feature/board` 브랜치에서 자동 머지된 `MarkdownEditor.jsx`가 `react-markdown` 라이브러리를 import하고 있었으나 해당 패키지가 설치되지 않아 Vite 번들링 오류 발생.
+
+**오류**: `[plugin:vite:import-analysis] Failed to resolve import "react-markdown" from 'src/components/MarkdownEditor.jsx'.`
+
+**해결**: `npm install react-markdown remark-gfm` 실행 후 Vite 개발 서버 재시작으로 완전 해결.
+
+---
+
+### 5. 위시리스트 `/api/wishlist/details` 500 오류 수정 (Bug Fix)
+
+**현상**: 위시리스트 페이지(MyPage) 진입 시 `GET /api/wishlist/details 500 (Internal Server Error)` 발생. 위시리스트 목록이 표시되지 않음.
+
+**원인 분석**:
+- 서버의 `GET /api/wishlist/details`는 `wishlists` 테이블의 `title`, `image_url` 컬럼을 SELECT하는 쿼리를 실행함.
+- 그러나 실제 DB의 `wishlists` 테이블에는 해당 컬럼이 존재하지 않음 (`codetrip_mysql.sql` 확인 결과).
+- `CREATE TABLE IF NOT EXISTS`는 테이블이 이미 존재하면 아무것도 하지 않으므로, 서버 코드에 컬럼을 추가해도 기존 테이블에는 적용되지 않았던 것.
+
+**수정 내용** (`server/index.js` — `initDB` 함수 내 `ALTER TABLE` 추가):
+```javascript
+// wishlists 테이블 누락 컬럼 자동 적용
+try { await conn.query('ALTER TABLE wishlists ADD COLUMN title VARCHAR(255)'); } catch { /* column already exists */ }
+try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch { /* column already exists */ }
+// wishlist_folders 테이블 누락 컬럼 자동 적용
+try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch { /* column already exists */ }
+try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NULL'); } catch { /* column already exists */ }
+```
+- ESLint `no-unused-vars` / `no-empty` 규칙에 따라 `catch (e) {}` → `catch { /* column already exists */ }` 형식으로 작성.
+
+---
+
 ## 2026-04-26 — 프로젝트 문서화, Info 페이지 신설, 사이드바 애니메이션 고도화
 
 ### 1. 프로젝트 구조 분석 문서 작성 (`Architecture_Analysis.md`)

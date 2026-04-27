@@ -11,7 +11,7 @@
 ## 1. 프로젝트 개요: CodeTrip
 - **프로젝트 명**: CodeTrip (Vibe Board + Tour Info)
 - **목적**: 프리미엄 디자인이 적용된 현대적인 CRUD 게시판 시스템 및 관광 정보 서비스 구축
-- **현상태**: 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료. 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결. 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출). 전국 여행지 탐색 및 상세 페이지 통합 완료. 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료. 위시리스트 폴더 여행 일정(시작일·종료일) 설정·표시·편집 기능 완료. 탐색 페이지 지역 필터링 코드 정합성 수정(TourAPI areacode 하드코딩). 메인 페이지 지역 기반 추천 관광지·문화시설 한정 필터링 적용.
+- **현상태**: 위시리스트 폴더 관리 시스템 및 전용 모달 인터페이스 구현 완료. 서버 사이드 인메모리 캐싱을 통한 성능 최적화 및 429 에러 해결. 메인 페이지 랜덤 뽑기 필터링 고도화(순수 관광지만 추출). 전국 여행지 탐색 및 상세 페이지 통합 완료. 프로젝트 소개 Info 페이지 신설 및 사이드바 전체 아이콘 hover 애니메이션 고도화 완료. 위시리스트 폴더 여행 일정(시작일·종료일) 설정·표시·편집 기능 완료. 탐색 페이지 지역 필터링 코드 정합성 수정(TourAPI areacode 하드코딩). 메인 페이지 지역 기반 추천 관광지·문화시설 한정 필터링 적용. **[2026-04-27]** `feature/board` 브랜치 머지 완료: 게시판(CRUD), 마크다운 에디터, 여행지 태그 검색 시스템 통합. 댓글 API를 `travel-comments`로 명칭 통일. 위시리스트 500 오류(DB 컬럼 누락) 수정.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -32,9 +32,13 @@
 ### 1.2 데이터베이스 스키마 (Database Schema)
 - **users**: 이메일, 해시된 비밀번호, 이름, 프로필 이미지 경로.
 - **wishlist_folders**: 유저별 커스텀 폴더 (이름, 여행 시작일 `start_date DATE NULL`·종료일 `end_date DATE NULL`, 생성/수정일).
-- **wishlists**: 여행지 아이템 정보 (`folder_id` 외래키를 통한 분류 관리, `UNIQUE KEY`로 중복 찜 방지).
-- **comments**: 여행지별 독립 댓글창 (`content_id` 인덱싱).
-- **comment_likes**: 댓글 좋아요 관리 (**유저당 1회 제한** 로직 적용).
+- **wishlists**: 여행지 아이템 정보 (`folder_id` 외래키를 통한 분류 관리, `UNIQUE KEY`로 중복 찜 방지, `title VARCHAR(255)`, `image_url TEXT` 포함).
+- **travel_comments**: 여행지별 독립 댓글창 (`content_id` 인덱싱). *(구: `comments` — 2026-04-27 명칭 통일)*
+- **travel_comment_likes**: 여행지 댓글 좋아요 관리 (**유저당 1회 제한** 로직 적용). *(구: `comment_likes` — 2026-04-27 명칭 통일)*
+- **board_posts**: 게시판 게시글 (`user_id`, `title`, `content` TEXT, `tags` JSON, `views`, `created_at`, `updated_at`). *(2026-04-27 신규)*
+- **board_post_tags**: 게시글 태그 정규화 테이블 (`post_id`, `tag` VARCHAR). *(2026-04-27 신규)*
+- **board_comments**: 게시판 댓글 (`post_id`, `user_id`, `content`, `created_at`). *(2026-04-27 신규)*
+- **board_comment_likes**: 게시판 댓글 좋아요 (`comment_id`, `user_id`, `UNIQUE KEY`). *(2026-04-27 신규)*
 
 ### 1.3 개발 환경 설정 및 프로젝트 구조
 프로젝트 구동을 위해 다음 환경 변수가 설정되어야 하며, 전체 파일 구조는 다음과 같습니다.
@@ -49,20 +53,29 @@
 │   ├── api/
 │   │   ├── authApi.js            # 로그인/회원가입/정보수정 API
 │   │   ├── axiosInstance.js      # 공통 Axios 설정 (인터셉터, 토큰 처리)
-│   │   ├── boardApi.js           # 게시판 관련 API (확장 대비)
-│   │   ├── commentApi.js         # 여행지 댓글/좋아요 API
+│   │   ├── boardApi.js           # 게시판 CRUD API (게시글·댓글·좋아요) [2026-04-27 통합]
+│   │   ├── travelCommentApi.js   # 여행지 댓글/좋아요 API [2026-04-27 명칭 통일, 구: commentApi.js]
 │   │   ├── travelApi.js          # 관광공사 API 연동 (서버 캐시 활용)
 │   │   ├── travelInfoApi.js      # 상세 여행지 정보 API
 │   │   ├── weatherApi.js         # 실시간 날씨, 역지오코딩 ({ name, state } 반환)
 │   │   ├── wishlistApi.js        # 폴더 및 위시리스트 관리 API
+│   ├── constants/
+│   │   ├── themes.js             # DEFAULT_THEMES 상수 (탐색 테마 목록) [2026-04-27 통합]
+│   │   └── regions.js            # REGIONS 상수 (TourAPI areacode 기반) [2026-04-27 통합]
 │   ├── store/
 │   │   ├── useAuthStore.js       # 사용자 인증 스토어
+│   │   ├── useBoardWriteStore.js # 게시글 작성 상태 스토어 [2026-04-27 통합]
 │   │   ├── useExploreStore.js    # 여행 탐색/필터 상태 스토어
+│   │   ├── useRegionStore.js     # 지역 선택 상태 스토어 [2026-04-27 통합]
 │   │   └── useWishlistStore.js   # 위시리스트(아이템+폴더) 통합 동기화 스토어
 │   ├── pages/
 │   │   ├── Home.jsx              # 메인 페이지 (슬라이더, 슬롯머신)
 │   │   ├── Explore.jsx           # 여행지 탐색 (필터링, 무한스크롤)
 │   │   ├── Festivals.jsx         # 전국 축제 및 행사 탐색 리스트
+│   │   ├── Board.jsx             # 게시판 목록 페이지 [2026-04-27 통합]
+│   │   ├── BoardDetail.jsx       # 게시글 상세 (마크다운 렌더링, 댓글, 좋아요) [2026-04-27 통합]
+│   │   ├── BoardWrite.jsx        # 게시글 작성/수정 (마크다운 에디터) [2026-04-27 통합]
+│   │   ├── TravelTagSearch.jsx   # 여행지 태그 검색 연동 [2026-04-27 통합]
 │   │   ├── TravelDetail.jsx      # 여행지 상세 (지도, 댓글, 찜)
 │   │   ├── MyPage.jsx            # 위시리스트 관리 (폴더 분류)
 │   │   ├── Info.jsx              # 서비스 소개 페이지 (기능 탭, 데이터 출처)
@@ -70,6 +83,7 @@
 │   │   ├── ForgotPassword.jsx    # 비밀번호 재설정
 │   │   └── Settings.jsx          # 프로필 수정 및 보안 설정
 │   ├── components/               
+│   │   ├── MarkdownEditor.jsx    # react-markdown 기반 마크다운 에디터 [2026-04-27 통합]
 │   │   ├── WishlistModal.jsx     # 폴더 선택 및 생성 모달 (터미널 테마)
 │   │   └── Layout/               # Header, Footer, SideBar
 ├── 2_Project_Documents/
@@ -186,6 +200,61 @@
 - **푸터(`Footer.jsx`) SAFESTAY 링크 개편**: `Security` 항목을 `Safestay`로 변경, 한국관광공사 안전여행 포털(`safestay.visitkorea.or.kr`) 연결, 새 탭 오픈 보안 속성 적용.
 - **사이드바 Info 서브메뉴 도입** (`SideBar.jsx`): Info 버튼 클릭 시 서브메뉴 토글. 서브메뉴 항목은 Public_Wifi(외부), Safestay(외부), About_CodeTrip(내부 `/info`) 3종. 외부 링크는 `open_in_new` 아이콘 표시, 내부 링크는 활성 경로 스타일 적용. `max-h` 슬라이드 애니메이션 및 화살표 회전으로 상태 시각화.
 
+### 2.12 게시판(Board) 시스템 통합 (2026-04-27 추가 — feature/board 머지)
+
+#### 시스템 개요
+`feature/board` 브랜치와의 머지를 통해 커뮤니티 게시판 기능을 전면 통합. 마크다운 기반 게시글 작성, 태그 시스템, 댓글·좋아요 상호작용을 지원하는 완결된 게시판 시스템 구축.
+
+#### 백엔드 (server/index.js)
+- **DB 테이블 신규**: `board_posts`, `board_post_tags`, `board_comments`, `board_comment_likes` — 서버 기동 시 `CREATE TABLE IF NOT EXISTS`로 자동 생성.
+- **게시판 API 엔드포인트 전체 추가**:
+
+| 메서드 | 경로 | 설명 | 인증 |
+|--------|------|------|------|
+| GET | `/api/board/posts` | 목록 조회 (태그 필터, 검색어, 정렬, 페이지네이션) | 불필요 |
+| POST | `/api/board/posts` | 게시글 작성 | 필요 |
+| GET | `/api/board/posts/:id` | 상세 조회 (조회수 자동 증가) | 불필요 |
+| PUT | `/api/board/posts/:id` | 게시글 수정 (작성자 본인만) | 필요 |
+| DELETE | `/api/board/posts/:id` | 게시글 삭제 (작성자 본인만) | 필요 |
+| GET | `/api/board/posts/:id/comments` | 댓글 목록 | 불필요 |
+| POST | `/api/board/posts/:id/comments` | 댓글 작성 | 필요 |
+| PUT | `/api/board/comments/:id` | 댓글 수정 (작성자 본인만) | 필요 |
+| DELETE | `/api/board/comments/:id` | 댓글 삭제 (작성자 본인만) | 필요 |
+| POST | `/api/board/comments/:id/like` | 댓글 좋아요 토글 | 필요 |
+
+#### 프론트엔드
+- **`src/pages/Board.jsx`**: 게시글 목록 페이지. 태그 필터 + 키워드 검색 + 정렬 + 페이지네이션 지원.
+- **`src/pages/BoardDetail.jsx`**: 게시글 상세 페이지. `react-markdown` + `remark-gfm`으로 마크다운 렌더링. 댓글 작성/수정/삭제, 댓글 좋아요 기능 포함.
+- **`src/pages/BoardWrite.jsx`**: 게시글 작성/수정 페이지. 마크다운 에디터(`MarkdownEditor.jsx`) 탑재. 제목, 태그, 본문 입력.
+- **`src/pages/TravelTagSearch.jsx`**: 여행지 태그 기반 검색 결과를 게시글 작성 화면과 연동하는 페이지.
+- **`src/components/MarkdownEditor.jsx`**: `react-markdown` 기반 에디터 컴포넌트. `.markdown-body` CSS 클래스로 렌더링 스타일 적용.
+- **`src/api/boardApi.js`**: 위 API 엔드포인트와 1:1 대응하는 클라이언트 API 모듈.
+- **`src/store/useBoardWriteStore.js`**: 게시글 작성 폼 상태(제목, 태그, 본문, 여행지 태그)를 Zustand로 관리.
+
+#### 라우팅 (`src/main.jsx`)
+```
+/board            → Board.jsx
+/board/write      → BoardWrite.jsx
+/board/tag-search → TravelTagSearch.jsx
+/board/:id        → BoardDetail.jsx
+```
+
+#### 사이드바 연동 (`src/components/Layout/SideBar.jsx`)
+- `article` 아이콘의 `Board` 메뉴 추가. 경로 `/board`, 애니메이션 `group-hover:-translate-y-0.5`.
+
+#### 패키지 추가
+- `react-markdown`, `remark-gfm` — 마크다운 렌더링용.
+
+#### 댓글 API 명칭 통일
+- 여행지 댓글 API: `commentApi.js` → `travelCommentApi.js`, 경로 `/api/comments` → `/api/travel-comments`.
+- DB 테이블: `comments` → `travel_comments`, `comment_likes` → `travel_comment_likes`.
+
+#### 위시리스트 DB 컬럼 누락 수정
+- **문제**: 기존 `wishlists` 테이블에 `title`, `image_url` 컬럼 부재로 `GET /api/wishlist/details` 500 오류 발생.
+- **해결**: `initDB()` 내 `ALTER TABLE wishlists ADD COLUMN title/image_url` + `ALTER TABLE wishlist_folders ADD COLUMN start_date/end_date` — try/catch로 컬럼 중복 무시.
+
+---
+
 ### 2.11 위시리스트 폴더 여행 일정 시스템 및 버그 수정 (2026-04-26 추가)
 
 #### 폴더 여행 일정 설정 기능
@@ -283,6 +352,11 @@
 | 푸터 SAFESTAY 링크 연결 (한국관광공사 안전여행 포털) | ✅ 완료 |
 | 사이드바 Info 서브메뉴 (Public_Wifi · Safestay · About_CodeTrip) | ✅ 완료 |
 | 사이드바 Explore 아이콘 애니메이션 색상 파란색(`#3b82f6`)으로 변경 | ✅ 완료 |
+| 댓글 API 명칭 통일 (`travel-comments` / `travel_comment_likes`) | ✅ 완료 |
+| `feature/board` 브랜치 머지 — 게시판 시스템(CRUD·댓글·태그·좋아요) 통합 | ✅ 완료 |
+| 마크다운 에디터(`MarkdownEditor.jsx`) 및 `react-markdown` 연동 | ✅ 완료 |
+| 게시판 DB 테이블 4종 신규 생성 (`board_posts`, `board_post_tags`, `board_comments`, `board_comment_likes`) | ✅ 완료 |
+| 위시리스트 `title`/`image_url` 컬럼 누락 자동 복구 (`ALTER TABLE`) | ✅ 완료 |
 | 스마트 검색 엔진 고도화 | ⏳ 추진중 |
 
 ---
@@ -374,4 +448,4 @@
 ```
 
 ---
-*최종 업데이트: 2026-04-26 (위시리스트 폴더 여행 일정 설정·편집 기능, NaN 날짜 버그 수정, 탐색 페이지 지역 필터링 코드 정합성 수정, 메인 페이지 지역 추천 콘텐츠 타입 필터링 강화, 푸터 SAFESTAY 개편, 사이드바 Info 서브메뉴 도입, Explore 아이콘 애니메이션 색상 파란색 변경)*
+*최종 업데이트: 2026-04-27 (feature/board 머지 — 게시판 시스템 통합, 댓글 API travel-comments 명칭 통일, react-markdown 설치, 위시리스트 500 오류 DB 컬럼 자동 적용, 게시판 DB 테이블 4종 신규)*

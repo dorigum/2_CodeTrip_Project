@@ -168,9 +168,13 @@ const initDB = async () => {
       )
     `);
 
-    // 기존 테이블에 여행 일정 컬럼 추가 (이미 존재하면 조용히 무시)
-    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch (e) {}
-    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NULL'); } catch (e) {}
+    // 기존 wishlists 테이블에 누락된 컬럼 추가 (이미 존재하면 조용히 무시)
+    try { await conn.query('ALTER TABLE wishlists ADD COLUMN title VARCHAR(255)'); } catch { /* column already exists */ }
+    try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch { /* column already exists */ }
+
+    // 기존 wishlist_folders 테이블에 여행 일정 컬럼 추가 (이미 존재하면 조용히 무시)
+    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch { /* column already exists */ }
+    try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NULL'); } catch { /* column already exists */ }
 
     console.log('✅ 테이블 초기화 완료');
     conn.release();
@@ -477,30 +481,110 @@ app.get('/api/travel', (req, res) => {
 });
 
 // --- Travel Comment Routes ---
+
+// 코멘트 조회 (좋아요 수 + 현재 유저 좋아요 여부 포함)
 app.get('/api/travel-comments/:contentId', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  let userId = null;
+  if (token) {
+    try { userId = jwt.verify(token, JWT_SECRET).id; } catch {}
+  }
+
   try {
-    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE content_id = ? ORDER BY created_at DESC', [req.params.contentId]);
-    res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const [rows] = await pool.query(`
+      SELECT c.id, c.content_id, c.user_id, c.nickname, c.body, c.created_at,
+        COUNT(cl.id) AS likes,
+        COALESCE(MAX(CASE WHEN cl.user_id = ? THEN 1 ELSE 0 END), 0) AS liked
+      FROM travel_comments c
+      LEFT JOIN travel_comment_likes cl ON cl.comment_id = c.id
+      WHERE c.content_id = ?
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `, [userId, req.params.contentId]);
+
+    res.json(rows.map(r => ({ ...r, likes: Number(r.likes), liked: !!r.liked })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/travel-comments', authenticateToken, async (req, res) => {
-  const { contentId, body, nickname } = req.body;
-  try {
-    const [result] = await pool.query('INSERT INTO travel_comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)', [contentId, req.user.id, nickname || req.user.name || '익명', body]);
-    res.status(201).json({ id: result.insertId, content_id: contentId, user_id: req.user.id, nickname, body, likes: 0 });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
+// 코멘트 좋아요 토글
 app.post('/api/travel-comments/:id/like', authenticateToken, async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.user.id;
   try {
-    const [existing] = await pool.query('SELECT id FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (existing.length > 0) return res.status(400).json({ message: 'Already liked' });
-    await pool.query('INSERT INTO travel_comment_likes (comment_id, user_id) VALUES (?, ?)', [req.params.id, req.user.id]);
-    await pool.query('UPDATE travel_comments SET likes = likes + 1 WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const [existing] = await pool.query(
+      'SELECT id FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?',
+      [commentId, userId]
+    );
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM travel_comment_likes WHERE comment_id = ? AND user_id = ?', [commentId, userId]);
+    } else {
+      await pool.query('INSERT INTO travel_comment_likes (comment_id, user_id) VALUES (?, ?)', [commentId, userId]);
+    }
+    const [[{ likes }]] = await pool.query(
+      'SELECT COUNT(*) AS likes FROM travel_comment_likes WHERE comment_id = ?',
+      [commentId]
+    );
+    res.json({ liked: existing.length === 0, likes: Number(likes) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+// 코멘트 작성
+app.post('/api/travel-comments', authenticateToken, async (req, res) => {
+  const { content_id, nickname, body } = req.body;
+  if (!content_id || !body || !body.trim()) {
+    return res.status(400).json({ message: '필수 항목이 누락되었습니다.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO travel_comments (content_id, user_id, nickname, body) VALUES (?, ?, ?, ?)',
+      [content_id, req.user.id, nickname || '익명', body.trim()]
+    );
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 수정
+app.put('/api/travel-comments/:id', authenticateToken, async (req, res) => {
+  const { body } = req.body;
+  if (!body || !body.trim()) {
+    return res.status(400).json({ message: '내용을 입력해주세요.' });
+  }
+  try {
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '수정 권한이 없습니다.' });
+
+    await pool.query('UPDATE travel_comments SET body = ? WHERE id = ?', [body.trim(), req.params.id]);
+    const [updated] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
+    res.json(updated[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 코멘트 삭제
+app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '삭제 권한이 없습니다.' });
+
+    await pool.query('DELETE FROM travel_comments WHERE id = ?', [req.params.id]);
+    res.json({ message: '삭제되었습니다.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Board Routes ---
 
 // --- Wishlist Core Routes ---
 app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
@@ -580,40 +664,7 @@ app.put('/api/wishlist/move', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 코멘트 수정
-app.put('/api/travel-comments/:id', authenticateToken, async (req, res) => {
-  const { body } = req.body;
-  if (!body || !body.trim()) {
-    return res.status(400).json({ message: '내용을 입력해주세요.' });
-  }
-  try {
-    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
-    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '수정 권한이 없습니다.' });
 
-    await pool.query('UPDATE travel_comments SET body = ? WHERE id = ?', [body.trim(), req.params.id]);
-    const [updated] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
-    res.json(updated[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 코멘트 삭제
-app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ message: '코멘트를 찾을 수 없습니다.' });
-    if (rows[0].user_id !== req.user.id) return res.status(403).json({ message: '삭제 권한이 없습니다.' });
-
-    await pool.query('DELETE FROM travel_comments WHERE id = ?', [req.params.id]);
-    res.json({ message: '삭제되었습니다.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- Board Routes ---
 
 // 게시글 목록
 app.get('/api/board/posts', async (req, res) => {
