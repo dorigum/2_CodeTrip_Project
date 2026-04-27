@@ -1,33 +1,76 @@
 import axiosInstance from './axiosInstance';
 
-// 개별 named exports 추가 (MyPage.jsx 등의 호환성용)
-export const fetchWishlistDetails = () => {
-  return axiosInstance.get('/wishlist/details'); // /api 제거
+export const getWishlistDetails = async () => {
+  const response = await axiosInstance.get('/wishlist/details');
+  return response.data;
 };
 
-export const toggleWishlist = (travelData, folderId = null) => {
-  // travelData.contentid 또는 travelData.contentId 모두 대응 가능하도록 처리
-  const contentId = travelData.contentid || travelData.contentId;
-  return axiosInstance.post('/wishlist/toggle', {
-    contentId: contentId,
-    title: travelData.title,
-    imageUrl: travelData.firstimage || travelData.firstImage,
-    folderId: folderId
+export const toggleWishlist = async (contentId, title, imageUrl, folderId = null) => {
+  const response = await axiosInstance.post('/wishlist/toggle', {
+    contentId,
+    title,
+    imageUrl,
+    folderId
   });
+  return response.data;
 };
 
-const wishlistApi = {
-  toggleWishlist,
-  fetchWishlistDetails,
-  // getWishlistDetails 명칭도 지원 (내부 참조용)
-  getWishlistDetails: fetchWishlistDetails,
-  getFolders: () => axiosInstance.get('/wishlist/folders'),
-  createFolder: (name, startDate = null, endDate = null) =>
-    axiosInstance.post('/wishlist/folders', { name, startDate, endDate }),
-  updateFolder: (folderId, name, startDate = null, endDate = null) =>
-    axiosInstance.put(`/wishlist/folders/${folderId}`, { name, startDate, endDate }),
-  deleteFolder: (folderId) => axiosInstance.delete(`/wishlist/folders/${folderId}`),
-  moveWishlistItem: (contentId, folderId) => axiosInstance.put('/wishlist/move', { contentId, folderId })
+export const getFolders = async () => {
+  const response = await axiosInstance.get('/wishlist/folders');
+  return response.data;
 };
 
-export default wishlistApi;
+export const createFolder = async (name, startDate, endDate) => {
+  const response = await axiosInstance.post('/wishlist/folders', {
+    name,
+    startDate,
+    endDate
+  });
+  return response.data;
+};
+
+export const updateFolder = async (folderId, name, startDate, endDate) => {
+  const response = await axiosInstance.put(`/wishlist/folders/${folderId}`, {
+    name,
+    startDate,
+    endDate
+  });
+  return response.data;
+};
+
+export const deleteFolder = async (folderId) => {
+  const response = await axiosInstance.delete(`/wishlist/folders/${folderId}`);
+  return response.data;
+};
+
+export const moveItem = async (contentId, folderId) => {
+  const response = await axiosInstance.put('/wishlist/move', {
+    contentId,
+    folderId
+  });
+  return response.data;
+};
+
+// --- Notes API ---
+export const getFolderNotes = async (folderId) => {
+  const response = await axiosInstance.get(`/wishlist/folders/${folderId}/notes`);
+  return response.data;
+};
+
+export const createNote = async (folderId, content, type = 'CHECKLIST') => {
+  const response = await axiosInstance.post(`/wishlist/folders/${folderId}/notes`, {
+    content,
+    type
+  });
+  return response.data;
+};
+
+export const toggleNote = async (noteId) => {
+  const response = await axiosInstance.put(`/wishlist/notes/${noteId}/toggle`);
+  return response.data;
+};
+
+export const deleteNote = async (noteId) => {
+  const response = await axiosInstance.delete(`/wishlist/notes/${noteId}`);
+  return response.data;
+};

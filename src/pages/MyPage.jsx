@@ -9,10 +9,10 @@ const MyPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuthStore();
   
-  // 스토어에서 모든 상태와 액션을 가져옴 (로컬 fetch 제거)
   const {
     wishlistItems, folders, wishlistIds, loading,
     initWishlist, toggleWishlist, createFolder, updateFolder, deleteFolder, moveItem,
+    fetchNotes, addNote, toggleNote: toggleNoteAction, deleteNote: deleteNoteAction,
     initialized: wishlistInitialized
   } = useWishlistStore();
 
@@ -28,27 +28,66 @@ const MyPage = () => {
   const [editFolderEnd, setEditFolderEnd] = useState('');
   const [movingItemId, setMovingItemId] = useState(null);
 
+  // --- Note(Memo/Checklist) States ---
+  const [notes, setNotes] = useState([]);
+  const [noteInput, setNoteInput] = useState('');
+  const [noteType, setNoteType] = useState('CHECKLIST'); // 'CHECKLIST' or 'MEMO'
+
   // Authentication & Initial Data Load
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
     } else {
-      initWishlist(); // 스토어의 초기화 함수 호출
+      initWishlist();
     }
   }, [isLoggedIn, navigate, initWishlist]);
+
+  // 폴더 변경 시 노트 로드
+  useEffect(() => {
+    if (selectedFolderId && selectedFolderId !== 'UNCATEGORIZED') {
+      const loadNotes = async () => {
+        const data = await fetchNotes(selectedFolderId);
+        setNotes(data);
+      };
+      loadNotes();
+    } else {
+      setNotes([]);
+    }
+  }, [selectedFolderId, fetchNotes]);
 
   const handleRemoveWish = async (e, contentId) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.confirm('위시리스트에서 삭제하시겠습니까?')) {
-      // toggleWishlist는 이제 내부적으로 서버 동기화까지 마침
       await toggleWishlist({ contentid: contentId });
     }
+  };
+
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    if (!noteInput.trim() || !selectedFolderId || selectedFolderId === 'UNCATEGORIZED') return;
+    const newNote = await addNote(selectedFolderId, noteInput.trim(), noteType);
+    if (newNote) {
+      setNotes(prev => [...prev, newNote]);
+      setNoteInput('');
+    }
+  };
+
+  const handleToggleNote = async (noteId) => {
+    await toggleNoteAction(noteId);
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, is_completed: !n.is_completed } : n));
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!window.confirm('삭제하시겠습니까?')) return;
+    await deleteNoteAction(noteId);
+    setNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
   const openEditModal = (folder) => {
     setEditingFolder(folder);
     setEditFolderName(folder.name);
+    // 서버에서 이미 YYYY-MM-DD 형식의 문자열로 오므로 그대로 사용
     setEditFolderStart(folder.start_date ? String(folder.start_date).slice(0, 10) : '');
     setEditFolderEnd(folder.end_date ? String(folder.end_date).slice(0, 10) : '');
   };
@@ -63,6 +102,7 @@ const MyPage = () => {
   const handleUpdateFolder = async (e) => {
     e.preventDefault();
     if (!editFolderName.trim()) return;
+    // 날짜 문자열을 그대로 서버에 전송 (타임존 변환 방지)
     await updateFolder(editingFolder.id, editFolderName.trim(), editFolderStart || null, editFolderEnd || null);
     closeEditModal();
   };
@@ -70,18 +110,14 @@ const MyPage = () => {
   const handleCreateFolder = async (e) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
-    await createFolder(
-      newFolderName.trim(),
-      newFolderStart || null,
-      newFolderEnd || null
-    );
+    // 날짜 문자열을 그대로 서버에 전송 (타임존 변환 방지)
+    await createFolder(newFolderName.trim(), newFolderStart || null, newFolderEnd || null);
     setNewFolderName('');
     setNewFolderStart('');
     setNewFolderEnd('');
     setShowFolderModal(false);
   };
 
-  // 필터링 및 정렬 로직 (스토어의 wishlistItems를 직접 사용)
   const filteredItems = useMemo(() => {
     let items = wishlistItems || [];
     if (selectedFolderId === 'UNCATEGORIZED') {
@@ -98,73 +134,59 @@ const MyPage = () => {
       const titleB = b.title || '';
       if (sortBy === 'TITLE') return titleA.localeCompare(titleB);
       if (sortBy === 'TITLE_DESC') return titleB.localeCompare(titleA);
-      // 최신순 (ID 역순)
       return String(b.contentid || b.content_id).localeCompare(String(a.contentid || a.content_id));
     });
   }, [filteredItems, sortBy]);
 
-  if (!isLoggedIn) return null;
-
-  // 날짜 형식화 함수
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
+    // 날짜 형식이 YYYY-MM-DD 형식이면 parseLocalDate 사용, 아니면 일반 Date 사용 (생성일 등)
+    if (String(dateStr).includes('-') && String(dateStr).length <= 10) {
+      const d = parseLocalDate(dateStr);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    }
     const d = new Date(dateStr);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}.${month}.${day}`;
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const DAYS_KO = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-
-  // "YYYY-MM-DD" 또는 MySQL ISO 문자열("YYYY-MM-DDT...Z") → 로컬 기준 Date
   const parseLocalDate = (str) => {
-    const dateOnly = String(str).slice(0, 10); // "2026-04-25T00:00:00.000Z" → "2026-04-25"
+    if (!str) return new Date();
+    // YYYY-MM-DD 문자열을 타임존 영향 없이 로컬 Date 객체로 변환
+    const dateOnly = String(str).slice(0, 10);
     const [y, m, d] = dateOnly.split('-').map(Number);
     return new Date(y, m - 1, d);
   };
 
-  // 사이드바 폴더 버튼용 짧은 일정 문자열
   const formatScheduleShort = (startStr, endStr) => {
     if (!startStr) return null;
     const s = parseLocalDate(startStr);
-    const sm = String(s.getMonth() + 1).padStart(2, '0');
-    const sd = String(s.getDate()).padStart(2, '0');
-    const startLabel = `${sm}.${sd}(${DAYS_KO[s.getDay()]})`;
+    const startLabel = `${String(s.getMonth() + 1).padStart(2, '0')}.${String(s.getDate()).padStart(2, '0')}(${DAYS_KO[s.getDay()]})`;
     if (!endStr) return startLabel;
     const e = parseLocalDate(endStr);
-    const em = String(e.getMonth() + 1).padStart(2, '0');
-    const ed = String(e.getDate()).padStart(2, '0');
-    const endLabel = `${em}.${ed}(${DAYS_KO[e.getDay()]})`;
+    const endLabel = `${String(e.getMonth() + 1).padStart(2, '0')}.${String(e.getDate()).padStart(2, '0')}(${DAYS_KO[e.getDay()]})`;
     const nights = Math.round((e - s) / 86400000);
-    const duration = nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`;
-    return `${startLabel} ~ ${endLabel} : ${duration}`;
+    return `${startLabel} ~ ${endLabel} : ${nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`}`;
   };
 
-  // FOLDER_METADATA 패널용 전체 일정 문자열
   const formatScheduleFull = (startStr, endStr) => {
     if (!startStr) return null;
     const s = parseLocalDate(startStr);
-    const sy = s.getFullYear();
-    const sm = String(s.getMonth() + 1).padStart(2, '0');
-    const sd = String(s.getDate()).padStart(2, '0');
-    const startLabel = `${sy}.${sm}.${sd}(${DAYS_KO[s.getDay()]})`;
+    const startLabel = `${s.getFullYear()}.${String(s.getMonth() + 1).padStart(2, '0')}.${String(s.getDate()).padStart(2, '0')}(${DAYS_KO[s.getDay()]})`;
     if (!endStr) return startLabel;
     const e = parseLocalDate(endStr);
-    const ey = e.getFullYear();
-    const em = String(e.getMonth() + 1).padStart(2, '0');
-    const ed = String(e.getDate()).padStart(2, '0');
-    const endLabel = `${ey}.${em}.${ed}(${DAYS_KO[e.getDay()]})`;
+    const endLabel = `${e.getFullYear()}.${String(e.getMonth() + 1).padStart(2, '0')}.${String(e.getDate()).padStart(2, '0')}(${DAYS_KO[e.getDay()]})`;
     const nights = Math.round((e - s) / 86400000);
-    const duration = nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`;
-    return `${startLabel}\n~ ${endLabel}\n: ${duration}`;
+    return `${startLabel}\n~ ${endLabel}\n: ${nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`}`;
   };
 
   const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
 
+  if (!isLoggedIn) return null;
+
   return (
     <div className="flex-1 bg-background overflow-y-auto custom-scrollbar">
-      {/* Folder Creation Modal */}
+      {/* Folder Modals (Creation & Edit) ... 생략 가능하지만 전체 코드를 쓰기로 함 */}
       {showFolderModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-outline-variant/20 animate-in fade-in zoom-in duration-200">
@@ -173,69 +195,28 @@ const MyPage = () => {
               <button onClick={() => setShowFolderModal(false)} className="material-symbols-outlined text-slate-400 hover:text-on-surface transition-colors">close</button>
             </div>
             <form onSubmit={handleCreateFolder} className="p-6 flex flex-col gap-5">
-              {/* 폴더 이름 */}
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">folder_name</label>
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="예: 부산 1박 2일 맛집투어"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all"
-                />
+                <input autoFocus type="text" placeholder="예: 부산 1박 2일 맛집투어" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all" />
               </div>
-
-              {/* 여행 일정 */}
               <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                  travel_schedule <span className="text-slate-300 normal-case">(선택)</span>
-                </label>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">travel_schedule</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={newFolderStart}
-                    onChange={(e) => {
-                      setNewFolderStart(e.target.value);
-                      if (newFolderEnd && e.target.value > newFolderEnd) setNewFolderEnd('');
-                    }}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
-                  />
+                  <input type="date" value={newFolderStart} onChange={(e) => { setNewFolderStart(e.target.value); if (newFolderEnd && e.target.value > newFolderEnd) setNewFolderEnd(''); }} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all" />
                   <span className="text-slate-400 font-mono text-xs shrink-0">~</span>
-                  <input
-                    type="date"
-                    value={newFolderEnd}
-                    min={newFolderStart || undefined}
-                    onChange={(e) => setNewFolderEnd(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
-                  />
+                  <input type="date" value={newFolderEnd} min={newFolderStart || undefined} onChange={(e) => setNewFolderEnd(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all" />
                 </div>
-                {/* 미리보기 */}
-                {newFolderStart && (
-                  <p className="text-[10px] font-mono text-primary mt-2 leading-relaxed">
-                    {formatScheduleShort(newFolderStart, newFolderEnd)}
-                  </p>
-                )}
+                {newFolderStart && <p className="text-[10px] font-mono text-primary mt-2">{formatScheduleShort(newFolderStart, newFolderEnd)}</p>}
               </div>
-
               <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setShowFolderModal(false); setNewFolderName(''); setNewFolderStart(''); setNewFolderEnd(''); }}
-                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl"
-                >
-                  CANCEL
-                </button>
-                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">
-                  CREATE_FOLDER
-                </button>
+                <button type="button" onClick={() => setShowFolderModal(false)} className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">CANCEL</button>
+                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">CREATE_FOLDER</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Folder Edit Modal */}
       {editingFolder && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-outline-variant/20 animate-in fade-in zoom-in duration-200">
@@ -244,61 +225,22 @@ const MyPage = () => {
               <button onClick={closeEditModal} className="material-symbols-outlined text-slate-400 hover:text-on-surface transition-colors">close</button>
             </div>
             <form onSubmit={handleUpdateFolder} className="p-6 flex flex-col gap-5">
-              {/* 폴더 이름 */}
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">folder_name</label>
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="폴더 이름"
-                  value={editFolderName}
-                  onChange={(e) => setEditFolderName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all"
-                />
+                <input autoFocus type="text" placeholder="폴더 이름" value={editFolderName} onChange={(e) => setEditFolderName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm outline-none focus:border-primary transition-all" />
               </div>
-
-              {/* 여행 일정 */}
               <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                  travel_schedule <span className="text-slate-300 normal-case">(선택)</span>
-                </label>
+                <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">travel_schedule</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={editFolderStart}
-                    onChange={(e) => {
-                      setEditFolderStart(e.target.value);
-                      if (editFolderEnd && e.target.value > editFolderEnd) setEditFolderEnd('');
-                    }}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
-                  />
+                  <input type="date" value={editFolderStart} onChange={(e) => { setEditFolderStart(e.target.value); if (editFolderEnd && e.target.value > editFolderEnd) setEditFolderEnd(''); }} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all" />
                   <span className="text-slate-400 font-mono text-xs shrink-0">~</span>
-                  <input
-                    type="date"
-                    value={editFolderEnd}
-                    min={editFolderStart || undefined}
-                    onChange={(e) => setEditFolderEnd(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all"
-                  />
+                  <input type="date" value={editFolderEnd} min={editFolderStart || undefined} onChange={(e) => setEditFolderEnd(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-mono outline-none focus:border-primary transition-all" />
                 </div>
-                {editFolderStart && (
-                  <p className="text-[10px] font-mono text-primary mt-2 leading-relaxed">
-                    {formatScheduleShort(editFolderStart, editFolderEnd)}
-                  </p>
-                )}
+                {editFolderStart && <p className="text-[10px] font-mono text-primary mt-2">{formatScheduleShort(editFolderStart, editFolderEnd)}</p>}
               </div>
-
               <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl"
-                >
-                  CANCEL
-                </button>
-                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">
-                  SAVE_CHANGES
-                </button>
+                <button type="button" onClick={closeEditModal} className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">CANCEL</button>
+                <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold">SAVE_CHANGES</button>
               </div>
             </form>
           </div>
@@ -348,60 +290,91 @@ const MyPage = () => {
             </nav>
           </section>
 
-          {/* FOLDER_METADATA 복구 */}
+          {/* FOLDER_NOTES (신규 추가 섹션) */}
           {selectedFolder && (
-            <section className="bg-inverse-surface text-inverse-on-surface p-5 rounded-xl font-mono text-[10px] leading-relaxed shadow-lg animate-in slide-in-from-left-4 duration-300">
+            <section className="bg-surface-container-high p-5 rounded-xl border border-outline-variant/10 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="flex items-center justify-between border-b border-outline-variant/15 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-sm">edit_note</span>
+                  <span className="font-label text-[10px] font-bold uppercase tracking-widest text-primary">Folder_Notes</span>
+                </div>
+                <div className="flex bg-slate-100 rounded-md p-0.5">
+                  <button onClick={() => setNoteType('CHECKLIST')} className={`px-2 py-0.5 text-[9px] font-bold rounded transition-all ${noteType === 'CHECKLIST' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'}`}>LIST</button>
+                  <button onClick={() => setNoteType('MEMO')} className={`px-2 py-0.5 text-[9px] font-bold rounded transition-all ${noteType === 'MEMO' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'}`}>MEMO</button>
+                </div>
+              </div>
+
+              {/* 노트 입력 폼 */}
+              <form onSubmit={handleAddNote} className="mb-4">
+                <div className="relative group">
+                  <input
+                    type="text"
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder={noteType === 'CHECKLIST' ? "새 체크리스트..." : "메모 작성..."}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 pr-10 text-[11px] outline-none focus:border-primary transition-all font-body"
+                  />
+                  <button type="submit" className="absolute right-2 inset-y-0 flex items-center justify-center material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors text-lg leading-none">subdirectory_arrow_left</button>
+                </div>
+              </form>
+
+              {/* 노트 리스트 */}
+              <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2">
+                {notes.length === 0 ? (
+                  <p className="text-[10px] text-slate-300 font-mono text-center py-2">// no_notes_found</p>
+                ) : (
+                  notes.map(note => (
+                    <div key={note.id} className="flex items-start gap-2 group">
+                      {note.type === 'CHECKLIST' ? (
+                        <button onClick={() => handleToggleNote(note.id)} className={`material-symbols-outlined text-base mt-0.5 shrink-0 transition-colors ${note.is_completed ? 'text-emerald-500 fill-1' : 'text-slate-300'}`}>
+                          {note.is_completed ? 'check_box' : 'check_box_outline_blank'}
+                        </button>
+                      ) : (
+                        <span className="material-symbols-outlined text-base mt-0.5 shrink-0 text-primary/40">notes</span>
+                      )}
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <span className={`text-[11px] leading-relaxed break-words font-body transition-all ${note.is_completed ? 'text-slate-300 line-through' : 'text-slate-600'}`}>
+                          {note.content}
+                        </span>
+                        <span className="text-[8px] font-mono text-slate-300 mt-0.5">{formatDate(note.created_at)}</span>
+                      </div>
+                      <button onClick={() => handleDeleteNote(note.id)} className="material-symbols-outlined text-xs text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">delete</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
+
+          {selectedFolder && (
+            <section className="bg-inverse-surface text-inverse-on-surface p-5 rounded-xl font-mono text-[10px] leading-relaxed shadow-lg">
               <div className="flex items-center gap-2 border-b border-white/10 pb-3 mb-4">
                 <span className="material-symbols-outlined text-primary-container text-sm">info</span>
                 <span className="uppercase opacity-60 tracking-widest">Folder_Metadata</span>
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="opacity-40">CREATED_AT:</span>
-                  <span className="text-emerald-400 font-bold">{formatDate(selectedFolder.created_at)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="opacity-40">LAST_UPDATED:</span>
-                  <span className="text-emerald-400 font-bold">{formatDate(selectedFolder.updated_at || selectedFolder.created_at)}</span>
-                </div>
+                <div className="flex justify-between items-center"><span className="opacity-40">CREATED_AT:</span><span className="text-emerald-400 font-bold">{formatDate(selectedFolder.created_at)}</span></div>
+                <div className="flex justify-between items-center"><span className="opacity-40">LAST_UPDATED:</span><span className="text-emerald-400 font-bold">{formatDate(selectedFolder.updated_at || selectedFolder.created_at)}</span></div>
                 {selectedFolder.start_date && (
                   <div className="flex flex-col gap-1.5 border-t border-white/5 pt-2 mt-2">
                     <span className="opacity-40">TRAVEL_DATE:</span>
-                    <span className="text-cyan-400 font-bold text-[10px] leading-relaxed whitespace-pre-line">
-                      {formatScheduleFull(selectedFolder.start_date, selectedFolder.end_date)}
-                    </span>
+                    <span className="text-cyan-400 font-bold whitespace-pre-line">{formatScheduleFull(selectedFolder.start_date, selectedFolder.end_date)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center border-t border-white/5 pt-2 mt-2">
-                  <span className="opacity-40">NODE_COUNT:</span>
-                  <span className="text-primary-container font-bold">{wishlistItems.filter(i => Number(i.folder_id) === Number(selectedFolderId)).length}</span>
-                </div>
               </div>
             </section>
           )}
 
-          {/* COMPACT_SYNC_STATUS */}
           <section className="mt-4 pt-6 border-t border-dashed border-outline-variant/20">
-            <div className="bg-slate-50/50 rounded-xl p-4 border border-outline-variant/10 shadow-sm">
+            <div className="bg-slate-50/50 rounded-xl p-4 border border-outline-variant/10">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
+                  <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
                   <span className="font-mono text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Sync_Active</span>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-600 font-bold bg-white px-2 py-0.5 rounded border border-emerald-100 shadow-sm">200_OK</span>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
-                  <span className="text-primary/70 font-bold">ENDPOINT:</span>
-                  <span className="truncate">GET /api/wishlist/details</span>
-                </div>
-                <p className="text-[11px] text-slate-500 font-body leading-relaxed">
-                  사용자의 데이터 노드가 원격 서버와 <br/>실시간으로 동기화되고 있습니다.
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-500 font-body leading-relaxed">사용자의 데이터 노드가 원격 서버와 <br/>실시간으로 동기화되고 있습니다.</p>
             </div>
           </section>
         </aside>
@@ -409,14 +382,8 @@ const MyPage = () => {
         <div className="flex-1">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h3 className="font-headline text-xl font-bold">
-                {selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}
-              </h3>
-              {selectedFolder?.start_date && (
-                <p className="text-[11px] font-mono text-primary mt-1">
-                  {formatScheduleShort(selectedFolder.start_date, selectedFolder.end_date)}
-                </p>
-              )}
+              <h3 className="font-headline text-xl font-bold">{selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}</h3>
+              {selectedFolder?.start_date && <p className="text-[11px] font-mono text-primary mt-1">{formatScheduleShort(selectedFolder.start_date, selectedFolder.end_date)}</p>}
             </div>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
               <option value="CREATED">NEWEST</option>

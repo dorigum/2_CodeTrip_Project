@@ -39,6 +39,7 @@ const useExploreStore = create((set, get) => ({
   appliedThemes: [''],
 
   keyword: '',
+  sort: 'default',
   currentPage: 1,
   posts: [],
   totalCount: 0,
@@ -95,6 +96,11 @@ const useExploreStore = create((set, get) => ({
     get().fetchPosts();
   },
 
+  setSort: (sort) => {
+    set({ sort, currentPage: 1 });
+    get().fetchPosts();
+  },
+
   changePage: (page) => {
     const { currentPage, totalCount } = get();
     const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
@@ -104,7 +110,7 @@ const useExploreStore = create((set, get) => ({
   },
 
   fetchPosts: async () => {
-    const { appliedRegions, appliedThemes, currentPage, keyword } = get();
+    const { appliedRegions, appliedThemes, currentPage, keyword, sort } = get();
     try {
       set({ loading: true });
       const { items, totalCount } = await getTravelList({
@@ -113,6 +119,7 @@ const useExploreStore = create((set, get) => ({
         pageNo: currentPage,
         numOfRows: NUM_OF_ROWS,
         keyword,
+        sort,
       });
       set({ posts: items, totalCount, initialized: true });
     } catch (error) {

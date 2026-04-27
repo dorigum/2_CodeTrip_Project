@@ -84,7 +84,8 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 });
 
 const initDB = async () => {
@@ -92,9 +93,39 @@ const initDB = async () => {
     const conn = await pool.getConnection();
     console.log('✅ 데이터베이스 연결 성공');
     
-    await conn.query('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, profile_img VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        email VARCHAR(255) NOT NULL UNIQUE, 
+        password VARCHAR(255) NOT NULL, 
+        name VARCHAR(100) NOT NULL, 
+        profile_img VARCHAR(255), 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        content_id VARCHAR(50) NOT NULL, 
+        user_id INT, 
+        nickname VARCHAR(100) NOT NULL DEFAULT "익명", 
+        body TEXT NOT NULL, 
+        likes INT NOT NULL DEFAULT 0, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        INDEX idx_content_id (content_id)
+      )
+    `);
+      
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comment_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        comment_id INT NOT NULL, 
+        user_id INT NOT NULL, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        UNIQUE KEY uq_comment_user (comment_id, user_id)
+      )
+    `);
     
     await conn.query(`
       CREATE TABLE IF NOT EXISTS wishlists (
@@ -168,6 +199,20 @@ const initDB = async () => {
       )
     `);
 
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS wishlist_notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        folder_id INT NOT NULL,
+        user_id INT NOT NULL,
+        content TEXT NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
+        type ENUM('MEMO', 'CHECKLIST') DEFAULT 'CHECKLIST',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (folder_id) REFERENCES wishlist_folders(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // 기존 wishlists 테이블에 누락된 컬럼 추가 (이미 존재하면 조용히 무시)
     try { await conn.query('ALTER TABLE wishlists ADD COLUMN title VARCHAR(255)'); } catch { /* column already exists */ }
     try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch { /* column already exists */ }
@@ -192,9 +237,8 @@ const fetchFestivals = async (numOfRows = 1000) => {
     MobileOS: 'ETC',
     MobileApp: 'CodeTrip',
     _type: 'json',
-    arrange: 'A',
-    listYN: 'Y',
-    eventStartDate: '20250101'
+    arrange: 'O',
+    eventStartDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
   };
 
   try {
@@ -231,6 +275,7 @@ const fetchFestivals = async (numOfRows = 1000) => {
 };
 
 let allTravelItems = null;
+let sortedTravelItems = {};
 let mainTopImages = null;
 let festivalItems = null;
 
@@ -239,42 +284,35 @@ const initTravelCache = async () => {
     console.log('⏳ 여행 데이터 캐시 로딩 중...');
     const result = await fetchCombination({ region: '', theme: '', keyword: '', numOfRows: 60000, arrange: 'O' });
     allTravelItems = result.items;
-    
+
+    // 정렬 변형을 미리 계산해 캐싱 (객체 참조 공유 → 추가 메모리 최소화)
+    const cmp = (field, desc) => (a, b) => {
+      const va = String(a[field] || '0');
+      const vb = String(b[field] || '0');
+      return desc ? vb.localeCompare(va) : va.localeCompare(vb);
+    };
+    sortedTravelItems = {
+      createdtime_desc:  [...allTravelItems].sort(cmp('createdtime',  true)),
+      createdtime_asc:   [...allTravelItems].sort(cmp('createdtime',  false)),
+      modifiedtime_desc: [...allTravelItems].sort(cmp('modifiedtime', true)),
+      modifiedtime_asc:  [...allTravelItems].sort(cmp('modifiedtime', false)),
+    };
+    console.log('✅ 정렬 캐시 완료 (createdtime/modifiedtime × asc/desc)');
+
     mainTopImages = allTravelItems
       .filter(item => item.firstimage)
       .slice(0, 100)
       .map(item => ({ id: item.contentid, title: item.title, image: item.firstimage }));
 
-    const filteredFestivals = allTravelItems.filter(item => {
-      const typeId = String(item.contenttypeid || item.contentTypeId || '');
-      return item.firstimage && typeId === '15';
-    });
-
     console.log(`⏳ 축제 전용 데이터(날짜 포함) 확보 중...`);
     const directFestivals = await fetchFestivals(2000);
     
     // 날짜 정보를 정규화하여 저장
-    const normalizedDirect = directFestivals.map(f => ({
+    festivalItems = directFestivals.map(f => ({
       ...f,
       eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
     }));
 
-    // 날짜가 있는 데이터를 우선적으로 배치
-    const combined = [...normalizedDirect];
-    const existingIds = new Set(combined.map(f => String(f.contentid)));
-    
-    // 날짜 정보는 없지만 일반 리스트에 있는 축제들 추가 (중복 제외)
-    filteredFestivals.forEach(f => {
-      const fid = String(f.contentid || f.contentId);
-      if (!existingIds.has(fid)) {
-        combined.push({
-          ...f,
-          eventstartdate: String(f.eventstartdate || f.eventStartDate || '')
-        });
-      }
-    });
-
-    festivalItems = combined;
     console.log(`✅ 캐시 완료: 총 ${allTravelItems.length}개 항목 (축제: ${festivalItems.length}개)`);
   } catch (err) { 
     console.error('❌ 캐시 로딩 실패:', err.message); 
@@ -417,32 +455,40 @@ app.get('/api/travel/festivals', (req, res) => {
   
   console.log(`🔍 [API] 축제 목록 요청 - 정렬: ${sort}, 페이지: ${page}`);
   
-  let list = [...festivalItems];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
-  // 정렬 로직 개선: 필드명 유연성 확보 및 엄격한 비교
-  if (sort === 'date_asc') {
+  const getDate = (obj) => {
+    const d = String(obj.eventstartdate || '').trim();
+    return /^\d{8}$/.test(d) ? d : '';
+  };
+  const getEnd = (obj) => {
+    const d = String(obj.eventenddate || '').trim();
+    return /^\d{8}$/.test(d) ? d : '';
+  };
+
+  // 정렬 방식과 무관하게 종료된 축제 항상 제외
+  let list = festivalItems.filter(item => {
+    const end = getEnd(item);
+    if (end) return end >= todayStr;
+    const start = getDate(item);
+    if (start) return start >= todayStr;
+    return true;
+  });
+
+  if (sort === 'date_asc' || sort === 'date_desc') {
     list.sort((a, b) => {
-      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '99999999');
-      const dateA = getV(a);
-      const dateB = getV(b);
-      if (dateA === '99999999' && dateB !== '99999999') return 1;
-      if (dateA !== '99999999' && dateB === '99999999') return -1;
-      return dateA.localeCompare(dateB);
-    });
-  } else if (sort === 'date_desc') {
-    list.sort((a, b) => {
-      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '00000000');
-      const dateA = getV(a);
-      const dateB = getV(b);
-      if (dateA === '00000000' && dateB !== '00000000') return 1;
-      if (dateA !== '00000000' && dateB === '00000000') return -1;
-      return dateB.localeCompare(dateA);
+      const da = getDate(a);
+      const db = getDate(b);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return sort === 'date_asc' ? da.localeCompare(db) : db.localeCompare(da);
     });
   }
 
   const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const paginatedList = list.slice(startIndex, endIndex);
+  const paginatedList = list.slice(startIndex, startIndex + limit);
   
   res.json({
     items: paginatedList,
@@ -454,11 +500,75 @@ app.get('/api/travel/festivals', (req, res) => {
 
 app.get('/api/travel/random', (req, res) => {
   if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
+
   const filtered = allTravelItems.filter(item => {
     const typeId = String(item.contenttypeid || item.contentTypeId || '');
     return item.firstimage && typeId === '12';
   });
   res.json(filtered.sort(() => 0.5 - Math.random()).slice(0, 30));
+});
+
+// --- Proxy Cache Storage ---
+const proxyCache = new Map();
+const CACHE_TTL = 1000 * 60 * 60 * 2; // 2시간 유지 (효율 극대화)
+const BLOCK_TTL = 1000 * 10;        // 429 발생 시 10초간 차단 (회복 속도 향상)
+
+let isApiBlocked = false;
+let blockTimeout = null;
+
+// --- TourAPI Proxy for Detail Info (To avoid 429 Errors) ---
+app.get('/api/travel/proxy/:service', async (req, res) => {
+  const { service } = req.params;
+  const cacheKey = `${service}_${JSON.stringify(req.query)}`;
+
+  // 1. 회로 차단기 확인 (최근 429 발생 시)
+  if (isApiBlocked) {
+    return res.status(429).json({ error: 'API Temporary Blocked due to rate limit. Please try again in 30s.' });
+  }
+
+  // 2. 캐시 확인
+  if (proxyCache.has(cacheKey)) {
+    const cached = proxyCache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json(cached.data);
+    }
+    proxyCache.delete(cacheKey);
+  }
+
+  // 서비스명에 따라 KorService2 또는 KorService1 유연하게 대응
+  const apiBase = service.includes('searchFestival') ? 'https://apis.data.go.kr/B551011/KorService1' : TRAVEL_API_BASE;
+  
+  try {
+    const response = await axios.get(`${apiBase}/${service}`, {
+      params: {
+        serviceKey: TRAVEL_SERVICE_KEY,
+        MobileOS: 'ETC',
+        MobileApp: 'CodeTrip',
+        _type: 'json',
+        ...req.query
+      },
+      timeout: 5000
+    });
+
+    // 3. 캐시 저장 (정상 응답인 경우에만)
+    if (response.data?.response?.header?.resultCode === '0000') {
+      proxyCache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json(response.data);
+  } catch (err) {
+    if (err.response?.status === 429) {
+      console.error(`🚨 [Critical] 429 Limit Reached on TourAPI. Blocking requests for 30s.`);
+      isApiBlocked = true;
+      if (blockTimeout) clearTimeout(blockTimeout);
+      blockTimeout = setTimeout(() => { isApiBlocked = false; }, BLOCK_TTL);
+    }
+    console.error(`❌ [Proxy Error] ${service}:`, err.message);
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch data from TourAPI' });
+  }
 });
 
 app.get('/api/travel', (req, res) => {
@@ -468,8 +578,10 @@ app.get('/api/travel', (req, res) => {
   const keyword = (req.query.keyword || '').toLowerCase();
   const regions = (req.query.regions || '').split(',').filter(Boolean);
   const themes = (req.query.themes || '').split(',').filter(Boolean);
+  const sort = req.query.sort || 'default';
 
-  let filtered = allTravelItems;
+  const base = sortedTravelItems[sort] ?? allTravelItems;
+  let filtered = base;
   if (regions.length) filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
   if (themes.length) filtered = filtered.filter(item => {
     const typeId = String(item.contenttypeid || item.contentTypeId || '');
@@ -584,8 +696,6 @@ app.delete('/api/travel-comments/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- Board Routes ---
-
 // --- Wishlist Core Routes ---
 app.get('/api/wishlist/details', authenticateToken, async (req, res) => {
   try {
@@ -622,7 +732,10 @@ app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
 
 app.get('/api/wishlist/folders', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM wishlist_folders WHERE user_id = ?', [req.user.id]);
+    const [rows] = await pool.query(
+      'SELECT id, user_id, name, DATE_FORMAT(start_date, "%Y-%m-%d") as start_date, DATE_FORMAT(end_date, "%Y-%m-%d") as end_date, created_at, updated_at FROM wishlist_folders WHERE user_id = ?',
+      [req.user.id]
+    );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -664,7 +777,47 @@ app.put('/api/wishlist/move', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Wishlist Notes Routes ---
+app.get('/api/wishlist/folders/:folderId/notes', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM wishlist_notes WHERE folder_id = ? AND user_id = ? ORDER BY created_at ASC',
+      [req.params.folderId, req.user.id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
+app.post('/api/wishlist/folders/:folderId/notes', authenticateToken, async (req, res) => {
+  const { content, type } = req.body;
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO wishlist_notes (folder_id, user_id, content, type) VALUES (?, ?, ?, ?)',
+      [req.params.folderId, req.user.id, content, type || 'CHECKLIST']
+    );
+    const [rows] = await pool.query('SELECT * FROM wishlist_notes WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/wishlist/notes/:id/toggle', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE wishlist_notes SET is_completed = NOT is_completed WHERE id = ? AND user_id = ?',
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/wishlist/notes/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM wishlist_notes WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Board Routes ---
 
 // 게시글 목록
 app.get('/api/board/posts', async (req, res) => {

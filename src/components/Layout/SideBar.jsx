@@ -32,7 +32,13 @@ const NAV_ITEMS = [
       </>
     ),
   },
-  { icon: 'article', label: 'Board', path: '/board', animation: 'group-hover:-translate-y-0.5' },
+  {
+    icon: 'article',
+    label: 'Board',
+    path: '/board',
+    animation: 'board-pop-flip',
+    extra: null,
+  },
   {
     icon: 'favorite',
     label: 'Wishlist',
@@ -90,7 +96,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
   return (
     <>
       <aside 
-        className={`fixed left-0 top-0 h-full bg-white border-r border-outline-variant/30 z-[55] flex flex-col overflow-hidden transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full bg-white border-r border-outline-variant/30 z-[55] flex flex-col overflow-hidden transition-all duration-300 select-none ${
           isCollapsed ? 'w-20' : 'w-64'
         } hidden md:flex`}
       >

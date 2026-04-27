@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-const API_URL = '/B551011/KorService2'; 
-const SERVICE_KEY = decodeURIComponent(import.meta.env.VITE_TRAVEL_INFO_API_KEY || import.meta.env.VITE_GALLERY_API_KEY);
-
 const normalizeItems = (items) => {
   if (!items) return [];
   const list = Array.isArray(items) ? items : [items];
@@ -13,8 +10,19 @@ const normalizeItems = (items) => {
   }));
 };
 
-// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
-export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+// --- Proxy Helper (429 에러 방지 및 서버 캐시 활용) ---
+const fetchViaProxy = async (service, params = {}) => {
+  try {
+    const response = await axios.get(`/api/travel/proxy/${service}`, { params });
+    return response.data;
+  } catch (error) {
+    console.error(`[Proxy Error] ${service}:`, error.message);
+    return null;
+  }
+};
+
+// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션 + 정렬 지원)
+export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '', sort = 'default' } = {}) => {
   try {
     const response = await axios.get('/api/travel', {
       params: {
@@ -22,106 +30,63 @@ export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1,
         themes: themes.join(','),
         pageNo,
         numOfRows,
+        sort,
         ...(keyword ? { keyword } : {}),
       },
     });
     return response.data;
-  } catch {
+  } catch (error) {
+    console.error('API Error:', error);
     return { items: [], totalCount: 0 };
   }
 };
 
-// 리스트 조회
-export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
-  try {
-    const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
-    if (contentTypeId) params.contentTypeId = contentTypeId;
-    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
-    const response = await axios.get(`${API_URL}/areaBasedList2`, { params });
-    const body = response.data?.response?.body;
-    return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
-  } catch (error) { return { items: [], totalCount: 0 }; }
-};
-
-// 키워드 검색
-export const getTravelInfoByKeyword = async ({keyword, pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd} = {}) => {
-  try {
-    const params = { serviceKey: SERVICE_KEY, numOfRows, pageNo, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json', arrange: 'O' };
-    if (keyword) params.keyword = keyword;
-    if (contentTypeId) params.contentTypeId = contentTypeId;
-    if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
-    const response = await axios.get(`${API_URL}/searchKeyword2`, { params });
-    const body = response.data?.response?.body;
-    return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
-  } catch (error) { return { items: [], totalCount: 0 }; }
-};
-
-export const getRegions = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/ldongCode2`, {
-      params: { serviceKey: SERVICE_KEY, numOfRows: 20, pageNo: 1, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
-    });
-    const items = response.data?.response?.body?.items?.item || [];
-    return Array.isArray(items) ? items : [items];
-  } catch (error) { return []; }
-};
-
-// 3. 상세 공통 정보 (에러 유발 파라미터 완전 제거 - 오직 필수값만)
+// 상세 정보 호출들을 모두 프록시 경유로 변경
 export const getDetailCommon = async (contentId) => {
-  try {
-    const response = await axios.get(`${API_URL}/detailCommon2`, {
-      params: {
-        serviceKey: SERVICE_KEY,
-        contentId: contentId,
-        MobileOS: 'ETC',
-        MobileApp: 'CodeTrip',
-        _type: 'json',
-      },
-    });
-
-    const body = response.data?.response?.body;
-    // resultCode가 '0000'이 아니거나 items가 없으면 실패로 간주
-    if (response.data?.response?.header?.resultCode !== '0000' || !body?.items?.item) {
-      console.warn('API Response Error for ID:', contentId, response.data);
-      return null;
-    }
-
-    const item = body.items.item;
-    const result = Array.isArray(item) ? item[0] : item;
-    if (result && result.firstimage) result.firstimage = result.firstimage.replace('http://', 'https://');
-    return result;
-  } catch (error) {
-    return null;
-  }
+  const data = await fetchViaProxy('detailCommon2', { contentId });
+  const body = data?.response?.body;
+  if (!body?.items?.item) return null;
+  const item = body.items.item;
+  const result = Array.isArray(item) ? item[0] : item;
+  if (result && result.firstimage) result.firstimage = result.firstimage.replace('http://', 'https://');
+  return result;
 };
 
 export const getDetailIntro = async (contentId, contentTypeId) => {
-  try {
-    const response = await axios.get(`${API_URL}/detailIntro2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
-    });
-    const body = response.data?.response?.body;
-    if (!body?.items?.item) return null;
-    return Array.isArray(body.items.item) ? body.items.item[0] : body.items.item;
-  } catch (error) { return null; }
+  const data = await fetchViaProxy('detailIntro2', { contentId, contentTypeId });
+  const body = data?.response?.body;
+  if (!body?.items?.item) return null;
+  return Array.isArray(body.items.item) ? body.items.item[0] : body.items.item;
 };
 
 export const getDetailInfo = async (contentId, contentTypeId) => {
-  try {
-    const response = await axios.get(`${API_URL}/detailInfo2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, contentTypeId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
-    });
-    const body = response.data?.response?.body;
-    return { items: normalizeItems(body?.items?.item) };
-  } catch (error) { return { items: [] }; }
+  const data = await fetchViaProxy('detailInfo2', { contentId, contentTypeId });
+  const body = data?.response?.body;
+  return { items: normalizeItems(body?.items?.item) };
 };
 
 export const getDetailImage = async (contentId) => {
-  try {
-    const response = await axios.get(`${API_URL}/detailImage2`, {
-      params: { serviceKey: SERVICE_KEY, contentId, MobileOS: 'ETC', MobileApp: 'CodeTrip', _type: 'json' },
-    });
-    const body = response.data?.response?.body;
-    return { items: normalizeItems(body?.items?.item) };
-  } catch (error) { return { items: [] }; }
+  const data = await fetchViaProxy('detailImage2', { contentId });
+  const body = data?.response?.body;
+  return { items: normalizeItems(body?.items?.item) };
+};
+
+// --- 지역 정보 조회 ---
+export const getRegions = async () => {
+  const data = await fetchViaProxy('ldongCode2', { numOfRows: 20, pageNo: 1 });
+  const items = data?.response?.body?.items?.item || [];
+  return Array.isArray(items) ? items : [items];
+};
+
+// --- 기타 리스트 조회 ---
+export const getTravelInfo = async ({ pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd } = {}) => {
+  const data = await fetchViaProxy('areaBasedList2', { pageNo, numOfRows, contentTypeId, lDongRegnCd, arrange: 'O' });
+  const body = data?.response?.body;
+  return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
+};
+
+export const getTravelInfoByKeyword = async ({keyword, pageNo = 1, numOfRows = 10, contentTypeId, lDongRegnCd} = {}) => {
+  const data = await fetchViaProxy('searchKeyword2', { keyword, pageNo, numOfRows, contentTypeId, lDongRegnCd, arrange: 'O' });
+  const body = data?.response?.body;
+  return { items: normalizeItems(body?.items?.item), totalCount: Number(body?.totalCount || 0) };
 };

@@ -2,26 +2,28 @@ import React, { useState, useEffect } from 'react';
 import useWishlistStore from '../store/useWishlistStore';
 
 const WishlistModal = ({ isOpen, onClose, travelData }) => {
-  const { folders, fetchFolders, createFolder, toggleWishlist } = useWishlistStore();
+  const { folders, syncWithServer, createFolder, toggleWishlist } = useWishlistStore();
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      fetchFolders();
+      syncWithServer(); // fetchFolders 대신 syncWithServer 사용
     }
-  }, [isOpen, fetchFolders]);
+  }, [isOpen, syncWithServer]);
 
   if (!isOpen) return null;
 
   const handleSelectFolder = async (folderId) => {
-    // travelData에서 필요한 정보를 명시적으로 추출하여 전달
+    // travelData의 다양한 필드명을 contentid, title, firstimage 형식으로 통일
     const travelInfo = {
-      contentId: travelData.contentid || travelData.content_id || travelData.contentId,
+      contentid: travelData.contentid || travelData.content_id || travelData.contentId,
       title: travelData.title || travelData.facltNm,
-      imageUrl: travelData.firstimage || travelData.image_url || travelData.firstImage
+      firstimage: travelData.firstimage || travelData.image_url || travelData.firstImage,
+      folder_id: folderId
     };
-    await toggleWishlist(travelInfo, folderId);
+    await toggleWishlist(travelInfo);
+    alert('위시리스트에 추가되었습니다!');
     onClose();
   };
 
