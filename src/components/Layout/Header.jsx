@@ -56,7 +56,7 @@ const Header = () => {
             </div>
             
             <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1 pr-1 border border-outline-variant/10">
-              <Link to="/mypage" className="p-1 relative group cursor-pointer">
+              <Link to="/settings" className="p-1 relative group cursor-pointer">
                 <img 
                   src={user.profileImg || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
                   alt="Profile" 

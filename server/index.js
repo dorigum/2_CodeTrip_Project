@@ -276,6 +276,7 @@ const fetchFestivals = async (numOfRows = 1000) => {
 
 let allTravelItems = null;
 let sortedTravelItems = {};
+let travelTitleMap = new Map();
 let mainTopImages = null;
 let festivalItems = null;
 
@@ -298,6 +299,9 @@ const initTravelCache = async () => {
       modifiedtime_asc:  [...allTravelItems].sort(cmp('modifiedtime', false)),
     };
     console.log('✅ 정렬 캐시 완료 (createdtime/modifiedtime × asc/desc)');
+
+    travelTitleMap = new Map(allTravelItems.map(item => [String(item.contentid || item.contentId), item.title || '']));
+    console.log(`✅ 여행지 타이틀 맵 완료 (${travelTitleMap.size}개)`);
 
     mainTopImages = allTravelItems
       .filter(item => item.firstimage)
@@ -815,6 +819,57 @@ app.delete('/api/wishlist/notes/:id', authenticateToken, async (req, res) => {
     await pool.query('DELETE FROM wishlist_notes WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- My Activity Routes ---
+
+app.get('/api/my/board-posts', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT p.id, p.title, p.content, p.view_count, p.created_at,
+        COUNT(DISTINCT c.id) AS comment_count
+      FROM board_posts p
+      LEFT JOIN board_comments c ON c.post_id = p.id
+      WHERE p.user_id = ?
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `, [req.user.id]);
+    res.json(rows.map(r => ({ ...r, comment_count: Number(r.comment_count) })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/my/board-comments', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT c.id, c.body, c.created_at, c.post_id, p.title AS post_title
+      FROM board_comments c
+      JOIN board_posts p ON p.id = c.post_id
+      WHERE c.user_id = ?
+      ORDER BY c.created_at DESC
+    `, [req.user.id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/my/travel-comments', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id, content_id, body, created_at
+      FROM travel_comments
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [req.user.id]);
+    res.json(rows.map(r => ({
+      ...r,
+      title: travelTitleMap.get(String(r.content_id)) || null,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Board Routes ---
