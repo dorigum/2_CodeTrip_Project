@@ -66,6 +66,9 @@ const INFO_ITEM = {
 const INFO_SUB_ITEMS = [
   { icon: 'wifi', label: 'Public_Wifi', href: 'https://www.wififree.kr/index.do', external: true },
   { icon: 'health_and_safety', label: 'Safestay', href: 'https://safestay.visitkorea.or.kr/usr/main/mainSelectList.kto', external: true },
+  { icon: 'train', label: 'KTX_Booking', href: 'https://www.letskorail.com/', external: true },
+  { icon: 'directions_railway', label: 'SRT_Booking', href: 'https://etk.srail.kr/', external: true },
+  { icon: 'directions_bus', label: 'BUS_Booking', href: 'https://txbus.t-money.co.kr/', external: true },
   { icon: 'info', label: 'About_CodeTrip', href: '/info', external: false },
 ];
 
@@ -224,7 +227,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             <div className={`
               ${isCollapsed 
                 ? 'absolute left-full top-0 ml-2 w-48 bg-white border border-outline-variant/20 rounded-xl shadow-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-x-2 group-hover:translate-x-0 transition-all duration-200 z-[60]' 
-                : `overflow-hidden transition-all duration-300 ${infoSubOpen ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`
+                : `overflow-hidden transition-all duration-300 ${infoSubOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'}`
               }
             `}>
               {INFO_SUB_ITEMS.map((sub) =>

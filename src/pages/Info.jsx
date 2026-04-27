@@ -280,6 +280,72 @@ const Info = () => {
         </div>
       </section>
 
+      {/* Transportation Links */}
+      <section className="bg-white border-y border-outline-variant/10 px-6 py-20">
+        <div className="max-w-5xl mx-auto space-y-12">
+          <div className="text-center space-y-3">
+            <p className="text-[11px] font-label uppercase tracking-[0.2em] text-primary font-bold">External Modules</p>
+            <h2 className="text-3xl font-headline font-bold text-on-surface">교통수단 예매 허브</h2>
+            <p className="text-slate-400 text-sm font-body">원활한 여행을 위해 외부 예매 시스템으로 즉시 연결합니다.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { 
+                id: 'ktx', 
+                tag: 'SYS_01 // KORAIL', 
+                title: 'KTX / 레츠코레일', 
+                desc: '전국 철도망 KTX 및 일반 열차 예매를 지원하는 공식 플랫폼입니다.',
+                icon: 'train',
+                url: 'https://www.letskorail.com/'
+              },
+              { 
+                id: 'srt', 
+                tag: 'SYS_02 // SR_TRAIN', 
+                title: 'SRT (수서고속철도)', 
+                desc: '수서에서 출발하는 고속열차 SRT 전용 예매 시스템으로 연결합니다.',
+                icon: 'directions_railway',
+                url: 'https://etk.srtc.kr/'
+              },
+              { 
+                id: 'bus', 
+                tag: 'SYS_03 // EXPRESS_BUS', 
+                title: '고속 / 시외버스', 
+                desc: '티머니 및 고속버스 통합 예매 시스템을 통해 버스 노선을 확인하세요.',
+                icon: 'directions_bus',
+                url: 'https://txbus.t-money.co.kr/'
+              },
+            ].map((sys) => (
+              <div key={sys.id} className="group bg-slate-50/50 p-8 rounded-3xl border border-outline-variant/10 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-500 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-mono font-bold text-primary tracking-tighter bg-primary/5 px-2 py-1 rounded border border-primary/10 uppercase">
+                      {sys.tag}
+                    </span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors text-2xl">
+                      {sys.icon}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-lg font-headline font-bold text-slate-900">{sys.title}</h4>
+                    <p className="text-[13px] text-slate-500 font-body leading-relaxed">{sys.desc}</p>
+                  </div>
+                </div>
+                <a 
+                  href={sys.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-white border border-outline-variant/20 rounded-xl text-[11px] font-mono font-bold uppercase tracking-widest text-slate-600 hover:bg-primary hover:text-white hover:border-primary transition-all flex items-center justify-center gap-2 group/btn shadow-sm"
+                >
+                  Link_Start
+                  <span className="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform">open_in_new</span>
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="bg-slate-900 px-6 py-20 text-center space-y-6">
         <h2 className="text-3xl font-headline font-bold text-white">
