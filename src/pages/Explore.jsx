@@ -49,6 +49,7 @@ const Explore = () => {
       try {
         setWishlistLoadingId(postId);
         await toggleWishlist(post);
+        alert('위시리스트에서 삭제되었습니다.');
       } catch (error) {
         console.error('Wishlist error:', error);
       } finally {
