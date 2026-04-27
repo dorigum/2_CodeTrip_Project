@@ -10,7 +10,7 @@ const normalizeItems = (items) => {
   }));
 };
 
-// --- Proxy Helper ---
+// --- Proxy Helper (429 에러 방지 및 서버 캐시 활용) ---
 const fetchViaProxy = async (service, params = {}) => {
   try {
     const response = await axios.get(`/api/travel/proxy/${service}`, { params });
@@ -21,7 +21,7 @@ const fetchViaProxy = async (service, params = {}) => {
   }
 };
 
-// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션)
+// 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션 + 정렬 지원)
 export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '', sort = 'default' } = {}) => {
   try {
     const response = await axios.get('/api/travel', {
@@ -71,7 +71,7 @@ export const getDetailImage = async (contentId) => {
   return { items: normalizeItems(body?.items?.item) };
 };
 
-// --- 지역 정보 조회 (복구 완료) ---
+// --- 지역 정보 조회 ---
 export const getRegions = async () => {
   const data = await fetchViaProxy('ldongCode2', { numOfRows: 20, pageNo: 1 });
   const items = data?.response?.body?.items?.item || [];

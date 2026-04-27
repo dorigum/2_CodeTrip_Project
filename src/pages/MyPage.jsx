@@ -87,6 +87,7 @@ const MyPage = () => {
   const openEditModal = (folder) => {
     setEditingFolder(folder);
     setEditFolderName(folder.name);
+    // 서버에서 이미 YYYY-MM-DD 형식의 문자열로 오므로 그대로 사용
     setEditFolderStart(folder.start_date ? String(folder.start_date).slice(0, 10) : '');
     setEditFolderEnd(folder.end_date ? String(folder.end_date).slice(0, 10) : '');
   };
@@ -101,6 +102,7 @@ const MyPage = () => {
   const handleUpdateFolder = async (e) => {
     e.preventDefault();
     if (!editFolderName.trim()) return;
+    // 날짜 문자열을 그대로 서버에 전송 (타임존 변환 방지)
     await updateFolder(editingFolder.id, editFolderName.trim(), editFolderStart || null, editFolderEnd || null);
     closeEditModal();
   };
@@ -108,6 +110,7 @@ const MyPage = () => {
   const handleCreateFolder = async (e) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
+    // 날짜 문자열을 그대로 서버에 전송 (타임존 변환 방지)
     await createFolder(newFolderName.trim(), newFolderStart || null, newFolderEnd || null);
     setNewFolderName('');
     setNewFolderStart('');
@@ -137,12 +140,19 @@ const MyPage = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
+    // 날짜 형식이 YYYY-MM-DD 형식이면 parseLocalDate 사용, 아니면 일반 Date 사용 (생성일 등)
+    if (String(dateStr).includes('-') && String(dateStr).length <= 10) {
+      const d = parseLocalDate(dateStr);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    }
     const d = new Date(dateStr);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const DAYS_KO = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
   const parseLocalDate = (str) => {
+    if (!str) return new Date();
+    // YYYY-MM-DD 문자열을 타임존 영향 없이 로컬 Date 객체로 변환
     const dateOnly = String(str).slice(0, 10);
     const [y, m, d] = dateOnly.split('-').map(Number);
     return new Date(y, m - 1, d);

@@ -84,7 +84,8 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 });
 
 const initDB = async () => {
@@ -507,9 +508,33 @@ app.get('/api/travel/random', (req, res) => {
   res.json(filtered.sort(() => 0.5 - Math.random()).slice(0, 30));
 });
 
+// --- Proxy Cache Storage ---
+const proxyCache = new Map();
+const CACHE_TTL = 1000 * 60 * 60 * 2; // 2시간 유지 (효율 극대화)
+const BLOCK_TTL = 1000 * 10;        // 429 발생 시 10초간 차단 (회복 속도 향상)
+
+let isApiBlocked = false;
+let blockTimeout = null;
+
 // --- TourAPI Proxy for Detail Info (To avoid 429 Errors) ---
 app.get('/api/travel/proxy/:service', async (req, res) => {
   const { service } = req.params;
+  const cacheKey = `${service}_${JSON.stringify(req.query)}`;
+
+  // 1. 회로 차단기 확인 (최근 429 발생 시)
+  if (isApiBlocked) {
+    return res.status(429).json({ error: 'API Temporary Blocked due to rate limit. Please try again in 30s.' });
+  }
+
+  // 2. 캐시 확인
+  if (proxyCache.has(cacheKey)) {
+    const cached = proxyCache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json(cached.data);
+    }
+    proxyCache.delete(cacheKey);
+  }
+
   // 서비스명에 따라 KorService2 또는 KorService1 유연하게 대응
   const apiBase = service.includes('searchFestival') ? 'https://apis.data.go.kr/B551011/KorService1' : TRAVEL_API_BASE;
   
@@ -524,8 +549,23 @@ app.get('/api/travel/proxy/:service', async (req, res) => {
       },
       timeout: 5000
     });
+
+    // 3. 캐시 저장 (정상 응답인 경우에만)
+    if (response.data?.response?.header?.resultCode === '0000') {
+      proxyCache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+    }
+
     res.json(response.data);
   } catch (err) {
+    if (err.response?.status === 429) {
+      console.error(`🚨 [Critical] 429 Limit Reached on TourAPI. Blocking requests for 30s.`);
+      isApiBlocked = true;
+      if (blockTimeout) clearTimeout(blockTimeout);
+      blockTimeout = setTimeout(() => { isApiBlocked = false; }, BLOCK_TTL);
+    }
     console.error(`❌ [Proxy Error] ${service}:`, err.message);
     res.status(err.response?.status || 500).json({ error: 'Failed to fetch data from TourAPI' });
   }
@@ -692,7 +732,10 @@ app.post('/api/wishlist/toggle', authenticateToken, async (req, res) => {
 
 app.get('/api/wishlist/folders', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM wishlist_folders WHERE user_id = ?', [req.user.id]);
+    const [rows] = await pool.query(
+      'SELECT id, user_id, name, DATE_FORMAT(start_date, "%Y-%m-%d") as start_date, DATE_FORMAT(end_date, "%Y-%m-%d") as end_date, created_at, updated_at FROM wishlist_folders WHERE user_id = ?',
+      [req.user.id]
+    );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
