@@ -102,14 +102,12 @@ const TravelDetail = () => {
     }
   }, []);
 
-  // 2. 상세 데이터 페칭 (호출 최소화: 날짜 및 부가 정보 조회 삭제)
+  // 2. 상세 데이터 페칭
   useEffect(() => {
     const fetchAll = async () => {
       if (!contentId) return;
       try {
         setLoading(true);
-        
-        // 1. 공통 정보만 획득 (나머지 상세/날짜/이미지/인트로 호출 전면 삭제)
         const commonData = await getDetailCommon(contentId);
         if (!commonData) {
           setLoading(false);
@@ -117,12 +115,20 @@ const TravelDetail = () => {
         }
         setCommon(commonData);
 
-        // 코멘트 데이터는 우리 DB이므로 유지
-        const travelCommentsData = await getTravelComments(contentId);
-        setTravelComments(travelCommentsData ?? []);
+        const contentTypeId = commonData.contenttypeid;
+        const [introData, infoData, imageData, travelCommentsData] = await Promise.all([
+          getDetailIntro(contentId, contentTypeId),
+          getDetailInfo(contentId, contentTypeId),
+          getDetailImage(contentId),
+          getTravelComments(contentId),
+        ]);
 
+        setIntro(introData);
+        setInfoItems(infoData?.items ?? []);
+        setImages(imageData?.items ?? []);
+        setTravelComments(travelCommentsData ?? []);
       } catch (err) {
-        console.error('Fetch detail error (minimal mode):', err);
+        console.error('Fetch detail error:', err);
       } finally {
         setLoading(false);
       }
