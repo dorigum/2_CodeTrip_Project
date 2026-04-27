@@ -113,7 +113,8 @@ const createTravelRouter = ({ travelCache }) => {
       proxyCache.delete(cacheKey);
     }
 
-    const apiBase = service.includes('searchFestival')
+    const usesKorService1 = service === 'searchFestival2';
+    const apiBase = usesKorService1
       ? 'https://apis.data.go.kr/B551011/KorService1'
       : TRAVEL_API_BASE;
 
