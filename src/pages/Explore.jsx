@@ -5,15 +5,7 @@ import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } fr
 import useWishlistStore from '../store/useWishlistStore';
 import useAuthStore from '../store/useAuthStore';
 import WishlistModal from '../components/WishlistModal';
-
-const CONTENT_TYPE_MAP = {
-  '12': '관광지', '14': '문화시설', '15': '축제공연행사', '25': '여행코스',
-  '28': '레포츠', '32': '숙박', '38': '쇼핑', '39': '음식점',
-};
-const THEME_LIST = [
-  { code: '', name: '전체' },
-  ...Object.entries(CONTENT_TYPE_MAP).map(([code, name]) => ({ code, name })),
-];
+import { DEFAULT_THEMES } from '../constants/themes';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
@@ -34,7 +26,7 @@ const Explore = () => {
     posts, loading, totalCount, currentPage,
     keyword, clearKeyword,
     initialized,
-    fetchPosts, fetchRegions, applyFilter, changePage,
+    fetchPosts, applyFilter, changePage,
   } = useExploreStore();
 
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
@@ -87,22 +79,31 @@ const Explore = () => {
 
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
+  useEffect(() => {
+    if (!initialized) fetchPosts();
+  }, []);
+
+  // DOM 변경 이전에 실행되는 cleanup으로 정확한 scrollTop 저장
+  useLayoutEffect(() => {
+    return () => {
+      const el = document.getElementById('main-scroll');
+      if (el) setExploreScrollY(el.scrollTop);
+    };
+  }, []);
+
+  // DOM 반영 후 스크롤 복원 (즉시 + rAF 재시도로 브라우저 scroll anchor 덮어씀)
   useLayoutEffect(() => {
     if (!initialized) return;
     const target = getExploreScrollY();
-    if (target === 0) return;
+    if (!target) return;
     const el = document.getElementById('main-scroll');
     if (!el) return;
     el.scrollTop = target;
-    if (el.scrollTop !== target) {
-      requestAnimationFrame(() => { el.scrollTop = target; });
-    }
-  }, []);
+    const raf = requestAnimationFrame(() => { el.scrollTop = target; });
+    return () => cancelAnimationFrame(raf);
+  }, [initialized]);
 
   useEffect(() => {
-    fetchRegions();
-    if (!initialized) fetchPosts();
-    // 위시리스트 초기화
     if (isLoggedIn && !wishlistInitialized) {
       initWishlist();
     }
@@ -114,14 +115,6 @@ const Explore = () => {
     const el = document.getElementById('main-scroll');
     if (el) el.scrollTop = 0;
   }, [currentPage]);
-
-  useEffect(() => {
-    const el = document.getElementById('main-scroll');
-    if (!el) return;
-    const handleScroll = () => setExploreScrollY(el.scrollTop);
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const handlePageInputSubmit = (e) => {
     e.preventDefault();
@@ -177,16 +170,19 @@ const Explore = () => {
               {/* Region */}
               <section>
                 <div
-                  className="flex items-center justify-between mb-2 cursor-pointer select-none"
+                  className="flex items-center gap-1 mb-2 cursor-pointer select-none"
                   onClick={() => setRegionOpen(!regionOpen)}
                 >
-                  <span className="text-[13px] font-mono font-bold syntax-keyword">Region</span>
-                  <span className={`material-symbols-outlined text-xs text-outline transition-transform ${regionOpen ? 'rotate-90' : ''}`}>
-                    expand_more
+                  <span className={`material-symbols-outlined text-sm text-outline transition-transform duration-150 ${regionOpen ? 'rotate-45' : ''}`}>
+                    chevron_right
                   </span>
+                  <span className="material-symbols-outlined text-sm text-yellow-500">
+                    {regionOpen ? 'folder_open' : 'folder'}
+                  </span>
+                  <span className="syntax-keyword text-sm">Region</span>
                 </div>
                 {regionOpen && (
-                  <ul className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2">
+                  <ul className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2 ml-4 border-l border-outline-variant/30 pl-4">
                     {regions.map((r) => (
                       <li
                         key={r.code}
@@ -206,17 +202,20 @@ const Explore = () => {
               {/* Theme */}
               <section>
                 <div
-                  className="flex items-center justify-between mb-2 cursor-pointer select-none"
+                  className="flex items-center gap-1 mb-2 cursor-pointer select-none"
                   onClick={() => setThemeOpen(!themeOpen)}
                 >
-                  <span className="text-[13px] font-mono font-bold syntax-keyword">Theme</span>
-                  <span className={`material-symbols-outlined text-xs text-outline transition-transform ${themeOpen ? 'rotate-90' : ''}`}>
-                    expand_more
+                  <span className={`material-symbols-outlined text-sm text-outline transition-transform duration-150 ${themeOpen ? 'rotate-45' : ''}`}>
+                    chevron_right
                   </span>
+                  <span className="material-symbols-outlined text-sm text-yellow-500">
+                    {themeOpen ? 'folder_open' : 'folder'}
+                  </span>
+                  <span className="syntax-keyword text-sm">Theme</span>
                 </div>
                 {themeOpen && (
                   <ul className="ml-4 space-y-2 border-l border-outline-variant/30 pl-4">
-                    {THEME_LIST.map((t) => (
+                    {DEFAULT_THEMES.map((t) => (
                       <li
                         key={t.code}
                         className="flex items-center gap-2 cursor-pointer group"

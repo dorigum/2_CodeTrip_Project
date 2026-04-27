@@ -122,7 +122,6 @@ const useExploreStore = create((set, get) => ({
     }
   },
 
-  fetchRegions: () => {},
 }));
 
 export { NUM_OF_ROWS };

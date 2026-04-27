@@ -12,6 +12,10 @@ import Settings from './pages/Settings.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import Festivals from './pages/Festivals.jsx'
 import Info from './pages/Info.jsx'
+import Board from './pages/Board.jsx'
+import BoardDetail from './pages/BoardDetail.jsx'
+import BoardWrite from './pages/BoardWrite.jsx'
+import TravelTagSearch from './pages/TravelTagSearch.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -29,6 +33,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="festivals" element={<Festivals />} />
           <Route path="info" element={<Info />} />
+          <Route path="board" element={<Board />} />
+          <Route path="board/write" element={<BoardWrite />} />
+          <Route path="board/tag-search" element={<TravelTagSearch />} />
+          <Route path="board/:id" element={<BoardDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>

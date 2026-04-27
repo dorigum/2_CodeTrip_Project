@@ -32,6 +32,7 @@ const NAV_ITEMS = [
       </>
     ),
   },
+  { icon: 'article', label: 'Board', path: '/board', animation: 'group-hover:-translate-y-0.5' },
   {
     icon: 'favorite',
     label: 'Wishlist',
