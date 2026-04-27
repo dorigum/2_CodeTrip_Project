@@ -92,9 +92,39 @@ const initDB = async () => {
     const conn = await pool.getConnection();
     console.log('✅ 데이터베이스 연결 성공');
     
-    await conn.query('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, profile_img VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comments (id INT AUTO_INCREMENT PRIMARY KEY, content_id VARCHAR(50) NOT NULL, user_id INT, nickname VARCHAR(100) NOT NULL DEFAULT "익명", body TEXT NOT NULL, likes INT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_content_id (content_id))');
-    await conn.query('CREATE TABLE IF NOT EXISTS travel_comment_likes (id INT AUTO_INCREMENT PRIMARY KEY, comment_id INT NOT NULL, user_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_comment_user (comment_id, user_id))');
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        email VARCHAR(255) NOT NULL UNIQUE, 
+        password VARCHAR(255) NOT NULL, 
+        name VARCHAR(100) NOT NULL, 
+        profile_img VARCHAR(255), 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        content_id VARCHAR(50) NOT NULL, 
+        user_id INT, 
+        nickname VARCHAR(100) NOT NULL DEFAULT "익명", 
+        body TEXT NOT NULL, 
+        likes INT NOT NULL DEFAULT 0, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        INDEX idx_content_id (content_id)
+      )
+    `);
+      
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS travel_comment_likes (
+        id INT AUTO_INCREMENT PRIMARY KEY, 
+        comment_id INT NOT NULL, 
+        user_id INT NOT NULL, 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+        UNIQUE KEY uq_comment_user (comment_id, user_id)
+      )
+    `);
     
     await conn.query(`
       CREATE TABLE IF NOT EXISTS wishlists (
