@@ -1,36 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getFestivalList } from '../api/travelApi';
 import useWishlistStore from '../store/useWishlistStore';
 import useAuthStore from '../store/useAuthStore';
 import WishlistModal from '../components/WishlistModal';
 
 const Festivals = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState('default'); // 'default', 'date_asc', 'date_desc'
   const [totalPages, setTotalPages] = useState(0);
   const ITEMS_PER_PAGE = 8;
+
+  // URL 파라미터에서 현재 상태 읽기
+  const page = parseInt(searchParams.get('page')) || 1;
+  const sortOrder = searchParams.get('sort') || 'default';
 
   const { isLoggedIn } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
   
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
-  const [selectedTravel, setSelectedTravel] = useState(null); // 모달용
+  const [selectedTravel, setSelectedTravel] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   useEffect(() => {
     const fetchFestivals = async () => {
       setLoading(true);
-      const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
-      let items = data.items || [];
-
-      setFestivals(items);
-      setTotalPages(data.totalPages || 0);
-      setLoading(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      try {
+        const data = await getFestivalList(page, ITEMS_PER_PAGE, sortOrder);
+        setFestivals(data.items || []);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Fetch festivals failed:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchFestivals();
   }, [page, sortOrder]);
@@ -40,6 +44,15 @@ const Festivals = () => {
       initWishlist();
     }
   }, [isLoggedIn, wishlistInitialized]);
+
+  const handlePageChange = (newPage) => {
+    setSearchParams({ page: newPage, sort: sortOrder });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSortChange = (newSort) => {
+    setSearchParams({ page: 1, sort: newSort }); // 정렬 변경 시 1페이지로
+  };
 
   const handleHeartToggle = async (e, post) => {
     e.preventDefault();
@@ -82,14 +95,11 @@ const Festivals = () => {
           <p className="text-slate-500 font-body text-sm">대한민국 곳곳에서 열리는 활기찬 축제 데이터를 탐색하세요.</p>
         </div>
 
-        {/* 정렬 드롭다운 (위시리스트 디자인 적용) */}
+        {/* 정렬 드롭다운 */}
         <div className="flex items-center gap-3 shrink-0">
           <select 
             value={sortOrder}
-            onChange={(e) => {
-              setSortOrder(e.target.value);
-              setPage(1); // 정렬 변경 시 1페이지로 리셋
-            }}
+            onChange={(e) => handleSortChange(e.target.value)}
             className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10 cursor-pointer uppercase font-bold tracking-tighter"
           >
             <option value="default">DEFAULT_NODES</option>
@@ -118,7 +128,6 @@ const Festivals = () => {
                 key={fest.contentid} 
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group border border-outline-variant/10 flex flex-col relative"
               >
-                {/* 하트 버튼 추가 */}
                 <button 
                   onClick={(e) => handleHeartToggle(e, fest)}
                   className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-75 ${
@@ -180,7 +189,7 @@ const Festivals = () => {
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-10 pb-6">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(Math.max(1, page - 1))}
             disabled={page === 1}
             className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
           >
@@ -189,14 +198,14 @@ const Festivals = () => {
           
           <div className="flex items-center gap-1">
             {[...Array(Math.min(5, totalPages))].map((_, i) => {
-              let pageNum = page <= 3 ? i + 1 : page + i - 2;
-              if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+              let pageNum = page <= 3 ? i + 1 : (page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i);
+              if (pageNum > totalPages) pageNum = totalPages;
               if (pageNum <= 0) return null;
 
               return (
                 <button
                   key={pageNum}
-                  onClick={() => setPage(pageNum)}
+                  onClick={() => handlePageChange(pageNum)}
                   className={`w-10 h-10 rounded-lg font-mono text-sm transition-all ${
                     page === pageNum 
                       ? 'bg-primary text-white font-bold shadow-lg shadow-primary/20' 
@@ -210,7 +219,7 @@ const Festivals = () => {
           </div>
 
           <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             className="p-2 rounded-lg border border-outline-variant/20 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
           >
@@ -219,7 +228,6 @@ const Festivals = () => {
         </div>
       )}
 
-      {/* 위시리스트 폴더 선택 모달 */}
       <WishlistModal
         isOpen={isModalOpen}
         onClose={() => {
