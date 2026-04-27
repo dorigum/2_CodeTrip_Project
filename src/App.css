@@ -59,6 +59,17 @@
   }
 }
 
+/* Sidebar Text Cursor Prevention */
+aside, 
+aside button, 
+aside a,
+nav a {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;
@@ -391,3 +402,22 @@
   transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
 }
 .group:hover .settings-halo { opacity: 1; transform: scale(1); }
+
+/* Board — purple page flip & pop glow (subtle) */
+@keyframes board-pop-flip {
+  0%   { transform: scale(1) rotateY(0deg); color: inherit; }
+  50%  { transform: scale(1.15) rotateY(180deg); color: #a855f7; }
+  100% { transform: scale(1.1) rotateY(0deg); color: #c084fc; }
+}
+.group:hover .board-pop-flip { 
+  animation: board-pop-flip 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; 
+  perspective: 800px;
+}
+
+.board-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+}
+.group:hover .board-halo { opacity: 1; transform: scale(1); }

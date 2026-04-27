@@ -35,6 +35,22 @@ const Festivals = () => {
         return item;
       }));
 
+      // hydration 후 클라이언트에서 재정렬 (hydrate로 채워진 날짜 반영)
+      if (sortOrder === 'date_asc' || sortOrder === 'date_desc') {
+        const getDate = (item) => {
+          const d = String(item.eventstartdate || '').trim();
+          return /^\d{8}$/.test(d) ? d : '';
+        };
+        hydratedItems.sort((a, b) => {
+          const da = getDate(a);
+          const db = getDate(b);
+          if (!da && !db) return 0;
+          if (!da) return 1;
+          if (!db) return -1;
+          return sortOrder === 'date_asc' ? da.localeCompare(db) : db.localeCompare(da);
+        });
+      }
+
       setFestivals(hydratedItems);
       setTotalPages(data.totalPages || 0);
       setLoading(false);

@@ -168,6 +168,20 @@ const initDB = async () => {
       )
     `);
 
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS wishlist_notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        folder_id INT NOT NULL,
+        user_id INT NOT NULL,
+        content TEXT NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
+        type ENUM('MEMO', 'CHECKLIST') DEFAULT 'CHECKLIST',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (folder_id) REFERENCES wishlist_folders(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // 기존 wishlists 테이블에 누락된 컬럼 추가 (이미 존재하면 조용히 무시)
     try { await conn.query('ALTER TABLE wishlists ADD COLUMN title VARCHAR(255)'); } catch { /* column already exists */ }
     try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch { /* column already exists */ }
@@ -417,32 +431,40 @@ app.get('/api/travel/festivals', (req, res) => {
   
   console.log(`🔍 [API] 축제 목록 요청 - 정렬: ${sort}, 페이지: ${page}`);
   
-  let list = [...festivalItems];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
-  // 정렬 로직 개선: 필드명 유연성 확보 및 엄격한 비교
-  if (sort === 'date_asc') {
+  const getDate = (obj) => {
+    const d = String(obj.eventstartdate || '').trim();
+    return /^\d{8}$/.test(d) ? d : '';
+  };
+  const getEnd = (obj) => {
+    const d = String(obj.eventenddate || '').trim();
+    return /^\d{8}$/.test(d) ? d : '';
+  };
+
+  // 정렬 방식과 무관하게 종료된 축제 항상 제외
+  let list = festivalItems.filter(item => {
+    const end = getEnd(item);
+    if (end) return end >= todayStr;
+    const start = getDate(item);
+    if (start) return start >= todayStr;
+    return true;
+  });
+
+  if (sort === 'date_asc' || sort === 'date_desc') {
     list.sort((a, b) => {
-      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '99999999');
-      const dateA = getV(a);
-      const dateB = getV(b);
-      if (dateA === '99999999' && dateB !== '99999999') return 1;
-      if (dateA !== '99999999' && dateB === '99999999') return -1;
-      return dateA.localeCompare(dateB);
-    });
-  } else if (sort === 'date_desc') {
-    list.sort((a, b) => {
-      const getV = (obj) => String(obj.eventstartdate || obj.eventStartDate || '00000000');
-      const dateA = getV(a);
-      const dateB = getV(b);
-      if (dateA === '00000000' && dateB !== '00000000') return 1;
-      if (dateA !== '00000000' && dateB === '00000000') return -1;
-      return dateB.localeCompare(dateA);
+      const da = getDate(a);
+      const db = getDate(b);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return sort === 'date_asc' ? da.localeCompare(db) : db.localeCompare(da);
     });
   }
 
   const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const paginatedList = list.slice(startIndex, endIndex);
+  const paginatedList = list.slice(startIndex, startIndex + limit);
   
   res.json({
     items: paginatedList,
@@ -454,11 +476,36 @@ app.get('/api/travel/festivals', (req, res) => {
 
 app.get('/api/travel/random', (req, res) => {
   if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
+
   const filtered = allTravelItems.filter(item => {
     const typeId = String(item.contenttypeid || item.contentTypeId || '');
     return item.firstimage && typeId === '12';
   });
   res.json(filtered.sort(() => 0.5 - Math.random()).slice(0, 30));
+});
+
+// --- TourAPI Proxy for Detail Info (To avoid 429 Errors) ---
+app.get('/api/travel/proxy/:service', async (req, res) => {
+  const { service } = req.params;
+  // 서비스명에 따라 KorService2 또는 KorService1 유연하게 대응
+  const apiBase = service.includes('searchFestival') ? 'https://apis.data.go.kr/B551011/KorService1' : TRAVEL_API_BASE;
+  
+  try {
+    const response = await axios.get(`${apiBase}/${service}`, {
+      params: {
+        serviceKey: TRAVEL_SERVICE_KEY,
+        MobileOS: 'ETC',
+        MobileApp: 'CodeTrip',
+        _type: 'json',
+        ...req.query
+      },
+      timeout: 5000
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error(`❌ [Proxy Error] ${service}:`, err.message);
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch data from TourAPI' });
+  }
 });
 
 app.get('/api/travel', (req, res) => {
@@ -664,6 +711,45 @@ app.put('/api/wishlist/move', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Wishlist Notes Routes ---
+app.get('/api/wishlist/folders/:folderId/notes', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM wishlist_notes WHERE folder_id = ? AND user_id = ? ORDER BY created_at ASC',
+      [req.params.folderId, req.user.id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/wishlist/folders/:folderId/notes', authenticateToken, async (req, res) => {
+  const { content, type } = req.body;
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO wishlist_notes (folder_id, user_id, content, type) VALUES (?, ?, ?, ?)',
+      [req.params.folderId, req.user.id, content, type || 'CHECKLIST']
+    );
+    const [rows] = await pool.query('SELECT * FROM wishlist_notes WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/wishlist/notes/:id/toggle', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE wishlist_notes SET is_completed = NOT is_completed WHERE id = ? AND user_id = ?',
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/wishlist/notes/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM wishlist_notes WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 
 // 게시글 목록
