@@ -44,7 +44,7 @@ const NAV_ITEMS = [
 const MY_PAGE_ITEM = {
   icon: 'person',
   label: 'My Page',
-  paths: ['/mypage', '/settings', '/my-activity'],
+  paths: ['/mypage', '/settings', '/my-activity', '/my-activity'],
   animation: 'account-shake',
   extra: <div className="settings-halo" />,
 };
@@ -80,7 +80,6 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
 
   const isActive = (path) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
 
-  // 페이지 이동 시 모바일 서브메뉴 닫기
   React.useEffect(() => { setMobileMyPageOpen(false); }, [pathname]);
 
   const handleNavClick = (e, item) => {
@@ -95,8 +94,8 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
   return (
     <>
       <aside 
-        className={`fixed left-0 top-0 h-full bg-white border-r border-outline-variant/30 z-[55] flex flex-col overflow-hidden transition-all duration-300 select-none ${
-          isCollapsed ? 'w-20' : 'w-64'
+        className={`fixed left-0 top-0 h-full bg-white border-r border-outline-variant/30 z-[55] flex flex-col transition-all duration-300 select-none ${
+          isCollapsed ? 'w-20 overflow-visible' : 'w-64 overflow-hidden'
         } hidden md:flex`}
       >
         {/* Logo Section */}
@@ -116,7 +115,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             onClick={toggleSidebar} 
             className={`material-symbols-outlined text-primary hover:bg-primary/5 p-1 rounded-lg transition-all ${isCollapsed ? 'mx-auto' : 'ml-auto'}`}
           >
-            {isCollapsed ? 'menu_open' : 'menu'}
+            {isCollapsed ? 'menu' : 'menu_open'}
           </button>
         </div>
 
@@ -145,11 +144,11 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             </Link>
           ))}
 
-          {/* My Page 아이템 + 서브메뉴 */}
-          <div>
+          {/* My Page 아이템 + 플로팅 서브메뉴 */}
+          <div className="group relative">
             <button
-              onClick={() => setMyPageSubOpen(prev => !prev)}
-              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 group ${
+              onClick={() => !isCollapsed && setMyPageSubOpen(prev => !prev)}
+              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 ${
                 MY_PAGE_ITEM.paths.some(p => pathname.startsWith(p))
                   ? 'text-primary bg-primary/5 border-r-4 border-primary font-semibold'
                   : 'text-slate-600 hover:text-primary hover:bg-slate-50'
@@ -170,13 +169,22 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                 </span>
               )}
             </button>
-            <div className={`overflow-hidden transition-all duration-300 ${myPageSubOpen && !isCollapsed ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`}>
+
+            {/* 서브메뉴: 접혔을 땐 플로팅, 펼쳐졌을 땐 아코디언 */}
+            <div className={`
+              ${isCollapsed 
+                ? 'absolute left-full top-0 ml-2 w-48 bg-white border border-outline-variant/20 rounded-xl shadow-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-x-2 group-hover:translate-x-0 transition-all duration-200 z-[60]' 
+                : `overflow-hidden transition-all duration-300 ${myPageSubOpen ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`
+              }
+            `}>
               {MY_PAGE_SUB_ITEMS.map((sub) => (
                 <Link
                   key={sub.label}
                   to={sub.href}
                   onClick={(e) => handleNavClick(e, { path: sub.href })}
-                  className={`flex items-center gap-3 pl-14 pr-6 py-2 transition-all duration-200 group/sub ${
+                  className={`flex items-center gap-3 py-2 transition-all duration-200 group/sub ${
+                    isCollapsed ? 'px-4' : 'pl-14 pr-6'
+                  } ${
                     isActive(sub.href) ? 'text-primary font-semibold' : 'text-slate-400 hover:text-primary hover:bg-slate-50'
                   }`}
                 >
@@ -187,11 +195,11 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
             </div>
           </div>
 
-          {/* Info 아이템 + 서브메뉴 */}
-          <div>
+          {/* Info 아이템 + 플로팅 서브메뉴 */}
+          <div className="group relative">
             <button
-              onClick={() => setInfoSubOpen(prev => !prev)}
-              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 group ${
+              onClick={() => !isCollapsed && setInfoSubOpen(prev => !prev)}
+              className={`w-full flex items-center gap-4 px-6 py-3 transition-all duration-300 ${
                 isActive(INFO_ITEM.path)
                   ? 'text-primary bg-primary/5 border-r-4 border-primary font-semibold'
                   : 'text-slate-600 hover:text-primary hover:bg-slate-50'
@@ -213,8 +221,12 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
               )}
             </button>
 
-            {/* 서브메뉴 */}
-            <div className={`overflow-hidden transition-all duration-300 ${infoSubOpen && !isCollapsed ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className={`
+              ${isCollapsed 
+                ? 'absolute left-full top-0 ml-2 w-48 bg-white border border-outline-variant/20 rounded-xl shadow-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-x-2 group-hover:translate-x-0 transition-all duration-200 z-[60]' 
+                : `overflow-hidden transition-all duration-300 ${infoSubOpen ? 'max-h-36 opacity-100' : 'max-h-0 opacity-0'}`
+              }
+            `}>
               {INFO_SUB_ITEMS.map((sub) =>
                 sub.external ? (
                   <a
@@ -222,7 +234,9 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                     href={sub.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 pl-14 pr-6 py-2 text-slate-400 hover:text-primary hover:bg-slate-50 transition-all duration-200 group/sub"
+                    className={`flex items-center gap-3 py-2 text-slate-400 hover:text-primary hover:bg-slate-50 transition-all duration-200 group/sub ${
+                      isCollapsed ? 'px-4' : 'pl-14 pr-6'
+                    }`}
                   >
                     <span className="material-symbols-outlined text-[16px] shrink-0">{sub.icon}</span>
                     <span className="text-[11px] font-mono font-bold uppercase tracking-widest truncate">{sub.label}</span>
@@ -232,7 +246,9 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
                   <Link
                     key={sub.label}
                     to={sub.href}
-                    className={`flex items-center gap-3 pl-14 pr-6 py-2 transition-all duration-200 group/sub ${
+                    className={`flex items-center gap-3 py-2 transition-all duration-200 group/sub ${
+                      isCollapsed ? 'px-4' : 'pl-14 pr-6'
+                    } ${
                       isActive(sub.href) ? 'text-primary font-semibold' : 'text-slate-400 hover:text-primary hover:bg-slate-50'
                     }`}
                   >
@@ -285,12 +301,10 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
       {/* Mobile My Page 서브메뉴 팝업 */}
       {mobileMyPageOpen && (
         <>
-          {/* 배경 딤 */}
           <div
             className="fixed inset-0 z-[54] md:hidden"
             onClick={() => setMobileMyPageOpen(false)}
           />
-          {/* 서브메뉴 카드 */}
           <div className="fixed bottom-16 right-0 z-[56] md:hidden w-48 bg-white border border-outline-variant/20 rounded-tl-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
             {MY_PAGE_SUB_ITEMS.map((sub) => (
               <Link
