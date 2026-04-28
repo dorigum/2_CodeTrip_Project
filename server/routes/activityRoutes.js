@@ -67,6 +67,30 @@ const createActivityRouter = ({ pool, authenticateToken, travelCache }) => {
     }
   });
 
+  router.get('/my/liked-posts', authenticateToken, async (req, res) => {
+    try {
+      const [rows] = await pool.query(`
+        SELECT p.id, p.title, p.content, p.view_count, p.created_at, p.nickname,
+          COUNT(DISTINCT c.id) AS comment_count,
+          COUNT(DISTINCT pl.id) AS like_count
+        FROM board_post_likes bpl
+        JOIN board_posts p ON p.id = bpl.post_id
+        LEFT JOIN board_comments c ON c.post_id = p.id
+        LEFT JOIN board_post_likes pl ON pl.post_id = p.id
+        WHERE bpl.user_id = ?
+        GROUP BY p.id
+        ORDER BY bpl.created_at DESC
+      `, [req.user.id]);
+      res.json(rows.map(r => ({
+        ...r,
+        comment_count: Number(r.comment_count),
+        like_count: Number(r.like_count),
+      })));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };
 

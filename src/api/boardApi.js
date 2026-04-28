@@ -95,6 +95,11 @@ export const getMyBoardPosts = async () => {
   return data;
 };
 
+export const getMyLikedPosts = async () => {
+  const { data } = await axios.get('/api/my/liked-posts', { headers: authHeader() });
+  return data;
+};
+
 export const getMyBoardComments = async () => {
   const { data } = await axios.get('/api/my/board-comments', { headers: authHeader() });
   return data;
