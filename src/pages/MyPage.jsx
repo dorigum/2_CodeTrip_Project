@@ -10,10 +10,9 @@ const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
   
   const {
-    wishlistItems, folders, wishlistIds, loading,
+    wishlistItems, folders, loading,
     initWishlist, toggleWishlist, createFolder, updateFolder, deleteFolder, moveItem,
-    fetchNotes, addNote, toggleNote: toggleNoteAction, deleteNote: deleteNoteAction,
-    initialized: wishlistInitialized
+    fetchNotes, addNote, toggleNote: toggleNoteAction, deleteNote: deleteNoteAction
   } = useWishlistStore();
 
   const [sortBy, setSortBy] = useState('CREATED');

@@ -209,7 +209,7 @@ const TravelDetail = () => {
       setTravelComments((prev) =>
         prev.map((c) => (c.id === commentId ? { ...c, liked, likes } : c))
       );
-    } catch (err) {
+    } catch {
       // 실패 시 롤백
       setTravelComments((prev) =>
         prev.map((c) =>

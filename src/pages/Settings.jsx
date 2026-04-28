@@ -63,7 +63,7 @@ const Settings = () => {
       const response = await authApi.uploadImage(formData);
       setProfileImg(response.url); // 서버에서 받은 URL로 상태 업데이트
       setProfileMessage({ type: 'success', text: '이미지가 업로드되었습니다. 저장 버튼을 눌러 확정하세요.' });
-    } catch (err) {
+    } catch {
       setProfileMessage({ type: 'error', text: '이미지 업로드에 실패했습니다.' });
     } finally {
       setProfileLoading(false);
