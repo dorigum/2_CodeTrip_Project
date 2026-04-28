@@ -8,7 +8,15 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
     const pageNo = Math.max(1, parseInt(req.query.pageNo) || 1);
     const numOfRows = Math.max(1, parseInt(req.query.numOfRows) || 10);
     const keyword = (req.query.keyword || '').trim();
+    const sort = req.query.sort || 'created_at';
     const offset = (pageNo - 1) * numOfRows;
+
+    const orderByMap = {
+      created_at: 'p.created_at DESC',
+      updated_at: 'p.updated_at DESC',
+      likes: 'like_count DESC, p.created_at DESC',
+    };
+    const orderBy = orderByMap[sort] || orderByMap.created_at;
 
     try {
       const whereClause = keyword
@@ -23,13 +31,15 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
       );
 
       const [rows] = await pool.query(`
-        SELECT p.id, p.user_id, p.nickname, p.title, p.content, p.view_count, p.created_at,
-          COUNT(DISTINCT c.id) AS comment_count
+        SELECT p.id, p.user_id, p.nickname, p.title, p.content, p.view_count, p.created_at, p.updated_at,
+          COUNT(DISTINCT c.id) AS comment_count,
+          COUNT(DISTINCT pl.id) AS like_count
         FROM board_posts p
         LEFT JOIN board_comments c ON c.post_id = p.id
+        LEFT JOIN board_post_likes pl ON pl.post_id = p.id
         ${whereClause}
         GROUP BY p.id
-        ORDER BY p.created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ? OFFSET ?
       `, [...queryParams, numOfRows, offset]);
 
@@ -51,6 +61,7 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
       const posts = rows.map(r => ({
         ...r,
         comment_count: Number(r.comment_count),
+        like_count: Number(r.like_count),
         tags: tagsMap[r.id] || [],
       }));
 
@@ -61,13 +72,28 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
   });
 
   router.get('/board/posts/:id', async (req, res) => {
+    const userId = getUserIdFromRequest(req);
     try {
-      const [rows] = await pool.query('SELECT * FROM board_posts WHERE id = ?', [req.params.id]);
+      const [rows] = await pool.query(`
+        SELECT p.*,
+          COUNT(DISTINCT pl.id) AS like_count,
+          COALESCE(MAX(CASE WHEN pl.user_id = ? THEN 1 ELSE 0 END), 0) AS liked
+        FROM board_posts p
+        LEFT JOIN board_post_likes pl ON pl.post_id = p.id
+        WHERE p.id = ?
+        GROUP BY p.id
+      `, [userId, req.params.id]);
       if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
 
       await pool.query('UPDATE board_posts SET view_count = view_count + 1 WHERE id = ?', [req.params.id]);
       const [tags] = await pool.query('SELECT * FROM board_post_tags WHERE post_id = ?', [req.params.id]);
-      res.json({ ...rows[0], view_count: rows[0].view_count + 1, tags });
+      res.json({
+        ...rows[0],
+        view_count: rows[0].view_count + 1,
+        like_count: Number(rows[0].like_count),
+        liked: !!rows[0].liked,
+        tags,
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -155,6 +181,7 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
 
       await conn.beginTransaction();
       await conn.query('DELETE FROM board_post_tags WHERE post_id = ?', [req.params.id]);
+      await conn.query('DELETE FROM board_post_likes WHERE post_id = ?', [req.params.id]);
       await conn.query(`
         DELETE bcl FROM board_comment_likes bcl
         INNER JOIN board_comments bc ON bcl.comment_id = bc.id
@@ -250,6 +277,31 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
       await pool.query('DELETE FROM board_comment_likes WHERE comment_id = ?', [req.params.id]);
       await pool.query('DELETE FROM board_comments WHERE id = ?', [req.params.id]);
       res.json({ message: '삭제되었습니다.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/board/posts/:id/like', authenticateToken, async (req, res) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    try {
+      const [existing] = await pool.query(
+        'SELECT id FROM board_post_likes WHERE post_id = ? AND user_id = ?',
+        [postId, userId]
+      );
+      if (existing.length > 0) {
+        await pool.query('DELETE FROM board_post_likes WHERE post_id = ? AND user_id = ?', [postId, userId]);
+      } else {
+        await pool.query('INSERT INTO board_post_likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
+      }
+
+      const [[{ likes }]] = await pool.query(
+        'SELECT COUNT(*) AS likes FROM board_post_likes WHERE post_id = ?',
+        [postId]
+      );
+      res.json({ liked: existing.length === 0, likes: Number(likes) });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

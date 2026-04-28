@@ -40,7 +40,16 @@ CREATE TABLE IF NOT EXISTS board_post_tags (
     INDEX idx_board_post_tags_post_id (post_id)
 );
 
--- 2.2 게시판 댓글
+-- 2.2 게시판 게시글 좋아요
+CREATE TABLE IF NOT EXISTS board_post_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_board_post_user (post_id, user_id)
+);
+
+-- 2.3 게시판 댓글
 CREATE TABLE IF NOT EXISTS board_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT NOT NULL,
@@ -51,7 +60,7 @@ CREATE TABLE IF NOT EXISTS board_comments (
     INDEX idx_board_comments_post_id (post_id)
 );
 
--- 2.3 게시판 댓글 좋아요
+-- 2.4 게시판 댓글 좋아요
 CREATE TABLE IF NOT EXISTS board_comment_likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     comment_id INT NOT NULL,
