@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import useExploreStore from '../../store/useExploreStore';
 import useWishlistStore from '../../store/useWishlistStore';
+import { getNotifications, markAllRead, markOneRead } from '../../api/notificationApi';
+
+const formatDate = (str) => {
+  const d = new Date(str);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const Header = () => {
   const { user, logout } = useAuthStore();
@@ -10,6 +16,55 @@ const Header = () => {
   const { clearWishlist } = useWishlistStore();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notiOpen, setNotiOpen] = useState(false);
+  const notiRef = useRef(null);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchNotifications();
+  }, [user, fetchNotifications]);
+
+  // 외부 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e) => {
+      if (notiRef.current && !notiRef.current.contains(e.target)) {
+        setNotiOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleOpenNoti = () => {
+    setNotiOpen(prev => !prev);
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllRead();
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  const handleClickNoti = async (noti) => {
+    if (!noti.is_read) {
+      await markOneRead(noti.id);
+      setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+    setNotiOpen(false);
+    if (noti.content_id) navigate(`/explore/${noti.content_id}`);
+  };
 
   const handleSearchKeyDown = (e) => {
     if (e.key !== 'Enter') return;
@@ -32,7 +87,6 @@ const Header = () => {
   return (
     <header className="flex items-center justify-between px-6 w-full h-16 sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 font-['Plus_Jakarta_Sans']">
       <div className="flex items-center flex-1">
-        {/* 검색창 영역 - 왼쪽 정렬 */}
         <div className="relative hidden sm:block w-full max-w-md lg:max-w-xl">
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
             <span className="material-symbols-outlined text-outline text-sm">search</span>
@@ -47,7 +101,7 @@ const Header = () => {
           />
         </div>
       </div>
-      
+
       <div className="flex items-center gap-4 shrink-0 ml-4">
         {user ? (
           <div className="flex items-center gap-4">
@@ -55,22 +109,89 @@ const Header = () => {
               <p className="text-[10px] font-bold text-primary uppercase tracking-tighter mb-0.5">Authenticated</p>
               <p className="text-sm font-bold text-on-surface">{user.name}</p>
             </div>
-            
+
             <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1 pr-1 border border-outline-variant/10">
+
+              {/* 알림 벨 */}
+              <div className="relative" ref={notiRef}>
+                <button
+                  onClick={handleOpenNoti}
+                  className="relative flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/5 transition-all"
+                  title="알림"
+                >
+                  <span className="material-symbols-outlined text-lg">notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
+                  )}
+                </button>
+
+                {/* 알림 드롭다운 */}
+                {notiOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 overflow-hidden z-[100]">
+                    {/* 헤더 */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-sm">notifications</span>
+                        <span className="text-xs font-mono font-bold text-on-surface uppercase tracking-widest">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+                        )}
+                      </div>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          className="text-[10px] font-mono text-primary hover:underline"
+                        >
+                          모두 읽음
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 알림 목록 */}
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-2">
+                          <span className="material-symbols-outlined text-3xl text-slate-200">notifications_off</span>
+                          <p className="text-xs font-mono text-slate-400">// no_notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map(noti => (
+                          <button
+                            key={noti.id}
+                            onClick={() => handleClickNoti(noti)}
+                            className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!noti.is_read ? 'bg-primary/5' : ''}`}
+                          >
+                            <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${!noti.is_read ? 'text-primary' : 'text-slate-300'}`}>
+                              location_on
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs leading-relaxed ${!noti.is_read ? 'text-on-surface font-bold' : 'text-slate-500'}`}>
+                                {noti.message}
+                              </p>
+                              <p className="text-[10px] font-mono text-slate-400 mt-1">{formatDate(noti.created_at)}</p>
+                            </div>
+                            {!noti.is_read && (
+                              <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shrink-0" />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Link to="/settings" className="p-1 relative group cursor-pointer">
-                <img 
-                  src={user.profileImg || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
-                  alt="Profile" 
+                <img
+                  src={user.profileImg || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+                  alt="Profile"
                   className="w-8 h-8 rounded-lg border border-outline-variant/30 group-hover:border-primary transition-colors object-cover"
-                  onError={(e) => {
-                    e.target.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-                  }}
+                  onError={(e) => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; }}
                 />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full"></span>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full" />
               </Link>
 
-              {/* 로그아웃 버튼 */}
-              <button 
+              <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all group/logout"
                 title="Sign Out"
@@ -81,7 +202,7 @@ const Header = () => {
             </div>
           </div>
         ) : (
-          <Link 
+          <Link
             to="/login"
             className="px-5 py-2 bg-primary text-white font-headline font-bold rounded-lg hover:brightness-110 transition-all text-sm flex items-center gap-2 shadow-md"
           >
