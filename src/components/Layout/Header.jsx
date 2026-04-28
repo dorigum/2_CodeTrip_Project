@@ -193,7 +193,7 @@ const Header = () => {
                                 <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shrink-0" />
                               )}
                             </button>
-                            {noti.is_read && (
+                            {!!noti.is_read && (
                               <button
                                 onClick={(e) => handleDeleteNoti(e, noti.id)}
                                 className="absolute top-2.5 right-3 opacity-0 group-hover/noti:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
