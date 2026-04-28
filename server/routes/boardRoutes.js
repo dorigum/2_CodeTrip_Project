@@ -244,8 +244,8 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
       if (post.user_id !== req.user.id) {
         const message = `'${post.title}' 게시글에 ${nickname}님이 댓글을 남겼습니다.`;
         pool.query(
-          'INSERT INTO notifications (user_id, message) VALUES (?, ?)',
-          [post.user_id, message]
+          'INSERT INTO notifications (user_id, message, post_id) VALUES (?, ?, ?)',
+          [post.user_id, message, post.id]
         ).catch(() => {});
       }
     } catch (err) {

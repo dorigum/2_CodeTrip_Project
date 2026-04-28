@@ -6,7 +6,7 @@ const createNotificationRouter = ({ pool, authenticateToken }) => {
   router.get('/notifications', authenticateToken, async (req, res) => {
     try {
       const [rows] = await pool.query(
-        `SELECT id, message, content_id, is_read, created_at
+        `SELECT id, message, content_id, post_id, is_read, created_at
          FROM notifications
          WHERE user_id = ?
          ORDER BY created_at DESC
@@ -39,6 +39,18 @@ const createNotificationRouter = ({ pool, authenticateToken }) => {
         [req.params.id, req.user.id]
       );
       res.json({ message: '읽음 처리되었습니다.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/notifications/:id', authenticateToken, async (req, res) => {
+    try {
+      await pool.query(
+        'DELETE FROM notifications WHERE id = ? AND user_id = ?',
+        [req.params.id, req.user.id]
+      );
+      res.json({ message: '삭제되었습니다.' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

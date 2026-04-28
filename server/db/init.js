@@ -161,6 +161,7 @@ const initDB = async (pool, retries = 10, delay = 5000) => {
       try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch {}
       try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch {}
       try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NULL'); } catch {}
+      try { await conn.query('ALTER TABLE notifications ADD COLUMN post_id INT NULL'); } catch {}
 
       console.log('Database schema initialized');
       conn.release();

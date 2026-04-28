@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import useExploreStore from '../../store/useExploreStore';
 import useWishlistStore from '../../store/useWishlistStore';
-import { getNotifications, markAllRead, markOneRead } from '../../api/notificationApi';
+import { getNotifications, markAllRead, markOneRead, deleteNotification } from '../../api/notificationApi';
 import Toast from '../Toast';
 import useToast from '../../hooks/useToast';
 
@@ -71,7 +71,14 @@ const Header = () => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
     setNotiOpen(false);
-    if (noti.content_id) navigate(`/explore/${noti.content_id}`);
+    if (noti.post_id) navigate(`/board/${noti.post_id}`);
+    else if (noti.content_id) navigate(`/explore/${noti.content_id}`);
+  };
+
+  const handleDeleteNoti = async (e, notiId) => {
+    e.stopPropagation();
+    await deleteNotification(notiId);
+    setNotifications(prev => prev.filter(n => n.id !== notiId));
   };
 
   const handleSearchKeyDown = (e) => {
@@ -165,24 +172,37 @@ const Header = () => {
                         </div>
                       ) : (
                         notifications.map(noti => (
-                          <button
+                          <div
                             key={noti.id}
-                            onClick={() => handleClickNoti(noti)}
-                            className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!noti.is_read ? 'bg-primary/5' : ''}`}
+                            className={`relative group/noti border-b border-slate-50 ${!noti.is_read ? 'bg-primary/5' : ''}`}
                           >
-                            <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${!noti.is_read ? 'text-primary' : 'text-slate-300'}`}>
-                              location_on
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs leading-relaxed ${!noti.is_read ? 'text-on-surface font-bold' : 'text-slate-500'}`}>
-                                {noti.message}
-                              </p>
-                              <p className="text-[10px] font-mono text-slate-400 mt-1">{formatDate(noti.created_at)}</p>
-                            </div>
-                            {!noti.is_read && (
-                              <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shrink-0" />
+                            <button
+                              onClick={() => handleClickNoti(noti)}
+                              className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3"
+                            >
+                              <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${!noti.is_read ? 'text-primary' : 'text-slate-300'}`}>
+                                {noti.post_id ? 'chat' : 'location_on'}
+                              </span>
+                              <div className="flex-1 min-w-0 pr-5">
+                                <p className={`text-xs leading-relaxed ${!noti.is_read ? 'text-on-surface font-bold' : 'text-slate-500'}`}>
+                                  {noti.message}
+                                </p>
+                                <p className="text-[10px] font-mono text-slate-400 mt-1">{formatDate(noti.created_at)}</p>
+                              </div>
+                              {!noti.is_read && (
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shrink-0" />
+                              )}
+                            </button>
+                            {noti.is_read && (
+                              <button
+                                onClick={(e) => handleDeleteNoti(e, noti.id)}
+                                className="absolute top-2.5 right-3 opacity-0 group-hover/noti:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                title="삭제"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
                             )}
-                          </button>
+                          </div>
                         ))
                       )}
                     </div>

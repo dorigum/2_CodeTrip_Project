@@ -16,3 +16,7 @@ export const markAllRead = async () => {
 export const markOneRead = async (id) => {
   await axios.put(`/api/notifications/${id}/read`, {}, { headers: authHeader() });
 };
+
+export const deleteNotification = async (id) => {
+  await axios.delete(`/api/notifications/${id}`, { headers: authHeader() });
+};
