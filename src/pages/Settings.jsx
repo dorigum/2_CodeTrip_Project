@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
 import { DEFAULT_REGIONS } from '../constants/regions';
-import Toast, { useToast } from '../components/Toast';
+import Toast from '../components/Toast';
+import useToast from '../hooks/useToast';
 
 const SELECTABLE_REGIONS = DEFAULT_REGIONS.filter(r => r.code !== '');
 
