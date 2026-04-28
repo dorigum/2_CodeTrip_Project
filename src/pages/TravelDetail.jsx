@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '../api/travelInfoApi';
 import { getTravelComments, postTravelComment, updateTravelComment, deleteTravelComment, toggleTravelCommentLike } from '../api/travelCommentApi';
@@ -44,8 +44,21 @@ const TravelDetail = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTravel, setSelectedTravel] = useState(null);
 
+  const mapRef = useRef(null);
+
   const { isLoggedIn, user } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
+
+  // 창 크기 변경 시 지도 중심 재조정
+  useEffect(() => {
+    const handleResize = () => {
+      if (!mapRef.current || !common?.mapy || !common?.mapx) return;
+      mapRef.current.relayout();
+      mapRef.current.setCenter(new window.kakao.maps.LatLng(Number(common.mapy), Number(common.mapx)));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [common]);
 
   // 0. 위시리스트 초기화
   useEffect(() => {
@@ -579,6 +592,7 @@ const TravelDetail = () => {
                     zoomable={false}
                     scrollwheel={false}
                     onCreate={(map) => {
+                      mapRef.current = map;
                       map.relayout();
                       map.setCenter(new window.kakao.maps.LatLng(Number(common.mapy), Number(common.mapx)));
                     }}
