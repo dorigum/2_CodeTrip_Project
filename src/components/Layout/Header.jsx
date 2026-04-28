@@ -31,7 +31,9 @@ const Header = () => {
       const data = await getNotifications();
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
-    } catch {
+    } catch (error) {
+      console.log(error);
+      
       showToast('알림을 불러오는 데 실패했습니다.');
     }
   }, [showToast]);
