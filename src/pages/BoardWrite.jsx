@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createBoardPost, updateBoardPost } from '../api/boardApi';
 import useAuthStore from '../store/useAuthStore';
@@ -14,17 +14,26 @@ const BoardWrite = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const isMounted = useRef(false);
+
+  // 초기 마운트: 인증 확인 및 폼 초기화
   useEffect(() => {
     if (!isLoggedIn) {
       alert('로그인이 필요합니다.');
       navigate('/login');
       return;
     }
-    // state.fromTagSearch이면 스토어 초안 유지, 그 외 새 글이면 초기화
+    isMounted.current = true;
     if (!state?.fromTagSearch && !state?.edit) {
       resetForm();
     }
   }, []);
+
+  // 작성 중 로그아웃 감지 → 게시글 목록으로 이동
+  useEffect(() => {
+    if (!isMounted.current) return;
+    if (!isLoggedIn) navigate('/board');
+  }, [isLoggedIn]);
 
   const validate = () => {
     const errs = {};
