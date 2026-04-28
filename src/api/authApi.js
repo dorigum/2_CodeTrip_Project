@@ -74,6 +74,30 @@ const authApi = {
     }
   },
 
+  // 관심지역 조회
+  getFavoriteRegions: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/user/favorite-regions`, {
+        headers: getAuthHeader()
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch favorite regions' };
+    }
+  },
+
+  // 관심지역 저장
+  updateFavoriteRegions: async (codes) => {
+    try {
+      const response = await axios.put(`${API_URL}/user/favorite-regions`, { codes }, {
+        headers: getAuthHeader()
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update favorite regions' };
+    }
+  },
+
   // 비밀번호 찾기 (재설정)
   forgotPassword: async (resetData) => {
     try {

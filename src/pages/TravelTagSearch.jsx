@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getTravelList } from '../api/travelInfoApi';
 import useBoardWriteStore from '../store/useBoardWriteStore';
 import useRegionStore from '../store/useRegionStore';
@@ -9,7 +9,6 @@ const NUM_OF_ROWS = 12;
 
 const TravelTagSearch = () => {
   const navigate = useNavigate();
-  const { state } = useLocation();
   const { tags, setTags } = useBoardWriteStore();
   const { regions } = useRegionStore();
 

@@ -20,7 +20,7 @@ export const getWeather = async (lat = 37.5665, lon = 126.9780) => {
       ...parseWeatherCode(effectiveCode),
       keywords: [parseWeatherCode(effectiveCode).keyword]
     };
-  } catch (error) {
+  } catch {
     return { temp: 24, label: 'Sunny', icon: 'sunny', keywords: ['여행'], location: '서울' };
   }
 };
@@ -48,7 +48,7 @@ export const getLocationName = async (lat, lon) => {
       city: addr.city || addr.town || addr.village || addr.borough || '서울',
       state: addr.province || addr.city || addr.region || '서울'
     };
-  } catch (error) {
+  } catch {
     return { city: '서울', state: '서울' };
   }
 };

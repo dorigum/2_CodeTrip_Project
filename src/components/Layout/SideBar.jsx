@@ -284,7 +284,7 @@ const SideBar = ({ isCollapsed, toggleSidebar }) => {
               </div>
               {!isCollapsed && (
                 <button 
-                  onClick={() => { logout(); clearWishlist(); }} 
+                  onClick={() => { if (!window.confirm('로그아웃 하시겠습니까?')) return; logout(); clearWishlist(); }}
                   className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 group/logout"
                 >
                   <span className="material-symbols-outlined text-sm transition-transform duration-300 group-hover/logout:-translate-x-1">logout</span>

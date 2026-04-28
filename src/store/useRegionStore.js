@@ -15,7 +15,7 @@ const useRegionStore = create((set, get) => ({
         .filter((item) => !knownCodes.has(String(item.code || '')))
         .map((item) => ({ code: String(item.code || ''), name: item.name || '' }));
       set({ regions: [...DEFAULT_REGIONS, ...newRegions] });
-    } catch {}
+    } catch { /* noop */ }
   },
 }));
 

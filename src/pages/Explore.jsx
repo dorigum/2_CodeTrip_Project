@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
 import useWishlistStore from '../store/useWishlistStore';
@@ -9,8 +9,7 @@ import { DEFAULT_THEMES } from '../constants/themes';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
   const [activeAnimId, setActiveAnimId] = useState(null); // 강제 애니메이션 트리거용 ID
@@ -33,7 +32,7 @@ const Explore = () => {
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
   const [selectedTravel, setSelectedTravel] = useState(null); // 모달용
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [, setShowLoginDialog] = useState(false);
 
   const handleHeartToggle = async (post) => {
     if (!isLoggedIn) {

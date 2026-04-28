@@ -1,4 +1,3 @@
-import axios from 'axios';
 import axiosInstance from './axiosInstance';
 
 const KTO_BASE_URL = '/B551011/PhotoGalleryService1';
@@ -49,7 +48,7 @@ export const searchKeywordPlaces = async () => {
   try {
     const response = await axiosInstance.get('/travel/random');
     return response.data;
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -68,7 +67,7 @@ export const getFestivalList = async (page = 1, limit = 8, sort = 'default') => 
   }
 };
 
-export const getWeatherRecommendations = async (keyword) => {
+export const getWeatherRecommendations = async (_keyword) => {
   const items = await searchKeywordPlaces();
   if (items.length > 0) return items[Math.floor(Math.random() * items.length)];
   return null;

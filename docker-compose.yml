@@ -4,6 +4,7 @@ services:
     container_name: codetrip-db
     restart: unless-stopped
     environment:
+      TZ: Asia/Seoul
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
@@ -26,6 +27,8 @@ services:
       dockerfile: Dockerfile
     container_name: codetrip-backend
     restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
     env_file:
       - .env
     volumes:
@@ -50,6 +53,8 @@ services:
         VITE_KAKAO_MAP_API_KEY: ${VITE_KAKAO_MAP_API_KEY}
     container_name: codetrip-frontend
     restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
     ports:
       - "80:80"
     depends_on:
