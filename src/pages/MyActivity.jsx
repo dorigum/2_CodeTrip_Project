@@ -182,6 +182,10 @@ const MyActivity = () => {
                         </p>
                         <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
                           <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {post.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-xs">visibility</span>
                             {post.view_count}
                           </span>
@@ -239,10 +243,16 @@ const MyActivity = () => {
                           {comment.body}
                           <span className="text-outline font-mono">"</span>
                         </p>
-                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                          <span className="material-symbols-outlined text-xs">schedule</span>
-                          {formatDate(comment.created_at)}
-                        </span>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400 mt-2">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {comment.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => handleDeleteBoardComment(comment.id)}
@@ -279,10 +289,16 @@ const MyActivity = () => {
                           {comment.body}
                           <span className="text-outline font-mono">"</span>
                         </p>
-                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                          <span className="material-symbols-outlined text-xs">schedule</span>
-                          {formatDate(comment.created_at)}
-                        </span>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400 mt-2">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {comment.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => handleDeleteTravelComment(comment.id)}
