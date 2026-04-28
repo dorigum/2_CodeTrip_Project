@@ -3,10 +3,10 @@ const express = require('express');
 const { TRAVEL_API_BASE, TRAVEL_SERVICE_KEY } = require('../config/env');
 
 const AREA_NAME_MAP = {
-  1: '서울',
-  2: '인천',
-  31: '경기',
-  32: '강원',
+  '11': '서울', '26': '부산', '27': '대구', '28': '인천',
+  '29': '광주', '30': '대전', '31': '울산', '36110': '세종',
+  '41': '경기', '43': '충북', '44': '충남', '46': '전남',
+  '47': '경북', '48': '경남', '50': '제주', '51': '강원', '52': '전북',
 };
 
 const createTravelRouter = ({ travelCache }) => {
@@ -28,11 +28,11 @@ const createTravelRouter = ({ travelCache }) => {
     const { allTravelItems } = travelCache.getCache();
     if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
 
-    const areaCode = String(req.query.areaCode || '1');
-    const targetName = AREA_NAME_MAP[areaCode] || '';
+    const lDongRegnCd = String(req.query.lDongRegnCd || '11');
+    const targetName = AREA_NAME_MAP[lDongRegnCd] || '';
     const filtered = allTravelItems.filter(item => {
-      const itemAreaCode = String(item.areacode || item.areaCode || '');
-      const isCodeMatch = itemAreaCode === areaCode;
+      const itemLDongRegnCd = String(item.lDongRegnCd || '');
+      const isCodeMatch = itemLDongRegnCd === lDongRegnCd;
       const isAddrMatch = targetName && item.addr1?.includes(targetName);
       const typeId = String(item.contenttypeid || item.contentTypeId || '');
       return (isCodeMatch || isAddrMatch) && item.firstimage && ['12', '14'].includes(typeId);
@@ -167,7 +167,7 @@ const createTravelRouter = ({ travelCache }) => {
     const base = sortedTravelItems[sort] ?? allTravelItems;
     let filtered = base;
     if (regions.length) {
-      filtered = filtered.filter(item => regions.includes(String(item.lDongRegnCd || item.areacode)));
+      filtered = filtered.filter(item => regions.includes(String(item.lDongRegnCd || '')));
     }
     if (themes.length) {
       filtered = filtered.filter(item => {

@@ -12,6 +12,7 @@ const travelCache = require('./services/travelCache');
 const createActivityRouter = require('./routes/activityRoutes');
 const createAuthRouter = require('./routes/authRoutes');
 const createBoardRouter = require('./routes/boardRoutes');
+const createNotificationRouter = require('./routes/notificationRoutes');
 const createTravelCommentRouter = require('./routes/travelCommentRoutes');
 const createTravelRouter = require('./routes/travelRoutes');
 const createUserRouter = require('./routes/userRoutes');
@@ -40,11 +41,12 @@ app.use('/api', createTravelCommentRouter(routerDeps));
 app.use('/api', createWishlistRouter(routerDeps));
 app.use('/api', createActivityRouter(routerDeps));
 app.use('/api', createBoardRouter(routerDeps));
+app.use('/api', createNotificationRouter(routerDeps));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 initDB(pool);
 travelCache.initTravelCache();
-travelCache.scheduleDailyRefresh();
+travelCache.scheduleDailyRefresh(pool);
 
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
