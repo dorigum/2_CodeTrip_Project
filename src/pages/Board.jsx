@@ -17,11 +17,18 @@ const Board = () => {
   const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sort, setSort] = useState('created_at');
 
-  const fetchPosts = useCallback(async (page, kw) => {
+  const SORT_OPTIONS = [
+    { value: 'created_at', label: 'CREATED_AT' },
+    { value: 'updated_at', label: 'UPDATED_AT' },
+    { value: 'likes', label: 'MOST_LIKED' },
+  ];
+
+  const fetchPosts = useCallback(async (page, kw, sortBy) => {
     setLoading(true);
     try {
-      const data = await getBoardPosts({ pageNo: page, numOfRows: NUM_OF_ROWS, keyword: kw });
+      const data = await getBoardPosts({ pageNo: page, numOfRows: NUM_OF_ROWS, keyword: kw, sort: sortBy });
       setPosts(data.posts || []);
       setTotalCount(data.totalCount || 0);
     } catch (err) {
@@ -32,8 +39,13 @@ const Board = () => {
   }, []);
 
   useEffect(() => {
-    fetchPosts(currentPage, keyword);
-  }, [currentPage, keyword, fetchPosts]);
+    fetchPosts(currentPage, keyword, sort);
+  }, [currentPage, keyword, sort, fetchPosts]);
+
+  const handleSortChange = (newSort) => {
+    setSort(newSort);
+    setCurrentPage(1);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -112,15 +124,26 @@ const Board = () => {
           </div>
         </form>
 
-        {/* Post Count */}
+        {/* Post Count & Sort */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-mono text-outline">
             <span className="text-primary">{totalCount}</span> posts_found
             {keyword && <span className="ml-2 text-tertiary">// query: "{keyword}"</span>}
           </p>
-          <p className="text-xs font-mono text-outline">
-            page {currentPage} / {totalPages || 1}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-mono text-outline">
+              page {currentPage} / {totalPages || 1}
+            </p>
+            <select
+              value={sort}
+              onChange={(e) => handleSortChange(e.target.value)}
+              className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10 cursor-pointer uppercase font-bold tracking-tighter"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Post List */}
@@ -187,6 +210,10 @@ const Board = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-[11px] font-mono text-outline">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">favorite</span>
+                      {post.like_count}
+                    </span>
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">chat_bubble</span>
                       {post.comment_count}

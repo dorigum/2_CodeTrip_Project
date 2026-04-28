@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  getBoardPost, deleteBoardPost,
+  getBoardPost, deleteBoardPost, toggleBoardPostLike,
   getBoardComments, createBoardComment, updateBoardComment, deleteBoardComment, toggleBoardCommentLike,
 } from '../api/boardApi';
 import useAuthStore from '../store/useAuthStore';
@@ -113,6 +113,25 @@ const BoardDetail = () => {
       setBoardComments(await getBoardComments(id));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handlePostLike = async () => {
+    if (!isLoggedIn) { setShowLoginDialog(true); return; }
+    setPost((prev) => ({
+      ...prev,
+      liked: !prev.liked,
+      like_count: prev.liked ? prev.like_count - 1 : prev.like_count + 1,
+    }));
+    try {
+      const { liked, likes } = await toggleBoardPostLike(id);
+      setPost((prev) => ({ ...prev, liked, like_count: likes }));
+    } catch {
+      setPost((prev) => ({
+        ...prev,
+        liked: !prev.liked,
+        like_count: prev.liked ? prev.like_count - 1 : prev.like_count + 1,
+      }));
     }
   };
 
@@ -272,6 +291,21 @@ const BoardDetail = () => {
                   {post.content}
                 </ReactMarkdown>
               </div>
+            </div>
+
+            {/* Post Like Button */}
+            <div className="mt-8 pt-6 border-t border-slate-50 flex justify-center">
+              <button
+                onClick={handlePostLike}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full border transition-all text-sm font-mono font-bold ${
+                  post.liked
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-white border-outline-variant/20 text-outline hover:border-primary hover:text-primary'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-base ${post.liked ? 'filled' : ''}`}>favorite</span>
+                {post.like_count ?? 0}
+              </button>
             </div>
 
             {/* Tagged Destinations */}

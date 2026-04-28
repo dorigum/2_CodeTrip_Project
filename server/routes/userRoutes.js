@@ -27,6 +27,45 @@ const createUserRouter = ({ pool, authenticateToken, upload }) => {
     }
   });
 
+  router.get('/user/favorite-regions', authenticateToken, async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        'SELECT region_code FROM user_favorite_regions WHERE user_id = ?',
+        [req.user.id]
+      );
+      res.json(rows.map(r => r.region_code));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.put('/user/favorite-regions', authenticateToken, async (req, res) => {
+    const { codes = [] } = req.body;
+    if (codes.length > 3) {
+      return res.status(400).json({ message: '관심지역은 최대 3개까지 선택할 수 있습니다.' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query('DELETE FROM user_favorite_regions WHERE user_id = ?', [req.user.id]);
+      if (codes.length > 0) {
+        const values = codes.map(code => [req.user.id, code]);
+        await conn.query(
+          'INSERT INTO user_favorite_regions (user_id, region_code) VALUES ?',
+          [values]
+        );
+      }
+      await conn.commit();
+      res.json({ message: '관심지역이 저장되었습니다.' });
+    } catch (err) {
+      await conn.rollback();
+      res.status(500).json({ error: err.message });
+    } finally {
+      conn.release();
+    }
+  });
+
   router.put('/user/password', authenticateToken, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 

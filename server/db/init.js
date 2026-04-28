@@ -74,6 +74,16 @@ const initDB = async (pool, retries = 10, delay = 5000) => {
           INDEX idx_board_post_tags_post_id (post_id)
         )
       `);
+      
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS board_post_likes (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          post_id INT NOT NULL,
+          user_id INT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_board_post_user (post_id, user_id)
+        )
+      `);
 
       await conn.query(`
         CREATE TABLE IF NOT EXISTS board_comments (
@@ -120,6 +130,16 @@ const initDB = async (pool, retries = 10, delay = 5000) => {
           type ENUM('MEMO', 'CHECKLIST') DEFAULT 'CHECKLIST',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (folder_id) REFERENCES wishlist_folders(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS user_favorite_regions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          region_code VARCHAR(10) NOT NULL,
+          UNIQUE KEY uq_user_region (user_id, region_code),
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `);
