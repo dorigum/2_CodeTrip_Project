@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Project_Specification.md",
+                "file": "CHANGELOG.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Project_Specification"
+              "title": "CHANGELOG"
             }
           }
         ]
@@ -185,11 +185,11 @@
   },
   "active": "cabc9d870566ad19",
   "lastOpenFiles": [
+    "Project_Sketch.md",
+    "Project_Specification.md",
     "CHANGELOG.md",
     "AWS_EC2_Docker_Deployment.md",
-    "Project_Specification.md",
     "Architecture_Analysis.md",
-    "Project_Sketch.md",
     "DESIGN.md",
     "GEMINI.md",
     "CHANGELOG.md.tmp.14700.1777268775758",
