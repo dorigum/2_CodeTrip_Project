@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
+import { DEFAULT_REGIONS } from '../constants/regions';
+
+const SELECTABLE_REGIONS = DEFAULT_REGIONS.filter(r => r.code !== '');
 
 const Settings = () => {
   const { user, updateUser, isLoggedIn } = useAuthStore();
@@ -20,6 +23,42 @@ const Settings = () => {
   const [profileImg, setProfileImg] = useState(user?.profileImg || '');
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+
+  // Favorite Regions State
+  const [selectedRegions, setSelectedRegions] = useState([]);
+  const [regionsLoading, setRegionsLoading] = useState(false);
+  const [regionsMessage, setRegionsMessage] = useState({ type: '', text: '' });
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const codes = await authApi.getFavoriteRegions();
+        setSelectedRegions(codes);
+      } catch {}
+    };
+    load();
+  }, []);
+
+  const handleToggleRegion = (code) => {
+    setSelectedRegions(prev => {
+      if (prev.includes(code)) return prev.filter(c => c !== code);
+      if (prev.length >= 3) return prev;
+      return [...prev, code];
+    });
+  };
+
+  const handleSaveRegions = async () => {
+    setRegionsLoading(true);
+    setRegionsMessage({ type: '', text: '' });
+    try {
+      await authApi.updateFavoriteRegions(selectedRegions);
+      setRegionsMessage({ type: 'success', text: '관심지역이 저장되었습니다.' });
+    } catch (err) {
+      setRegionsMessage({ type: 'error', text: err.message || '저장에 실패했습니다.' });
+    } finally {
+      setRegionsLoading(false);
+    }
+  };
 
   // Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -212,7 +251,88 @@ const Settings = () => {
           </form>
         </section>
 
-        {/* SECTION 2: PASSWORD UPDATE */}
+        {/* SECTION 2: FAVORITE REGIONS */}
+        <section className="bg-surface-container-low rounded-2xl border border-outline-variant/10 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-outline-variant/10 bg-surface-container-lowest flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary">location_on</span>
+              <h2 className="font-headline font-bold text-on-surface">관심지역 설정</h2>
+            </div>
+            <span className="text-[10px] font-mono text-outline uppercase tracking-widest">// max_3_regions</span>
+          </div>
+
+          <div className="p-8 space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-label text-secondary uppercase font-bold tracking-wider ml-1">
+                  Favorite_Regions
+                </label>
+                <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                  selectedRegions.length >= 3
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {selectedRegions.length} / 3
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SELECTABLE_REGIONS.map(region => {
+                  const isSelected = selectedRegions.includes(region.code);
+                  const isDisabled = !isSelected && selectedRegions.length >= 3;
+                  return (
+                    <button
+                      key={region.code}
+                      type="button"
+                      onClick={() => handleToggleRegion(region.code)}
+                      disabled={isDisabled}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+                        isSelected
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : isDisabled
+                            ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                            : 'bg-background text-on-surface border-outline-variant/20 hover:border-primary hover:text-primary'
+                      }`}
+                    >
+                      {isSelected && <span className="material-symbols-outlined text-xs align-middle mr-0.5">check</span>}
+                      {region.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedRegions.length >= 3 && (
+                <p className="text-[11px] font-mono text-primary animate-in fade-in">
+                  // 최대 3개까지 선택할 수 있습니다.
+                </p>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+              <div>
+                {regionsMessage.text && (
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold ${regionsMessage.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'} animate-in fade-in slide-in-from-left-2`}>
+                    <span className="material-symbols-outlined text-xs">{regionsMessage.type === 'success' ? 'check_circle' : 'warning'}</span>
+                    {regionsMessage.text}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveRegions}
+                disabled={regionsLoading}
+                className="bg-primary text-white px-8 py-3 rounded-xl font-label text-xs font-bold tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              >
+                {regionsLoading ? (
+                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <span className="material-symbols-outlined text-sm">save</span>
+                )}
+                SAVE_REGIONS
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: PASSWORD UPDATE */}
         <section className="bg-surface-container-low rounded-2xl border border-outline-variant/10 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-outline-variant/10 bg-surface-container-lowest flex items-center justify-between">
             <div className="flex items-center gap-3">

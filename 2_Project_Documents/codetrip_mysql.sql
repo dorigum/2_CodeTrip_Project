@@ -114,3 +114,12 @@ CREATE TABLE IF NOT EXISTS wishlist_folders (
         REFERENCES users (id)
         ON DELETE CASCADE
 );
+
+-- 6. 사용자 관심지역 테이블
+CREATE TABLE IF NOT EXISTS user_favorite_regions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    region_code VARCHAR(10) NOT NULL,
+    UNIQUE KEY uq_user_region (user_id, region_code),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+)

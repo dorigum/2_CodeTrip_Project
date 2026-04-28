@@ -134,6 +134,16 @@ const initDB = async (pool, retries = 10, delay = 5000) => {
         )
       `);
 
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS user_favorite_regions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          region_code VARCHAR(10) NOT NULL,
+          UNIQUE KEY uq_user_region (user_id, region_code),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+
       try { await conn.query('ALTER TABLE wishlists ADD COLUMN title VARCHAR(255)'); } catch {}
       try { await conn.query('ALTER TABLE wishlists ADD COLUMN image_url TEXT'); } catch {}
       try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN start_date DATE NULL'); } catch {}
