@@ -5,17 +5,36 @@ const WEATHER_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 export const getWeather = async (lat = 37.5665, lon = 126.9780) => {
   try {
     const response = await axios.get(WEATHER_BASE_URL, {
-      params: { latitude: lat, longitude: lon, current_weather: true, timezone: 'Asia/Seoul' },
+      params: {
+        latitude: lat,
+        longitude: lon,
+        current: 'temperature_2m,weathercode,cloudcover,precipitation',
+        timezone: 'Asia/Seoul',
+        models: 'jma_seamless', // JMA(일본 기상청) 모델 — 한국/동아시아 고해상도
+      },
     });
-    const weather = response.data.current_weather;
+    const current = response.data.current;
+    const effectiveCode = refineWeatherCode(current.weathercode, current.cloudcover, current.precipitation);
     return {
-      temp: Math.round(weather.temperature),
-      ...parseWeatherCode(weather.weathercode),
-      keywords: [parseWeatherCode(weather.weathercode).keyword]
+      temp: Math.round(current.temperature_2m),
+      ...parseWeatherCode(effectiveCode),
+      keywords: [parseWeatherCode(effectiveCode).keyword]
     };
   } catch (error) {
     return { temp: 24, label: 'Sunny', icon: 'sunny', keywords: ['여행'], location: '서울' };
   }
+};
+
+// cloudcover(%)와 precipitation(mm)으로 weathercode 보정
+// Open-Meteo 모델이 "Clear(0)"으로 반환해도 실제 구름이 많은 경우를 잡아냄
+const refineWeatherCode = (code, cloudcover, precipitation) => {
+  // 강수량이 실제로 있는데 코드가 맑음 계열이면 비(61)로 보정
+  if (precipitation > 0 && code < 51) return 61;
+  // 맑음(0) 또는 약간 흐림(1)인데 구름이 75% 이상 → 흐림(3)
+  if ((code === 0 || code === 1) && cloudcover >= 75) return 3;
+  // 맑음(0) 인데 구름이 40% 이상 → 구름 조금(2)
+  if (code === 0 && cloudcover >= 40) return 2;
+  return code;
 };
 
 export const getLocationName = async (lat, lon) => {

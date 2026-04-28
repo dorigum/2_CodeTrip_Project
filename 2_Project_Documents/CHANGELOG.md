@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-04-28 — 날씨 엔진 고도화: 실시간 파라미터 전환 및 구름량 기반 보정 로직 추가
+
+### 1. Open-Meteo API 파라미터 전환 (`src/api/weatherApi.js`)
+
+**배경**: 기존 `current_weather: true` 파라미터는 Open-Meteo의 레거시 API로, 1시간 단위 모델 보간값을 반환하여 최대 1시간의 데이터 지연이 발생할 수 있었음. 또한 기상 코드(`weathercode`)만으로 날씨를 판정하여 실제 구름량이 높아도 "맑음"으로 표시되는 문제가 있었음.
+
+**수정 내용**:
+- **`current_weather: true` → `current` 파라미터로 전환**: 15분 단위 실시간 데이터 제공. `temperature_2m`, `weathercode`, `cloudcover`, `precipitation` 4개 변수를 명시적으로 요청.
+- **`models: 'jma_seamless'` 추가**: 일본 기상청(JMA) 고해상도 모델 적용. 한국·동아시아 지역에서 Open-Meteo 기본 블렌드 모델 대비 날씨 예보 정확도 향상.
+- **`refineWeatherCode(code, cloudcover, precipitation)` 보정 함수 신규 추가**:
+  - `precipitation > 0`이고 코드가 맑음 계열(`< 51`)이면 → 비(`61`)로 보정.
+  - `code === 0` 또는 `1`이고 `cloudcover ≥ 75%`이면 → 흐림(`3`)으로 보정.
+  - `code === 0`이고 `cloudcover ≥ 40%`이면 → 구름 조금(`2`)으로 보정.
+
+**효과**: 데이터 갱신 주기 단축(1시간 → 15분), 실제 구름량·강수량을 반영한 판정으로 "맑음" 오판 케이스 감소.
+
+---
+
 ## 2026-04-27 — 백엔드 모듈화 리팩터링 및 유지보수 구조 개선
 
 ### 1. Express 백엔드 단일 파일 구조 분리
