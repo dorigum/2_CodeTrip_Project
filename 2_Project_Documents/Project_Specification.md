@@ -949,3 +949,71 @@ MyPage 사이드바에 위시리스트 현황을 요약하는 `TRAVEL_STATS` 위
 
 - **위치**: 사이드바 타이틀(`username.wishlist`)과 `FOLDERS` 내비게이션 섹션 사이.
 - **스타일**: `bg-inverse-surface` 다크 패널 — 기존 `Folder_Metadata`와 동일한 디자인 언어 적용.
+
+---
+
+## 15. 최근 본 여행지 및 최근 검색어 (2026-04-28 추가)
+
+### 15.1 최근 본 여행지 (`recently_viewed`)
+
+#### 개요
+별도 백엔드 API 없이 `localStorage`만으로 클라이언트에서 완결되는 여행지 방문 이력 관리 기능. TravelDetail 방문 시 자동 저장되며 MyPage에서 가로 스크롤 카드로 조회 가능.
+
+#### 스토어 구조 (`src/store/useRecentlyViewedStore.js`)
+
+| 속성/액션 | 타입 | 설명 |
+|-----------|------|------|
+| `items` | `Array` | localStorage에서 초기 로드된 방문 이력 배열 (최대 10개) |
+| `addItem(item)` | Action | `contentid` 기준 중복 제거 후 선두 삽입, `slice(0, 10)` 상한 유지 |
+| `clearAll()` | Action | localStorage 삭제 + Zustand 상태 초기화 |
+
+- **저장 키**: `codetrip_recently_viewed`
+- **저장 구조**: `{ contentid, title, firstimage, addr1 }` 배열
+
+#### 연동 흐름
+
+| 파일 | 역할 |
+|------|------|
+| `src/pages/TravelDetail.jsx` | `common?.title` 의존 `useEffect`에서 `addItem()` 호출 |
+| `src/pages/MyPage.jsx` | `items` 구독 → 위시리스트 그리드 상단에 가로 스크롤 카드 섹션 렌더링 |
+
+#### MyPage 표시 규격
+
+- **조건**: `recentlyViewed.length > 0`일 때만 섹션 표시
+- **레이아웃**: 가로 스크롤(`overflow-x-auto`), 카드 너비 160px, 썸네일 높이 112px
+- **카드 내용**: 썸네일 이미지, 제목(truncate), 주소(truncate)
+- **클릭 동작**: `/explore/{contentid}` 라우트로 이동
+- **전체 삭제**: 섹션 헤더 우측 버튼으로 `clearAll()` 호출
+
+---
+
+### 15.2 최근 검색어 드롭다운 (`recent_searches`)
+
+#### 개요
+Header 검색창 포커스 시 최근 검색어 목록을 드롭다운으로 표시하여 반복 입력을 줄이는 UX 개선 기능. `localStorage`로 클라이언트 사이드에서 완결.
+
+#### 훅 구조 (`src/hooks/useRecentSearch.js`)
+
+| 반환값 | 타입 | 설명 |
+|--------|------|------|
+| `recents` | `string[]` | 저장된 검색어 배열 (최대 5개, 최신 순) |
+| `addSearch(keyword)` | Function | 중복 제거 후 선두 삽입, `slice(0, 5)` 상한 유지 |
+| `removeSearch(keyword)` | Function | 특정 키워드만 삭제 |
+| `clearAll()` | Function | 전체 초기화 |
+
+- **저장 키**: `codetrip_recent_searches`
+
+#### Header.jsx 연동 포인트
+
+| 이벤트 | 동작 |
+|--------|------|
+| 검색창 `onFocus` | `setSearchFocused(true)` → 드롭다운 표시 |
+| 외부 클릭 (`mousedown`) | `setSearchFocused(false)` → 드롭다운 숨김 |
+| Enter 키 입력 | `addSearch(kw)` 호출 후 Explore 이동 |
+| 항목 클릭 (`onMouseDown`) | `handleRecentClick()` — blur 레이스 컨디션 방지 |
+| 개별 X 버튼 (`onMouseDown`) | `e.stopPropagation()` + `removeSearch(kw)` |
+| "전체 삭제" (`onMouseDown`) | `clearAll()` |
+
+#### 드롭다운 표시 조건
+
+- `searchFocused === true` AND `recents.length > 0`

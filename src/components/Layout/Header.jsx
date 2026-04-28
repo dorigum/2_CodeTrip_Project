@@ -6,6 +6,7 @@ import useWishlistStore from '../../store/useWishlistStore';
 import { getNotifications, markAllRead, markOneRead } from '../../api/notificationApi';
 import Toast from '../Toast';
 import useToast from '../../hooks/useToast';
+import useRecentSearch from '../../hooks/useRecentSearch';
 
 const formatDate = (str) => {
   const d = new Date(str);
@@ -20,6 +21,9 @@ const Header = () => {
   const [searchInput, setSearchInput] = useState('');
 
   const { toast, showToast } = useToast();
+  const { recents, addSearch, removeSearch, clearAll: clearSearches } = useRecentSearch();
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchContainerRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -41,12 +45,11 @@ const Header = () => {
     fetchNotifications();
   }, [user, fetchNotifications]);
 
-  // 외부 클릭 시 닫기
+  // 외부 클릭 시 닫기 (알림 + 검색창)
   useEffect(() => {
     const handler = (e) => {
-      if (notiRef.current && !notiRef.current.contains(e.target)) {
-        setNotiOpen(false);
-      }
+      if (notiRef.current && !notiRef.current.contains(e.target)) setNotiOpen(false);
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) setSearchFocused(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -78,8 +81,19 @@ const Header = () => {
       alert('검색어를 입력해 주세요.');
       return;
     }
-    setKeyword(searchInput.trim());
+    const kw = searchInput.trim();
+    addSearch(kw);
+    setKeyword(kw);
     setSearchInput('');
+    setSearchFocused(false);
+    navigate('/explore');
+  };
+
+  const handleRecentClick = (keyword) => {
+    addSearch(keyword);
+    setKeyword(keyword);
+    setSearchInput('');
+    setSearchFocused(false);
     navigate('/explore');
   };
 
@@ -94,7 +108,7 @@ const Header = () => {
     <header className="flex items-center justify-between px-6 w-full h-16 sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 font-['Plus_Jakarta_Sans']">
       <Toast visible={toast.visible} text={toast.text} type={toast.type} />
       <div className="flex items-center flex-1">
-        <div className="relative hidden sm:block w-full max-w-md lg:max-w-xl">
+        <div className="relative hidden sm:block w-full max-w-md lg:max-w-xl" ref={searchContainerRef}>
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
             <span className="material-symbols-outlined text-outline text-sm">search</span>
           </div>
@@ -105,7 +119,31 @@ const Header = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleSearchKeyDown}
+            onFocus={() => setSearchFocused(true)}
           />
+          {/* 최근 검색어 드롭다운 */}
+          {searchFocused && recents.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-xl border border-outline-variant/10 overflow-hidden z-[200]">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">recent_searches</span>
+                <button onMouseDown={clearSearches} className="text-[10px] font-mono text-slate-400 hover:text-red-400 transition-colors">전체 삭제</button>
+              </div>
+              {recents.map((kw) => (
+                <div
+                  key={kw}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 group cursor-pointer"
+                  onMouseDown={() => handleRecentClick(kw)}
+                >
+                  <span className="material-symbols-outlined text-sm text-slate-300">history</span>
+                  <span className="flex-1 text-sm text-on-surface">{kw}</span>
+                  <button
+                    onMouseDown={(e) => { e.stopPropagation(); removeSearch(kw); }}
+                    className="material-symbols-outlined text-sm text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  >close</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

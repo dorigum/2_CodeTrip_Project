@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-04-28 — 최근 본 여행지 및 최근 검색어 기능 추가
+
+### 1. 최근 본 여행지 (Recently Viewed)
+
+**배경**: 사용자가 여행지 상세 페이지를 방문한 뒤 MyPage로 돌아갔을 때 방금 본 여행지를 다시 찾기 어려운 UX 단절 문제. 별도 API 없이 `localStorage`만으로 클라이언트 사이드에서 완결되는 방문 이력 관리가 필요.
+
+**신규 파일**:
+
+- **`src/store/useRecentlyViewedStore.js`** (Zustand 스토어):
+  - `localStorage` 키 `codetrip_recently_viewed`에 최대 10개 항목을 FIFO 방식으로 저장.
+  - `addItem(item)`: `contentid` 기준으로 중복 제거 후 최신 항목을 배열 선두에 삽입, `slice(0, 10)`으로 상한 유지.
+  - `clearAll()`: 로컬스토리지와 Zustand 상태를 동시에 초기화.
+
+**수정 파일**:
+
+- **`src/pages/TravelDetail.jsx`**:
+  - `useRecentlyViewedStore` 임포트 및 `addRecentlyViewed` 액션 구독.
+  - `common?.title` 의존 `useEffect` 추가: `common` 데이터 수신 직후 `{ contentid, title, firstimage, addr1 }` 형태로 방문 이력 저장.
+
+- **`src/pages/MyPage.jsx`**:
+  - `useRecentlyViewedStore`에서 `items`·`clearAll` 구독.
+  - 위시리스트 그리드 상단에 `recently_viewed.log` 섹션 추가: 가로 스크롤 카드 열(너비 160px × 높이 112px 썸네일 + 제목 + 주소)로 최근 방문 여행지를 최대 10개 표시. 항목이 없으면 섹션 자체를 숨김. 우측 상단 "전체 삭제" 버튼으로 이력 초기화 가능.
+
+### 2. 최근 검색어 드롭다운 (Recent Search Keywords)
+
+**배경**: 헤더 검색창에 반복 입력하는 번거로움을 줄이고, 이전 검색 맥락을 빠르게 재활용할 수 있는 UX 개선 필요.
+
+**신규 파일**:
+
+- **`src/hooks/useRecentSearch.js`** (커스텀 훅):
+  - `localStorage` 키 `codetrip_recent_searches`에 최대 5개 키워드를 FIFO 방식으로 저장.
+  - `addSearch(keyword)`: 중복 제거 후 최신 키워드를 선두 삽입, `slice(0, 5)` 상한 유지.
+  - `removeSearch(keyword)`: 특정 키워드만 삭제.
+  - `clearAll()`: 전체 초기화.
+
+**수정 파일**:
+
+- **`src/components/Layout/Header.jsx`**:
+  - `useRecentSearch` 훅 임포트 및 `recents, addSearch, removeSearch, clearSearches` 구독.
+  - `searchFocused` 상태, `searchContainerRef` ref 추가.
+  - 외부 클릭 핸들러에 `searchContainerRef` 포함하여 검색창·알림 드롭다운 동시 닫힘 처리.
+  - `handleSearchKeyDown`: Enter 입력 시 `addSearch(kw)` 호출하여 검색어 이력 저장.
+  - `handleRecentClick(keyword)`: 최근 검색어 클릭 시 해당 키워드로 Explore 검색 재실행.
+  - 검색 input `onFocus` 핸들러로 드롭다운 표시 전환.
+  - 최근 검색어 드롭다운 UI: `searchFocused && recents.length > 0` 조건부 렌더링. 헤더(레이블 + "전체 삭제"), 항목(히스토리 아이콘 + 키워드 + 개별 삭제 버튼). 모든 항목 인터랙션에 `onMouseDown` 사용하여 blur 레이스 컨디션 방지.
+
+---
+
 ## 2026-04-28 — 사용자 맞춤 UX 고도화 (Explore 관심지역 필터 자동화, MyPage 통계 위젯)
 
 ### 1. Explore 페이지 — 관심지역 자동 필터링 시스템 구축

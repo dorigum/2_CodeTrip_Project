@@ -4,6 +4,7 @@ import { getDetailCommon, getDetailIntro, getDetailInfo, getDetailImage } from '
 import { getTravelComments, postTravelComment, updateTravelComment, deleteTravelComment, toggleTravelCommentLike } from '../api/travelCommentApi';
 import useAuthStore from '../store/useAuthStore';
 import useWishlistStore from '../store/useWishlistStore';
+import useRecentlyViewedStore from '../store/useRecentlyViewedStore';
 import WishlistModal from '../components/WishlistModal';
 import '../App.css';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
@@ -48,6 +49,17 @@ const TravelDetail = () => {
 
   const { isLoggedIn, user } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
+  const { addItem: addRecentlyViewed } = useRecentlyViewedStore();
+
+  useEffect(() => {
+    if (!common?.title) return;
+    addRecentlyViewed({
+      contentid: String(contentId),
+      title: common.title || '',
+      firstimage: common.firstimage || '',
+      addr1: common.addr1 || '',
+    });
+  }, [common?.title]);
 
   // 창 크기 변경 시 지도 중심 재조정
   useEffect(() => {
