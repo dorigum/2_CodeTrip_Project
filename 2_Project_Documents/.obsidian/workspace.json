@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CHANGELOG.md",
+                "file": "Project_Specification.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CHANGELOG"
+              "title": "Project_Specification"
             }
           }
         ]
@@ -185,9 +185,9 @@
   },
   "active": "cabc9d870566ad19",
   "lastOpenFiles": [
+    "CHANGELOG.md",
     "AWS_EC2_Docker_Deployment.md",
     "Project_Specification.md",
-    "CHANGELOG.md",
     "Architecture_Analysis.md",
     "Project_Sketch.md",
     "DESIGN.md",
