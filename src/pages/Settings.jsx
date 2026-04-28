@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
 import { DEFAULT_REGIONS } from '../constants/regions';
+import Toast, { useToast } from '../components/Toast';
 
 const SELECTABLE_REGIONS = DEFAULT_REGIONS.filter(r => r.code !== '');
 
@@ -24,6 +25,9 @@ const Settings = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
 
+  // Toast
+  const { toast, showToast } = useToast();
+
   // Favorite Regions State
   const [selectedRegions, setSelectedRegions] = useState([]);
   const [regionsLoading, setRegionsLoading] = useState(false);
@@ -34,7 +38,9 @@ const Settings = () => {
       try {
         const codes = await authApi.getFavoriteRegions();
         setSelectedRegions(codes);
-      } catch {}
+      } catch {
+        showToast('관심지역을 불러오는 데 실패했습니다.');
+      }
     };
     load();
   }, []);
@@ -133,6 +139,7 @@ const Settings = () => {
 
   return (
     <div className="flex-1 bg-background overflow-y-auto custom-scrollbar p-10">
+      <Toast visible={toast.visible} text={toast.text} type={toast.type} />
       <div className="max-w-4xl mx-auto space-y-10">
         
         {/* Page Title */}
