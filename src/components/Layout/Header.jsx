@@ -4,6 +4,8 @@ import useAuthStore from '../../store/useAuthStore';
 import useExploreStore from '../../store/useExploreStore';
 import useWishlistStore from '../../store/useWishlistStore';
 import { getNotifications, markAllRead, markOneRead } from '../../api/notificationApi';
+import Toast from '../Toast';
+import useToast from '../../hooks/useToast';
 
 const formatDate = (str) => {
   const d = new Date(str);
@@ -17,6 +19,8 @@ const Header = () => {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
 
+  const { toast, showToast } = useToast();
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notiOpen, setNotiOpen] = useState(false);
@@ -27,8 +31,10 @@ const Header = () => {
       const data = await getNotifications();
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
-    } catch {}
-  }, []);
+    } catch {
+      showToast('알림을 불러오는 데 실패했습니다.');
+    }
+  }, [showToast]);
 
   useEffect(() => {
     if (!user) return;
@@ -86,6 +92,7 @@ const Header = () => {
 
   return (
     <header className="flex items-center justify-between px-6 w-full h-16 sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 font-['Plus_Jakarta_Sans']">
+      <Toast visible={toast.visible} text={toast.text} type={toast.type} />
       <div className="flex items-center flex-1">
         <div className="relative hidden sm:block w-full max-w-md lg:max-w-xl">
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
