@@ -75,6 +75,27 @@ const useExploreStore = create((set, get) => ({
     get().fetchPosts();
   },
 
+  applyFavoriteRegions: (codes) => {
+    if (!codes || codes.length === 0) {
+      get().fetchPosts();
+      return;
+    }
+    const regionSet = new Set(codes.map(String));
+    set({ selectedRegions: regionSet, appliedRegions: Array.from(regionSet), currentPage: 1 });
+    get().fetchPosts();
+  },
+
+  resetFilter: () => {
+    set({
+      selectedRegions: new Set(['']),
+      selectedThemes: new Set(['']),
+      appliedRegions: [''],
+      appliedThemes: [''],
+      currentPage: 1,
+    });
+    get().fetchPosts();
+  },
+
   setSort: (sort) => {
     set({ sort, currentPage: 1 });
     get().fetchPosts();

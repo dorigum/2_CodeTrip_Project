@@ -6,6 +6,7 @@ import useWishlistStore from '../store/useWishlistStore';
 import useAuthStore from '../store/useAuthStore';
 import WishlistModal from '../components/WishlistModal';
 import { DEFAULT_THEMES } from '../constants/themes';
+import authApi from '../api/authApi';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
@@ -14,6 +15,7 @@ const Explore = () => {
   const [themeOpen, setThemeOpen] = useState(true);
   const [activeAnimId, setActiveAnimId] = useState(null); // 강제 애니메이션 트리거용 ID
   const [pageInput, setPageInput] = useState('');
+  const [favoriteRegions, setFavoriteRegions] = useState([]);
 
   const { isLoggedIn } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
@@ -26,7 +28,7 @@ const Explore = () => {
     keyword, clearKeyword,
     sort, setSort,
     initialized,
-    fetchPosts, applyFilter, changePage,
+    fetchPosts, applyFilter, changePage, applyFavoriteRegions, resetFilter,
   } = useExploreStore();
 
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
@@ -81,7 +83,15 @@ const Explore = () => {
   const totalPages = Math.ceil(totalCount / NUM_OF_ROWS);
 
   useEffect(() => {
-    if (!initialized) fetchPosts();
+    const init = async () => {
+      let favCodes = [];
+      if (isLoggedIn) {
+        try { favCodes = await authApi.getFavoriteRegions(); } catch {}
+      }
+      setFavoriteRegions(favCodes);
+      if (!initialized) applyFavoriteRegions(favCodes);
+    };
+    init();
   }, []);
 
   // DOM 변경 이전에 실행되는 cleanup으로 정확한 scrollTop 저장
@@ -232,12 +242,29 @@ const Explore = () => {
                 )}
               </section>
 
-              <button
-                onClick={applyFilter}
-                className="w-full py-2.5 bg-primary text-white rounded-lg font-mono text-[11px] font-bold hover:brightness-110 transition-all shadow-md tracking-tighter"
-              >
-                RUN_FILTER.SH
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={applyFilter}
+                  className="w-full py-2.5 bg-primary text-white rounded-lg font-mono text-[11px] font-bold hover:brightness-110 transition-all shadow-md tracking-tighter"
+                >
+                  RUN_FILTER.SH
+                </button>
+                {isLoggedIn && favoriteRegions.length > 0 && (
+                  <button
+                    onClick={() => applyFavoriteRegions(favoriteRegions)}
+                    className="w-full py-2 border border-primary/40 text-primary rounded-lg font-mono text-[11px] font-bold hover:bg-primary/10 transition-all tracking-tighter flex items-center justify-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">star</span>
+                    MY_REGIONS.SH
+                  </button>
+                )}
+                <button
+                  onClick={resetFilter}
+                  className="w-full py-2 text-slate-400 rounded-lg font-mono text-[11px] hover:bg-slate-100 transition-all tracking-tighter"
+                >
+                  RESET_ALL.SH
+                </button>
+              </div>
             </div>
           </div>
         </aside>

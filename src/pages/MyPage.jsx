@@ -137,6 +137,17 @@ const MyPage = () => {
     });
   }, [filteredItems, sortBy]);
 
+  const stats = useMemo(() => {
+    const total = wishlistItems.length;
+    const folderCount = folders.length;
+    const uncategorized = wishlistItems.filter(i => !i.folder_id).length;
+    const topFolder = folders.reduce((acc, f) => {
+      const count = wishlistItems.filter(i => Number(i.folder_id) === Number(f.id)).length;
+      return count > (acc?.count ?? 0) ? { name: f.name, count } : acc;
+    }, null);
+    return { total, folderCount, uncategorized, topFolder };
+  }, [wishlistItems, folders]);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     // 날짜 형식이 YYYY-MM-DD 형식이면 parseLocalDate 사용, 아니면 일반 Date 사용 (생성일 등)
@@ -252,6 +263,37 @@ const MyPage = () => {
             <span className="font-label text-[0.6875rem] uppercase tracking-widest text-secondary font-bold">Workspace</span>
             <h2 className="font-headline text-2xl font-bold tracking-tight">{user?.name}.wishlist</h2>
           </div>
+
+          {/* TRAVEL_STATS */}
+          <section className="bg-inverse-surface text-inverse-on-surface p-5 rounded-xl font-mono text-[10px] leading-relaxed shadow-lg">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3 mb-4">
+              <span className="material-symbols-outlined text-primary-container text-sm">analytics</span>
+              <span className="uppercase opacity-60 tracking-widest">Travel_Stats</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="opacity-40">TOTAL_NODES:</span>
+                <span className="text-emerald-400 font-bold">{stats.total}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="opacity-40">FOLDERS:</span>
+                <span className="text-emerald-400 font-bold">{stats.folderCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="opacity-40">UNCATEGORIZED:</span>
+                <span className="text-cyan-400 font-bold">{stats.uncategorized}</span>
+              </div>
+              {stats.topFolder?.count > 0 && (
+                <div className="flex justify-between items-start border-t border-white/5 pt-2.5 mt-1">
+                  <span className="opacity-40 shrink-0">TOP_FOLDER:</span>
+                  <span className="text-yellow-400 font-bold text-right ml-2 truncate">
+                    {stats.topFolder.name}
+                    <span className="opacity-50 font-normal"> ({stats.topFolder.count})</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </section>
 
           <section className="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 shadow-sm">
             <div className="flex items-center justify-between border-b border-outline-variant/15 pb-3 mb-4">
