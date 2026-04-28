@@ -24,6 +24,9 @@
 	- 댓글 API를 `travel-comments`로 명칭 통일.
 	- 위시리스트 500 오류(DB 컬럼 누락) 수정.
 	- 위시리스트 폴더별 메모/체크리스트(LIST/MEMO) 기능 구축 완료.
+	- **[2026-04-27]** 백엔드 모듈화 리팩터링 완료: `server/config`, `server/db`, `server/middleware`, `server/routes`, `server/services` 디렉터리로 책임별 분리. 기존 프론트엔드 API 호출 경로 완전 유지.
+	- **[2026-04-27]** My Activity 대시보드 통합 및 교통 예매 허브(KTX·SRT·고속버스 외부 예매 연동) 완료.
+	- **[2026-04-28]** 날씨 엔진 고도화: Open-Meteo `current` 파라미터 전환(15분 단위 실시간), JMA 모델 적용, `cloudcover` 기반 기상 코드 보정 로직 추가.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -40,6 +43,7 @@
     - Open-Meteo & Nominatim — 실시간 날씨 및 좌표 기반 지역명 변환.
 - **Dev Tools**: 
     - `debug_wishlist.cjs` — 위시리스트 DB 상태 즉석 검증 및 테이블 구조 확인용 CLI 유틸리티
+    - `concurrently` — 프론트엔드(Vite) + 백엔드(Nodemon) 동시 실행 (`npm run dev:all`)
 
 ### 1.2 데이터베이스 스키마 (Database Schema)
 - **users**: 이메일, 해시된 비밀번호, 이름, 프로필 이미지 경로.
@@ -60,8 +64,27 @@
 2_Code_Trip/
 ├── server/                       # Express Backend
 │   ├── .env                      # 서버 환경 변수 (DB_PASS, JWT_SECRET 등)
-│   ├── index.js                  # 메인 서버 로직 및 API 엔드포인트
+│   ├── index.js                  # Express 앱 조립 및 서버 시작 진입점 [2026-04-27 경량화]
 │   ├── debug_wishlist.cjs        # DB 디버깅 스크립트
+│   ├── config/
+│   │   ├── db.js                 # MySQL connection pool [2026-04-27 신규]
+│   │   ├── env.js                # 환경 변수 및 공통 상수 [2026-04-27 신규]
+│   │   └── upload.js             # Multer 업로드 설정 [2026-04-27 신규]
+│   ├── db/
+│   │   └── init.js               # DB 테이블 생성 및 컬럼 보정 [2026-04-27 신규]
+│   ├── middleware/
+│   │   └── auth.js               # JWT 인증 미들웨어 [2026-04-27 신규]
+│   ├── routes/
+│   │   ├── activityRoutes.js     # 내 활동 API [2026-04-27 신규]
+│   │   ├── authRoutes.js         # 회원가입·로그인·비밀번호 재설정 [2026-04-27 신규]
+│   │   ├── boardRoutes.js        # 게시판 및 댓글 API [2026-04-27 신규]
+│   │   ├── travelCommentRoutes.js # 여행지 댓글 API [2026-04-27 신규]
+│   │   ├── travelRoutes.js       # 여행지·축제·TourAPI 프록시 API [2026-04-27 신규]
+│   │   ├── userRoutes.js         # 프로필·이미지 업로드·비밀번호 변경 [2026-04-27 신규]
+│   │   └── wishlistRoutes.js     # 위시리스트·폴더·메모·체크리스트 API [2026-04-27 신규]
+│   └── services/
+│       ├── tourApiService.js     # TourAPI 호출 및 응답 정규화 [2026-04-27 신규]
+│       └── travelCache.js        # 서버 메모리 캐시 및 일일 갱신 스케줄 [2026-04-27 신규]
 ├── src/
 │   ├── api/
 │   │   ├── authApi.js            # 로그인/회원가입/정보수정 API
@@ -413,6 +436,10 @@
 | 축제 페이지 종료된 행사 자동 필터링 (`eventenddate < today`) | ✅ 완료 |
 | 축제 하이드레이션 완료 후 클라이언트 재정렬 (날짜 기준) | ✅ 완료 |
 | `concurrently` 기반 프론트·백 동시 실행 환경 (`npm run dev:all`) | ✅ 완료 |
+| 백엔드 모듈화 리팩터링 (`server/config·db·middleware·routes·services` 분리) | ✅ 완료 |
+| My Activity 대시보드 — 내 게시글·댓글·좋아요 내역 종합 관리 | ✅ 완료 |
+| 교통 예매 허브 — KTX·SRT·고속버스 외부 예매 사이트 연동 | ✅ 완료 |
+| 날씨 API `current` 파라미터 전환 — 15분 실시간, JMA 모델, cloudcover 보정 (2026-04-28) | ✅ 완료 |
 | 스마트 검색 엔진 고도화 | ⏳ 추진중 |
 
 ---
@@ -448,7 +475,8 @@
 
 11. **탐색 페이지(Explore) 인터랙티브 하트 및 애니메이션 고도화**
 	
-12. **(회원인 경우)마이페이지에서 본인이 작성한 여행 게시글이나 댓글을 조회할 수 있는 기능**
+12. **마이페이지에서 본인이 작성한 여행 게시글이나 댓글을 조회할 수 있는 기능 (완료)**
+	- 2026-04-27 My Activity 대시보드(`/my-activity`) 구현 완료. 게시글·댓글·좋아요 내역 종합 관리.
 
 13. **관리자/사용자로 분리해서 관리자가 특정 글을 직접 삭제할 수 있는 권한 부여**
 
@@ -460,12 +488,14 @@
 16. **행사 축제 페이지 정렬 기능 안정화 및 로직 수정 (완료)**
 	- 2026.04.26 서버 사이드 정렬 로직 및 날짜 데이터 정규화 완료.
 
-17. **행사 및 축제 노드 위시리스트(찜) 기능 추가**
-	- 일반 여행지뿐만 아니라 축제 데이터(contentTypeId: 15)도 사용자 위시리스트 폴더에 저장할 수 있도록 확장.
+17. **행사 및 축제 노드 위시리스트(찜) 기능 추가 (완료)**
+	- 2026-04-27 완료. 축제 데이터(contentTypeId: 15)도 위시리스트 폴더에 저장 가능하도록 `Festivals.jsx` 하트 버튼 연동.
 
-18. **위시리스트에서 체크리스트, 메모, 달력 기능 추가하기**
+18. **위시리스트에서 체크리스트, 메모, 달력 기능 추가하기 (완료)**
+	- 2026-04-27 `wishlist_notes` 테이블 및 API 4개 엔드포인트 구현 완료.
 
-19. **이동 수단(KTX, SRT) 정보 제공 혹은 페이지 이동 기능**
+19. **이동 수단(KTX, SRT) 정보 제공 혹은 페이지 이동 기능 (완료)**
+	- 2026-04-27 교통 예매 허브(KTX·SRT·고속버스 공식 예매 사이트 외부 연동) Info 페이지 및 사이드바에 추가 완료.
 
 ---
 **추가 아이디어 제안 및 문답 기록**
@@ -504,10 +534,7 @@
 ```
 
 ---
-*최종 업데이트: 2026-04-27 (TourAPI 프록시 중계 아키텍처 도입, wishlistApi Named Exports 전환, 위시리스트 메모/체크리스트 시스템, 게시판 시스템 통합, 축제 필터링·정렬 고도화, concurrently 개발 환경 구축)*
-
----
-*최종 업데이트: 2026-04-27 (feature/board 머지 — 게시판 시스템 통합, 댓글 API travel-comments 명칭 통일, react-markdown 설치, 위시리스트 500 오류 DB 컬럼 자동 적용, 게시판 DB 테이블 4종 신규, 위시리스트 폴더별 메모/체크리스트 기능 추가, axiosInstance baseURL 중복 경로 404 수정)*
+*최종 업데이트: 2026-04-28 (날씨 API `current` 파라미터 전환·JMA 모델·cloudcover 보정 / 백엔드 모듈화 리팩터링 / TourAPI 프록시 아키텍처 / wishlistApi Named Exports 전환 / 위시리스트 메모·체크리스트 / 게시판 시스템 통합 / My Activity 대시보드 / 교통 예매 허브 연동)*
 
 
 ---
