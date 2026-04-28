@@ -167,7 +167,7 @@ const createTravelRouter = ({ travelCache }) => {
     const base = sortedTravelItems[sort] ?? allTravelItems;
     let filtered = base;
     if (regions.length) {
-      filtered = filtered.filter(item => regions.includes(String(item.areacode || item.areaCode)));
+      filtered = filtered.filter(item => regions.includes(String(item.lDongRegnCd || item.areacode)));
     }
     if (themes.length) {
       filtered = filtered.filter(item => {

@@ -27,7 +27,7 @@ const fetchCombination = async ({ region, theme, keyword, numOfRows, pageNo = 1,
 
   if (keyword) params.keyword = keyword;
   if (theme) params.contentTypeId = theme;
-  if (region) params.areaCode = region;
+  if (region) params.lDongRegnCd = region;
 
   try {
     const response = await axios.get(`${TRAVEL_API_BASE}/${endpoint}`, { params });
