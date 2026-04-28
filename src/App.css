@@ -59,9 +59,26 @@
   }
 }
 
+/* Sidebar Text Cursor Prevention */
+aside, 
+aside button, 
+aside a,
+nav a {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.material-symbols-outlined.fill-1 {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
 }
 
 .glass-panel {
@@ -91,3 +108,316 @@
   overflow: hidden;
   white-space: nowrap;
 }
+
+/* Instagram Live Style Heart Animation */
+@keyframes bubble-heart {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-10px) scale(1.2); }
+  100% { transform: translateY(-60px) translateX(var(--random-x)) scale(0.8); opacity: 0; }
+}
+
+.heart-bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  pointer-events: none;
+  opacity: 0;
+  color: #ef4444;
+  will-change: transform, opacity;
+}
+
+.heart-bubble-1 { --random-x: -15px; }
+.heart-bubble-2 { --random-x: 15px; }
+.heart-bubble-3 { --random-x: -5px; }
+
+/* Firework Sparks for Festivals (Visual Sparks, No Text) */
+.firework-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background-color: currentColor;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 4px currentColor;
+  will-change: transform, opacity;
+}
+
+/* ── Markdown Body ── */
+.markdown-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.85;
+  color: #191c1e;
+  word-break: break-word;
+}
+
+.markdown-body > *:first-child { margin-top: 0; }
+.markdown-body > *:last-child  { margin-bottom: 0; }
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.6em;
+  margin-bottom: 0.5em;
+  color: #191c1e;
+}
+
+.markdown-body h1 { font-size: 1.65rem; border-bottom: 2px solid #a8edff; padding-bottom: 0.3em; }
+.markdown-body h2 { font-size: 1.3rem;  border-bottom: 1px solid #e5e7eb; padding-bottom: 0.2em; }
+.markdown-body h3 { font-size: 1.1rem; }
+.markdown-body h4 { font-size: 0.95rem; }
+
+.markdown-body p { margin-bottom: 0.9em; }
+
+.markdown-body strong { font-weight: 700; }
+.markdown-body em     { font-style: italic; }
+.markdown-body del    { text-decoration: line-through; opacity: 0.55; }
+
+.markdown-body a {
+  color: #006879;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.markdown-body a:hover { color: #00b8d4; }
+
+/* Inline code */
+.markdown-body :not(pre) > code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.82em;
+  background: #eef9fb;
+  color: #006879;
+  padding: 0.15em 0.45em;
+  border-radius: 4px;
+  border: 1px solid #bce8ef;
+}
+
+/* Code block */
+.markdown-body pre {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.2em 0;
+  border: 1px solid #334155;
+}
+.markdown-body pre code {
+  background: transparent;
+  color: #a8edff;
+  padding: 0;
+  border: none;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+/* Blockquote */
+.markdown-body blockquote {
+  border-left: 3px solid #006879;
+  padding: 0.4em 0 0.4em 1rem;
+  margin: 1em 0;
+  color: #5a5f65;
+  font-style: italic;
+  background: #f0fbfd;
+  border-radius: 0 6px 6px 0;
+}
+.markdown-body blockquote p { margin-bottom: 0; }
+
+/* Lists */
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.9em;
+}
+.markdown-body ul { list-style-type: disc; }
+.markdown-body ol { list-style-type: decimal; }
+.markdown-body li { margin-bottom: 0.2em; }
+.markdown-body li > ul,
+.markdown-body li > ol { margin-top: 0.2em; margin-bottom: 0; }
+
+/* Tables */
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.875rem;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+}
+.markdown-body th {
+  background: #f0fbfd;
+  font-weight: 600;
+  font-family: 'Space Grotesk', sans-serif;
+  color: #006879;
+}
+.markdown-body tr:nth-child(even) td { background: #f8f9fb; }
+
+/* HR */
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.6em 0;
+}
+
+/* Images */
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1em 0;
+}
+
+/* Task list (GFM) */
+.markdown-body input[type='checkbox'] {
+  margin-right: 0.4em;
+  accent-color: #006879;
+}
+
+
+.group:hover .firework-spark {
+  opacity: 1;
+}
+
+.group:hover .spark-1 { transform: translate(-10px, -10px) scale(0.8); color: #FFD700; } /* Gold */
+.group:hover .spark-2 { transform: translate(10px, -10px) scale(0.8); color: #00b8d4; }  /* Cyan */
+.group:hover .spark-3 { transform: translate(0, -13px) scale(1); color: #ff8285; }       /* Pink */
+.group:hover .spark-4 { transform: translate(-7px, 5px) scale(0.7); color: #a8edff; }    /* Light Blue */
+
+/* Lightbulb Flicker for Info */
+@keyframes bulb-flicker {
+  0%   { opacity: 1;   color: inherit; filter: none; }
+  10%  { opacity: 0.2; filter: none; }
+  20%  { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+  30%  { opacity: 0.4; color: #fbbf24; filter: drop-shadow(0 0 2px #fbbf24); }
+  45%  { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 9px #fbbf24); }
+  60%  { opacity: 0.7; color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+  100% { opacity: 1;   color: #fbbf24; filter: drop-shadow(0 0 8px #fbbf24); }
+}
+
+.group:hover .bulb-flicker {
+  animation: bulb-flicker 0.7s ease forwards;
+}
+
+.bulb-glow {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.35) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.4s ease 0.3s, transform 0.4s ease 0.3s;
+  pointer-events: none;
+}
+
+.group:hover .bulb-glow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Home — warm orange bounce glow */
+@keyframes home-glow {
+  0%   { color: inherit; filter: none; transform: translateY(0); }
+  40%  { color: #f97316; filter: drop-shadow(0 0 7px #f97316); transform: translateY(-4px); }
+  70%  { color: #fb923c; filter: drop-shadow(0 0 4px #f97316); transform: translateY(-2px); }
+  100% { color: #f97316; filter: drop-shadow(0 0 6px #f97316); transform: translateY(-3px); }
+}
+.group:hover .home-glow { animation: home-glow 0.5s ease forwards; }
+.home-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(249,115,22,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+}
+.group:hover .home-halo { opacity: 1; transform: scale(1); }
+
+/* Explore — cyan compass spin glow */
+@keyframes explore-spin {
+  0%   { color: inherit; filter: none; transform: rotate(0deg); }
+  100% { color: #3b82f6; filter: drop-shadow(0 0 8px #3b82f6); transform: rotate(180deg); }
+}
+.group:hover .explore-spin {
+  animation: explore-spin 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+.explore-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
+}
+.group:hover .explore-halo { opacity: 1; transform: scale(1); }
+
+/* Festivals — pink↔amber color shift glow */
+@keyframes fest-glow {
+  0%   { color: inherit; filter: none; }
+  30%  { color: #ec4899; filter: drop-shadow(0 0 5px #ec4899); }
+  65%  { color: #f59e0b; filter: drop-shadow(0 0 9px #f59e0b); }
+  100% { color: #ec4899; filter: drop-shadow(0 0 6px #ec4899); }
+}
+.group:hover .fest-glow { animation: fest-glow 0.8s ease forwards; }
+
+/* Wishlist — red heartbeat pulse glow */
+@keyframes heart-glow {
+  0%   { color: inherit; filter: none; transform: scale(1); }
+  30%  { color: #ef4444; filter: drop-shadow(0 0 8px #ef4444); transform: scale(1.25); }
+  55%  { transform: scale(1.05); }
+  75%  { color: #ef4444; filter: drop-shadow(0 0 5px #ef4444); transform: scale(1.2); }
+  100% { color: #ef4444; filter: drop-shadow(0 0 6px #ef4444); transform: scale(1.1); }
+}
+.group:hover .heart-glow { animation: heart-glow 0.6s ease forwards; }
+
+/* Settings — emerald green shake glow */
+@keyframes account-shake {
+  0%   { color: inherit; filter: none; transform: rotate(0deg); }
+  15%  { transform: rotate(-14deg); }
+  30%  { color: #10b981; filter: drop-shadow(0 0 5px #10b981); transform: rotate(11deg); }
+  45%  { transform: rotate(-8deg); }
+  60%  { color: #10b981; filter: drop-shadow(0 0 8px #10b981); transform: rotate(6deg); }
+  75%  { transform: rotate(-3deg); }
+  100% { color: #10b981; filter: drop-shadow(0 0 6px #10b981); transform: rotate(0deg); }
+}
+.group:hover .account-shake { animation: account-shake 0.6s ease forwards; }
+.settings-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(16,185,129,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
+}
+.group:hover .settings-halo { opacity: 1; transform: scale(1); }
+
+/* Board — purple page flip & pop glow (subtle) */
+@keyframes board-pop-flip {
+  0%   { transform: scale(1) rotateY(0deg); color: inherit; }
+  50%  { transform: scale(1.15) rotateY(180deg); color: #a855f7; }
+  100% { transform: scale(1.1) rotateY(0deg); color: #c084fc; }
+}
+.group:hover .board-pop-flip { 
+  animation: board-pop-flip 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; 
+  perspective: 800px;
+}
+
+.board-halo {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+}
+.group:hover .board-halo { opacity: 1; transform: scale(1); }
