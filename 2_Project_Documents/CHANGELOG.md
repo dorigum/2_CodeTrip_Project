@@ -5,6 +5,136 @@
 
 ---
 
+## 2026-04-28 — 사용자 맞춤 UX 고도화 (Explore 관심지역 필터 자동화, MyPage 통계 위젯)
+
+### 1. Explore 페이지 — 관심지역 자동 필터링 시스템 구축
+
+**배경**: 탐색 페이지 진입 시 항상 '전국' 필터로 초기화되어, 사용자가 매번 관심지역을 수동으로 선택해야 하는 불편함이 존재. Settings에서 저장한 관심지역 데이터(`user_favorite_regions`)가 Explore 필터에 자동 연동되지 않는 UX 단절 문제.
+
+**수정 내용**:
+
+- **`src/store/useExploreStore.js`**:
+  - `applyFavoriteRegions(codes)` 액션 추가: 관심지역 코드 배열을 받아 `selectedRegions`·`appliedRegions` 상태를 일괄 설정하고 즉시 `fetchPosts()`를 호출. 코드 배열이 비어있으면 전국 기준으로 조회.
+  - `resetFilter()` 액션 추가: `selectedRegions`, `selectedThemes`, `appliedRegions`, `appliedThemes`를 모두 초기값(`['']`)으로 복원하고 `fetchPosts()` 재호출. 수동 필터 초기화 버튼 구현의 기반 액션.
+
+- **`src/pages/Explore.jsx`**:
+  - `import authApi from '../api/authApi'` 추가 — 관심지역 조회 API 연결.
+  - `favoriteRegions` 로컬 상태 추가: API에서 가져온 코드 배열을 저장하여 `MY_REGIONS.SH` 버튼 표시 여부 제어에 활용.
+  - `applyFavoriteRegions`, `resetFilter` 스토어 액션 추가.
+  - 마운트 시 초기화 로직 변경: 기존 `if (!initialized) fetchPosts()` 단순 분기에서, 로그인 사용자의 경우 `authApi.getFavoriteRegions()` 호출 후 결과를 `applyFavoriteRegions(favCodes)`로 전달. 비로그인 또는 API 실패 시 빈 배열로 폴백하여 전국 기준 조회 유지. `initialized` 플래그로 이미 초기화된 상태에서의 중복 적용 방지.
+  - 필터 사이드바 하단 버튼 3종으로 재구성:
+    - `RUN_FILTER.SH` — 현재 체크된 필터 즉시 적용 (기존 동작 유지).
+    - `MY_REGIONS.SH` — 로그인 사용자이며 관심지역이 1개 이상 설정된 경우에만 노출. 클릭 시 저장된 관심지역으로 필터 즉시 재설정 및 조회.
+    - `RESET_ALL.SH` — 항상 표시. 지역·테마 필터를 전국/전체로 일괄 초기화.
+
+### 2. MyPage — 위시리스트 통계 위젯 (`TRAVEL_STATS`) 신규 추가
+
+**배경**: MyPage 사이드바는 폴더 내비게이션 역할만 담당하여 전체 위시리스트 현황을 한눈에 파악할 수 없었음. 기존 `wishlistItems`·`folders` 데이터를 재활용하여 추가 API 호출 없이 통계를 표시할 수 있는 구조.
+
+**수정 내용**:
+
+- **`src/pages/MyPage.jsx`**:
+  - `stats` useMemo 추가: `wishlistItems`·`folders` 상태를 구독하여 `total`(전체 아이템 수), `folderCount`(폴더 수), `uncategorized`(미분류 수), `topFolder`(최다 아이템 폴더 `{name, count}`) 4가지 파생값을 계산.
+  - 사이드바에 `Travel_Stats` 섹션 신규 추가 (타이틀과 FOLDERS 섹션 사이 배치):
+    - 기존 `Folder_Metadata`와 동일한 `bg-inverse-surface` 다크 테마 스타일 적용.
+    - `TOTAL_NODES`(에메랄드), `FOLDERS`(에메랄드), `UNCATEGORIZED`(시안), `TOP_FOLDER`(옐로우) 항목을 폰트 모노 스타일로 표시.
+    - `TOP_FOLDER`는 항목이 1개 이상인 폴더가 존재할 때만 구분선과 함께 조건부 렌더링.
+
+---
+
+## 2026-04-28 — 관심 지역·날씨 기반 즉흥 여행지 랜덤 추천 기능 추가
+
+### 1. 개발 배경 및 목적
+
+**배경**: 기존 메인 페이지의 랜덤 여행지 뽑기 기능은 전체 여행지 데이터에서 무작위로 추천하는 성격이 강했기 때문에, 로그인한 사용자의 관심 지역이나 현재 여행 조건을 충분히 반영하지 못했다. 프로젝트 기획 의도인 "즉흥적으로 떠나고 싶은 사용자에게 빠르게 여행지를 제안하는 서비스"를 강화하기 위해 회원 맞춤형 랜덤 추천 로직이 필요했다.
+
+**목표**:
+- 회원 사용자는 팀원이 구현 중인 관심 지역 설정 데이터(`user_favorite_regions`)를 기반으로 여행지를 추천받을 수 있게 한다.
+- 관심 지역의 현재 날씨를 함께 조회하여, 날씨와 어울리는 여행지를 2차 필터링한다.
+- 관심 지역을 아직 설정하지 않은 회원도 기능을 확인할 수 있도록 기본 지역 폴백을 제공한다.
+- 비회원은 관심 지역 데이터가 없으므로 기존 전국 랜덤 여행지 미리보기 흐름을 유지한다.
+
+### 2. 서버 추천 API 추가 (`server/routes/travelRoutes.js`)
+
+- **`GET /api/travel/spontaneous` 엔드포인트 추가**:
+  - JWT 인증이 필요한 회원 전용 즉흥 여행지 추천 API.
+  - `authenticateToken` 미들웨어를 통과한 사용자의 `user_id`를 기준으로 관심 지역을 조회.
+  - 팀원이 구현한 `user_favorite_regions` 테이블과 연동하여 `region_code` 목록을 읽음.
+  - 관심 지역이 없는 경우 기본 지역을 서울(`11`)로 설정하여 추천 API가 빈 응답으로 끝나지 않도록 처리.
+
+- **지역 메타데이터 추가**:
+  - `REGION_META` 상수로 지역 코드, 지역명, TourAPI `areacode`, 위도, 경도를 매핑.
+  - 날씨 API 호출과 여행지 지역 필터링이 같은 기준으로 동작하도록 정리.
+
+- **날씨 조회 헬퍼 추가**:
+  - `fetchRegionWeather(regionCode)`를 통해 Open-Meteo에서 관심 지역의 현재 날씨를 조회.
+  - 응답에는 날씨 라벨, 기온, WMO 코드, 지역명, 좌표를 포함.
+  - 날씨 API 실패 시 추천 전체가 실패하지 않도록 `weather: null`로 폴백.
+
+### 3. 추천 알고리즘 흐름
+
+1. 로그인 사용자 인증 정보를 확인한다.
+2. `user_favorite_regions`에서 사용자의 관심 지역 목록을 조회한다.
+3. 관심 지역이 있으면 그중 하나를 추천 기준 지역으로 선택하고, 없으면 서울을 기본 기준 지역으로 사용한다.
+4. 서버 메모리 캐시의 전체 여행지 목록(`allTravelItems`)에서 관광지·문화시설 중심의 후보를 추린다.
+5. 1차 필터링으로 기준 지역의 `areacode` 또는 주소 텍스트가 일치하는 여행지만 남긴다.
+6. 기준 지역 후보가 부족하면 사용자의 전체 관심 지역으로 범위를 넓힌다.
+7. 그래도 후보가 부족하면 전국 관광지·문화시설 이미지 보유 데이터로 폴백한다.
+8. 현재 날씨에 맞는 키워드로 2차 필터링을 시도한다.
+9. 필터링 결과가 너무 적으면 기존 후보군을 유지하여 추천 실패 가능성을 줄인다.
+10. 이미지 보유 여부, 콘텐츠 타입, 날씨 키워드 매칭, 지역 주소 매칭을 기준으로 점수를 계산한다.
+11. 상위 후보군에서 최종 여행지를 랜덤으로 1개 선택해 반환한다.
+
+### 4. 날씨 기반 2차 필터링
+
+- **날씨별 추천 키워드 추가**:
+  - 맑음/대체로 맑음: 해변, 전망대, 산책, 공원, 정원 등 야외 활동 중심.
+  - 흐림/구름 많음: 박물관, 전시, 문화, 시장, 카페 등 실내·도심 활동 중심.
+  - 비/눈/폭풍: 박물관, 전시, 미술관, 실내, 카페 등 기상 영향을 덜 받는 장소 중심.
+
+- **안전한 필터 적용 기준**:
+  - 날씨 키워드와 매칭되는 후보가 충분할 때만 2차 필터를 실제 적용.
+  - 매칭 후보가 너무 적으면 추천 품질이 떨어질 수 있으므로 원래 후보군을 유지.
+  - 응답의 `weatherFilter` 객체에 필터 적용 여부, 매칭 개수, 적용 키워드를 포함하여 디버깅 가능하도록 구성.
+
+### 5. 프론트엔드 연동 (`src/api/travelApi.js`, `src/pages/Home.jsx`)
+
+- **API 함수 추가**:
+  - `getSpontaneousTravel(poolSize = 20)` 함수 추가.
+  - `/api/travel/spontaneous` 호출 결과를 반환하고, 실패 시 `null`을 반환하여 UI 폴백이 가능하도록 처리.
+
+- **메인 페이지 두 번째 카드 개선**:
+  - 로그인한 사용자는 즉흥 여행지 뽑기 버튼 클릭 시 회원 맞춤 추천 API를 우선 호출.
+  - 추천 성공 시 여행지 이미지, 이름, 주소와 함께 기준 지역의 날씨 정보를 표시.
+  - 날씨 정보는 카드 상단 보조 정보와 이미지 오버레이에 함께 표시.
+  - 관심 지역이 없는 회원은 "관심 지역 설정 전 랜덤 추천" 상태로 기본 지역 기반 추천을 확인할 수 있음.
+  - 비회원은 "전국 랜덤 여행지 미리보기" 화면을 유지하여 회원 기능과 비회원 경험을 분리.
+
+### 6. 응답 데이터 구조
+
+`GET /api/travel/spontaneous` 응답에는 다음 데이터가 포함된다.
+
+- `item`: 최종 추천 여행지 데이터.
+- `score`: 추천 후보 점수.
+- `reasons`: 추천 사유 배열.
+- `weather`: 기준 지역의 현재 날씨 정보.
+- `hasPreferences`: 사용자가 관심 지역을 설정했는지 여부.
+- `preferredRegions`: 사용자 관심 지역 코드 목록.
+- `activeRegion`: 이번 추천에 사용된 기준 지역 코드.
+- `fallbackUsed`: 후보 부족으로 폴백이 사용되었는지 여부.
+- `weatherFilter`: 날씨 필터 적용 여부, 매칭 후보 수, 적용 키워드.
+
+### 7. 검증 내역
+
+- `node --check server/routes/travelRoutes.js`로 서버 라우트 문법 검증 완료.
+- 임시 회원 계정으로 `/api/travel/spontaneous` 호출 검증 완료.
+- 관심 지역 미설정 상태에서 기본 지역 폴백 응답 확인.
+- `PUT /api/user/favorite-regions`로 관심 지역을 설정한 뒤 해당 지역 기반 추천 응답 확인.
+- 날씨 기반 2차 필터가 적용되는 케이스에서 `weatherFilter.applied`, `matchedCount`, `keywords` 응답 확인.
+- `npm run build` 실행 성공. Vite chunk size warning은 기존 번들 크기 경고로 기능 빌드 실패와 무관.
+
+---
+
 ## 2026-04-28 — 날씨 엔진 고도화: 실시간 파라미터 전환 및 구름량 기반 보정 로직 추가
 
 ### 1. Open-Meteo API 파라미터 전환 (`src/api/weatherApi.js`)
