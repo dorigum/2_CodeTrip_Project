@@ -4,9 +4,11 @@ const KTO_BASE_URL = '/B551011/PhotoGalleryService1';
 const TOUR_BASE_URL = '/B551011/KorService2';
 const SERVICE_KEY = decodeURIComponent(import.meta.env.VITE_GALLERY_API_KEY);
 
-const AREA_CODES = {
-  '서울': '1', '인천': '2', '대전': '3', '대구': '4', '광주': '5', '부산': '6', '울산': '7', '세종': '8',
-  '경기': '31', '강원': '32', '충북': '33', '충남': '34', '경북': '35', '경남': '36', '전북': '37', '전남': '38', '제주': '39'
+const LDONG_REGN_CD_MAP = {
+  '11': '서울', '26': '부산', '27': '대구', '28': '인천',
+  '29': '광주', '30': '대전', '31': '울산', '36110': '세종',
+  '41': '경기', '43': '충북', '44': '충남', '46': '전남',
+  '47': '경북', '48': '경남', '50': '제주', '51': '강원', '52': '전북',
 };
 
 // 메인 슬라이더용 사진 가져오기 (우리 서버 캐시 활용)
@@ -23,19 +25,18 @@ export const getPhotoList = async () => {
 // 지역 기반 추천 (우리 서버 캐시 활용)
 export const getCityBasedPlaces = async (areaName) => {
   try {
-    let areaCode = '1'; // 기본값 서울
+    let lDongRegnCd = '11'; // 기본값 서울
     const nameStr = String(areaName || '서울');
-    
-    // 더 정교한 매핑: 입력받은 이름에 포함되어 있는지 확인
-    for (const [name, code] of Object.entries(AREA_CODES)) {
-      if (nameStr.includes(name)) { 
-        areaCode = code; 
-        break; 
+
+    for (const [code, name] of Object.entries(LDONG_REGN_CD_MAP)) {
+      if (nameStr.includes(name)) {
+        lDongRegnCd = code;
+        break;
       }
     }
 
-    console.log(`📍 Requesting near places for: ${nameStr} (Code: ${areaCode})`);
-    const response = await axiosInstance.get('/travel/near', { params: { areaCode } });
+    console.log(`📍 Requesting near places for: ${nameStr} (Code: ${lDongRegnCd})`);
+    const response = await axiosInstance.get('/travel/near', { params: { lDongRegnCd } });
     return response.data;
   } catch (error) {
     console.error('City based places error:', error);
