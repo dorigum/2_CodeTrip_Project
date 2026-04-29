@@ -27,7 +27,9 @@
       "Bash(npm install *)",
       "Bash(curl -s -w \"\\\\n%{http_code}\" \"http://localhost:8080/api/wishlist/details\" -H \"Authorization: Bearer test\")",
       "Bash(git fetch *)",
-      "Bash(findstr \":8080\")"
+      "Bash(findstr \":8080\")",
+      "Bash(git merge *)",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\koo\\.claude\\projects\\c--Users-koo-VSCode-Projects-2-Code-Trip\\memory"
