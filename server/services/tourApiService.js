@@ -81,7 +81,7 @@ const fetchFestivals = async (numOfRows = 1000) => {
         getCaseInsensitiveField(item, 'eventenddate') || getCaseInsensitiveField(item, 'eventEndDate') || ''
       ),
       addr1: getCaseInsensitiveField(item, 'addr1'),
-      areacode: getCaseInsensitiveField(item, 'areacode') || getCaseInsensitiveField(item, 'areaCode'),
+      lDongRegnCd: getCaseInsensitiveField(item, 'lDongRegnCd'),
     }));
   } catch (err) {
     console.error(`[fetchFestivals] ${err.response?.status || err.message}`);

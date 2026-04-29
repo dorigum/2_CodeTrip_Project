@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { getMyBoardPosts, getMyBoardComments, getMyTravelComments, deleteBoardPost, deleteBoardComment } from '../api/boardApi';
+import { getMyBoardPosts, getMyBoardComments, getMyTravelComments, getMyLikedPosts, deleteBoardPost, deleteBoardComment, toggleBoardPostLike } from '../api/boardApi';
 import { deleteTravelComment } from '../api/travelCommentApi';
+import useToast from '../hooks/useToast';
 
 const TABS = [
+  { key: 'likedPosts',     label: 'Liked Posts',      icon: 'favorite' },
   { key: 'posts',          label: 'Board Posts',      icon: 'article' },
   { key: 'boardComments',  label: 'Board Comments',   icon: 'comment' },
   { key: 'travelComments', label: 'Travel Comments',  icon: 'chat' },
@@ -64,8 +66,9 @@ const MyActivity = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isLoggedIn } = useAuthStore();
+  const showToast = useToast();
 
-  const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'posts';
+  const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'likedPosts';
   const currentPage = Math.max(1, parseInt(searchParams.get('page')) || 1);
 
   const setActiveTab = (key) => setSearchParams({ tab: key, page: '1' }, { replace: true });
@@ -74,24 +77,32 @@ const MyActivity = () => {
   const [posts, setPosts] = useState([]);
   const [boardComments, setBoardComments] = useState([]);
   const [travelComments, setTravelComments] = useState([]);
+  const [likedPosts, setLikedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoggedIn) { navigate('/login'); return; }
     const load = async () => {
       setLoading(true);
-      const [p, bc, tc] = await Promise.all([
-        getMyBoardPosts(),
-        getMyBoardComments(),
-        getMyTravelComments(),
-      ]);
-      setPosts(p);
-      setBoardComments(bc);
-      setTravelComments(tc);
-      setLoading(false);
+      try {
+        const [p, bc, tc, lp] = await Promise.all([
+          getMyBoardPosts(),
+          getMyBoardComments(),
+          getMyTravelComments(),
+          getMyLikedPosts(),
+        ]);
+        setPosts(p);
+        setBoardComments(bc);
+        setTravelComments(tc);
+        setLikedPosts(lp);
+      } catch {
+        showToast('활동 데이터를 불러오는 데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
     };
     load();
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, showToast]);
 
   const handleDeletePost = async (id) => {
     if (!window.confirm('게시글을 삭제하시겠습니까?')) return;
@@ -103,6 +114,17 @@ const MyActivity = () => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     await deleteBoardComment(id);
     setBoardComments(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleUnlikePost = async (id) => {
+    if (!window.confirm('좋아요를 취소하시겠습니까?')) return;
+    setLikedPosts(prev => prev.filter(p => p.id !== id));
+    try {
+      await toggleBoardPostLike(id);
+    } catch {
+      const lp = await getMyLikedPosts();
+      setLikedPosts(lp);
+    }
   };
 
   const handleDeleteTravelComment = async (id) => {
@@ -118,11 +140,12 @@ const MyActivity = () => {
     return { items, totalPages, safePage };
   };
 
-  const counts = { posts: posts.length, boardComments: boardComments.length, travelComments: travelComments.length };
+  const counts = { posts: posts.length, boardComments: boardComments.length, travelComments: travelComments.length, likedPosts: likedPosts.length };
 
   const { items: pagedPosts,          totalPages: postPages,    safePage: postPage }    = paginate(posts);
   const { items: pagedBoardComments,  totalPages: bcPages,      safePage: bcPage }      = paginate(boardComments);
   const { items: pagedTravelComments, totalPages: tcPages,      safePage: tcPage }      = paginate(travelComments);
+  const { items: pagedLikedPosts,     totalPages: lpPages,      safePage: lpPage }      = paginate(likedPosts);
 
   return (
     <div className="p-8 max-w-[1000px] mx-auto min-h-screen">
@@ -173,7 +196,7 @@ const MyActivity = () => {
                       <div className="flex-1 min-w-0">
                         <Link
                           to={`/board/${post.id}`}
-                          className="block font-headline font-bold text-on-surface hover:text-primary transition-colors truncate mb-1.5"
+                          className="block text-sm font-headline font-bold text-on-surface hover:text-primary transition-colors truncate mb-1.5"
                         >
                           {post.title}
                         </Link>
@@ -181,6 +204,10 @@ const MyActivity = () => {
                           {post.content?.replace(/<[^>]+>/g, '') || ''}
                         </p>
                         <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {post.like_count}
+                          </span>
                           <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-xs">visibility</span>
                             {post.view_count}
@@ -228,21 +255,27 @@ const MyActivity = () => {
                       <div className="flex-1 min-w-0">
                         <Link
                           to={`/board/${comment.post_id}`}
-                          className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
+                          className="flex items-center gap-1.5 text-sm font-mono text-slate-400 hover:text-primary transition-colors mb-1.5 w-fit"
                         >
                           <span className="material-symbols-outlined text-xs">article</span>
                           <span className="truncate max-w-xs">{comment.post_title}</span>
                           <span className="material-symbols-outlined text-xs">open_in_new</span>
                         </Link>
-                        <p className="text-sm text-slate-700 font-body leading-relaxed">
+                        <p className="text-xs text-slate-700 font-body line-clamp-1 mb-3">
                           <span className="text-outline font-mono">"</span>
                           {comment.body}
                           <span className="text-outline font-mono">"</span>
                         </p>
-                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                          <span className="material-symbols-outlined text-xs">schedule</span>
-                          {formatDate(comment.created_at)}
-                        </span>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {comment.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => handleDeleteBoardComment(comment.id)}
@@ -258,6 +291,60 @@ const MyActivity = () => {
             </>
           )}
 
+          {/* Liked Posts */}
+          {activeTab === 'likedPosts' && (
+            <>
+              <div className="space-y-3">
+                {likedPosts.length === 0 ? <EmptyState message="// no_liked_posts_found" /> : pagedLikedPosts.map(post => (
+                  <div key={post.id} className="bg-white rounded-xl border border-outline-variant/10 shadow-sm hover:border-primary/20 transition-all group">
+                    <div className="flex items-start gap-4 p-5">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                          <Link
+                            to={`/board/${post.id}`}
+                            className="text-sm font-headline font-bold text-on-surface hover:text-primary transition-colors truncate"
+                          >
+                            {post.title}
+                          </Link>
+                          <span className="text-[10px] font-mono text-slate-400 shrink-0">@{post.nickname}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 line-clamp-1 font-body mb-3">
+                          {post.content?.replace(/<[^>]+>/g, '') || ''}
+                        </p>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+                          <span className="flex items-center gap-1 text-primary font-bold">
+                            <span className="material-symbols-outlined text-xs filled">favorite</span>
+                            {post.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">visibility</span>
+                            {post.view_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">comment</span>
+                            {post.comment_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(post.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleUnlikePost(post.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
+                        title="좋아요 취소"
+                      >
+                        <span className="material-symbols-outlined text-sm filled">favorite</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Pagination currentPage={lpPage} totalPages={lpPages} onPageChange={setPage} />
+            </>
+          )}
+
           {/* Travel Comments */}
           {activeTab === 'travelComments' && (
             <>
@@ -268,21 +355,27 @@ const MyActivity = () => {
                       <div className="flex-1 min-w-0">
                         <Link
                           to={`/explore/${comment.content_id}`}
-                          className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-primary transition-colors mb-2 w-fit"
+                          className="flex items-center gap-1.5 text-sm font-mono text-slate-400 hover:text-primary transition-colors mb-1.5 w-fit"
                         >
                           <span className="material-symbols-outlined text-xs">location_on</span>
                           <span className="truncate max-w-xs">{comment.title || comment.content_id}</span>
                           <span className="material-symbols-outlined text-xs">open_in_new</span>
                         </Link>
-                        <p className="text-sm text-slate-700 font-body leading-relaxed">
+                        <p className="text-xs text-slate-700 font-body line-clamp-1 mb-3">
                           <span className="text-outline font-mono">"</span>
                           {comment.body}
                           <span className="text-outline font-mono">"</span>
                         </p>
-                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 mt-2">
-                          <span className="material-symbols-outlined text-xs">schedule</span>
-                          {formatDate(comment.created_at)}
-                        </span>
+                        <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">favorite</span>
+                            {comment.like_count}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">schedule</span>
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => handleDeleteTravelComment(comment.id)}

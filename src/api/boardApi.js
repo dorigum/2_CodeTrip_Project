@@ -4,18 +4,20 @@ const authHeader = () => ({
   Authorization: `Bearer ${localStorage.getItem('trip_token')}`,
 });
 
-export const getBoardPosts = async ({ pageNo = 1, numOfRows = 10, keyword = '' } = {}) => {
+export const getBoardPosts = async ({ pageNo = 1, numOfRows = 10, keyword = '', sort = 'created_at' } = {}) => {
   const token = localStorage.getItem('trip_token');
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   const { data } = await axios.get('/api/board/posts', {
-    params: { pageNo, numOfRows, ...(keyword ? { keyword } : {}) },
+    params: { pageNo, numOfRows, sort, ...(keyword ? { keyword } : {}) },
     headers,
   });
   return data;
 };
 
 export const getBoardPost = async (id) => {
-  const { data } = await axios.get(`/api/board/posts/${id}`);
+  const token = localStorage.getItem('trip_token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const { data } = await axios.get(`/api/board/posts/${id}`, { headers });
   return data;
 };
 
@@ -70,6 +72,15 @@ export const deleteBoardComment = async (id) => {
   await axios.delete(`/api/board/comments/${id}`, { headers: authHeader() });
 };
 
+export const toggleBoardPostLike = async (id) => {
+  const { data } = await axios.post(
+    `/api/board/posts/${id}/like`,
+    {},
+    { headers: authHeader() }
+  );
+  return data;
+};
+
 export const toggleBoardCommentLike = async (id) => {
   const { data } = await axios.post(
     `/api/board/comments/${id}/like`,
@@ -81,6 +92,11 @@ export const toggleBoardCommentLike = async (id) => {
 
 export const getMyBoardPosts = async () => {
   const { data } = await axios.get('/api/my/board-posts', { headers: authHeader() });
+  return data;
+};
+
+export const getMyLikedPosts = async () => {
+  const { data } = await axios.get('/api/my/liked-posts', { headers: authHeader() });
   return data;
 };
 

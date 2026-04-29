@@ -4,6 +4,7 @@ import { getFestivalList } from '../api/travelApi';
 import useWishlistStore from '../store/useWishlistStore';
 import useAuthStore from '../store/useAuthStore';
 import WishlistModal from '../components/WishlistModal';
+import useToast from '../hooks/useToast';
 
 const Festivals = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,7 +19,8 @@ const Festivals = () => {
 
   const { isLoggedIn } = useAuthStore();
   const { wishlistIds, toggleWishlist, initWishlist, initialized: wishlistInitialized } = useWishlistStore();
-  
+  const showToast = useToast();
+
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
   const [selectedTravel, setSelectedTravel] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,12 +34,13 @@ const Festivals = () => {
         setTotalPages(data.totalPages || 0);
       } catch (err) {
         console.error('Fetch festivals failed:', err);
+        showToast('축제 데이터를 불러오는 데 실패했습니다.');
       } finally {
         setLoading(false);
       }
     };
     fetchFestivals();
-  }, [page, sortOrder]);
+  }, [page, sortOrder, showToast]);
 
   useEffect(() => {
     if (isLoggedIn && !wishlistInitialized) {
