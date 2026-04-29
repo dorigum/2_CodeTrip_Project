@@ -28,6 +28,8 @@
 	- **[2026-04-27]** My Activity 대시보드 통합 및 교통 예매 허브(KTX·SRT·고속버스 외부 예매 연동) 완료.
 	- **[2026-04-28]** 날씨 엔진 고도화: Open-Meteo `current` 파라미터 전환(15분 단위 실시간), JMA 모델 적용, `cloudcover` 기반 기상 코드 보정 로직 추가.
 	- **[2026-04-28]** 회원 관심 지역과 해당 지역의 현재 날씨를 반영한 메인 페이지 즉흥 여행지 랜덤 추천 기능 추가. 관심 지역 미설정 회원은 기본 지역으로 폴백하고, 비회원은 전국 랜덤 미리보기 흐름을 유지.
+	- **[2026-04-28]** 최근 본 여행지(`recently_viewed.log`) 가로 스크롤 카드 섹션 및 최근 검색어 드롭다운 UX 추가.
+	- **[2026-04-29]** `recently_viewed.log` 섹션을 `MyPage`에서 `MyActivity` 페이지 상단으로 이동. 탭(LIKED POSTS·BOARD POSTS 등) 전환 시에도 항상 고정 표시되도록 탭 바 위에 배치.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -102,11 +104,12 @@
 │   │   ├── themes.js             # DEFAULT_THEMES 상수 (탐색 테마 목록) [2026-04-27 통합]
 │   │   └── regions.js            # REGIONS 상수 (TourAPI areacode 기반) [2026-04-27 통합]
 │   ├── store/
-│   │   ├── useAuthStore.js       # 사용자 인증 스토어
-│   │   ├── useBoardWriteStore.js # 게시글 작성 상태 스토어 [2026-04-27 통합]
-│   │   ├── useExploreStore.js    # 여행 탐색/필터 상태 스토어
-│   │   ├── useRegionStore.js     # 지역 선택 상태 스토어 [2026-04-27 통합]
-│   │   └── useWishlistStore.js   # 위시리스트(아이템+폴더) 통합 동기화 스토어
+│   │   ├── useAuthStore.js            # 사용자 인증 스토어
+│   │   ├── useBoardWriteStore.js      # 게시글 작성 상태 스토어 [2026-04-27 통합]
+│   │   ├── useExploreStore.js         # 여행 탐색/필터 상태 스토어
+│   │   ├── useRecentlyViewedStore.js  # 최근 본 여행지 이력 (localStorage, 최대 10개) [2026-04-28 신규]
+│   │   ├── useRegionStore.js          # 지역 선택 상태 스토어 [2026-04-27 통합]
+│   │   └── useWishlistStore.js        # 위시리스트(아이템+폴더) 통합 동기화 스토어
 │   ├── pages/
 │   │   ├── Home.jsx              # 메인 페이지 (슬라이더, 슬롯머신)
 │   │   ├── Explore.jsx           # 여행지 탐색 (필터링, 무한스크롤)
@@ -117,6 +120,7 @@
 │   │   ├── TravelTagSearch.jsx   # 여행지 태그 검색 연동 [2026-04-27 통합]
 │   │   ├── TravelDetail.jsx      # 여행지 상세 (지도, 댓글, 찜)
 │   │   ├── MyPage.jsx            # 위시리스트 관리 (폴더 분류, 메모/체크리스트)
+│   │   ├── MyActivity.jsx        # 내 활동 대시보드 (게시글·댓글·좋아요·recently_viewed 고정) [2026-04-27 신규, 2026-04-29 recently_viewed 이동]
 │   │   ├── Info.jsx              # 서비스 소개 페이지 (기능 탭, 데이터 출처)
 │   │   ├── Login.jsx / SignUp.jsx # 인증 페이지
 │   │   ├── ForgotPassword.jsx    # 비밀번호 재설정
@@ -443,6 +447,8 @@
 | My Activity 대시보드 — 내 게시글·댓글·좋아요 내역 종합 관리 | ✅ 완료 |
 | 교통 예매 허브 — KTX·SRT·고속버스 외부 예매 사이트 연동 | ✅ 완료 |
 | 날씨 API `current` 파라미터 전환 — 15분 실시간, JMA 모델, cloudcover 보정 (2026-04-28) | ✅ 완료 |
+| 최근 본 여행지(`useRecentlyViewedStore`) 및 최근 검색어 드롭다운 UX 추가 (2026-04-28) | ✅ 완료 |
+| `recently_viewed.log` 섹션 MyActivity 상단 고정 이동 — 탭 전환 무관 항상 표시 (2026-04-29) | ✅ 완료 |
 | 스마트 검색 엔진 고도화 | ⏳ 추진중 |
 
 ---
@@ -537,7 +543,7 @@
 ```
 
 ---
-*최종 업데이트: 2026-04-28 (회원 관심 지역·날씨 기반 즉흥 여행지 랜덤 추천 / 날씨 API `current` 파라미터 전환·JMA 모델·cloudcover 보정 / 백엔드 모듈화 리팩터링 / TourAPI 프록시 아키텍처 / wishlistApi Named Exports 전환 / 위시리스트 메모·체크리스트 / 게시판 시스템 통합 / My Activity 대시보드 / 교통 예매 허브 연동)*
+*최종 업데이트: 2026-04-29 (recently_viewed.log MyActivity 상단 고정 이동 / 회원 관심 지역·날씨 기반 즉흥 여행지 랜덤 추천 / 날씨 API `current` 파라미터 전환·JMA 모델·cloudcover 보정 / 백엔드 모듈화 리팩터링 / TourAPI 프록시 아키텍처 / wishlistApi Named Exports 전환 / 위시리스트 메모·체크리스트 / 게시판 시스템 통합 / My Activity 대시보드 / 교통 예매 허브 연동)*
 
 
 ---

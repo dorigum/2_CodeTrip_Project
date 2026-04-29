@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useWishlistStore from '../store/useWishlistStore';
-import useRecentlyViewedStore from '../store/useRecentlyViewedStore';
 import useToast from '../hooks/useToast';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
@@ -196,8 +195,6 @@ const MyPage = () => {
     const nights = Math.round((e - s) / 86400000);
     return `${startLabel}\n~ ${endLabel}\n: ${nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`}`;
   };
-
-  const { items: recentlyViewed, clearAll: clearRecentlyViewed } = useRecentlyViewedStore();
 
   const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
 
@@ -430,43 +427,6 @@ const MyPage = () => {
         </aside>
 
         <div className="flex-1">
-          {recentlyViewed.length > 0 && (
-            <section className="mb-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm text-primary">history</span>
-                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">recently_viewed.log</span>
-                </div>
-                <button
-                  onClick={clearRecentlyViewed}
-                  className="text-[10px] font-mono text-slate-400 hover:text-red-400 transition-colors"
-                >
-                  전체 삭제
-                </button>
-              </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
-                {recentlyViewed.map((item) => (
-                  <Link
-                    key={item.contentid}
-                    to={`/explore/${item.contentid}`}
-                    className="shrink-0 w-40 group"
-                  >
-                    <div className="relative h-28 rounded-xl overflow-hidden mb-2 border border-outline-variant/10 group-hover:border-primary/30 transition-all shadow-sm">
-                      <img
-                        src={item.firstimage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=400&auto=format&fit=crop'}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
-                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=400&auto=format&fit=crop'; }}
-                      />
-                    </div>
-                    <p className="text-xs font-bold text-on-surface truncate group-hover:text-primary transition-colors">{item.title}</p>
-                    <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{item.addr1 || '주소 정보 없음'}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="font-headline text-xl font-bold">{selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}</h3>
