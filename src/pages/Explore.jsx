@@ -7,6 +7,7 @@ import useAuthStore from '../store/useAuthStore';
 import WishlistModal from '../components/WishlistModal';
 import { DEFAULT_THEMES } from '../constants/themes';
 import authApi from '../api/authApi';
+import useToast from '../hooks/useToast';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
@@ -27,9 +28,14 @@ const Explore = () => {
     posts, loading, totalCount, currentPage,
     keyword, clearKeyword,
     sort, setSort,
-    initialized,
+    initialized, fetchError,
     fetchPosts, applyFilter, changePage, applyFavoriteRegions, resetFilter,
   } = useExploreStore();
+
+  const showToast = useToast();
+  useEffect(() => {
+    if (fetchError) showToast(fetchError);
+  }, [fetchError]);
 
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
   const [selectedTravel, setSelectedTravel] = useState(null); // 모달용

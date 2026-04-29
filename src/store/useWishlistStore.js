@@ -7,6 +7,7 @@ const useWishlistStore = create((set, get) => ({
   wishlistIds: new Set(),
   loading: false,
   initialized: false,
+  syncError: null,
 
   // 노드는 별도 로컬 상태로 관리 (MyPage에서 fetch)
   // 하지만 공통 액션은 여기에 정의할 수 있음
@@ -18,7 +19,7 @@ const useWishlistStore = create((set, get) => ({
   },
 
   syncWithServer: async () => {
-    set({ loading: true });
+    set({ loading: true, syncError: null });
     try {
       const [items, folders] = await Promise.all([
         wishlistApi.getWishlistDetails(),
@@ -28,6 +29,7 @@ const useWishlistStore = create((set, get) => ({
       set({ wishlistItems: items, folders, wishlistIds: ids });
     } catch (err) {
       console.error('Wishlist sync failed:', err);
+      set({ syncError: '위시리스트를 불러오는 데 실패했습니다.' });
     } finally {
       set({ loading: false });
     }

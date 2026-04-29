@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { getMyBoardPosts, getMyBoardComments, getMyTravelComments, getMyLikedPosts, deleteBoardPost, deleteBoardComment, toggleBoardPostLike } from '../api/boardApi';
 import { deleteTravelComment } from '../api/travelCommentApi';
+import useToast from '../hooks/useToast';
 
 const TABS = [
   { key: 'likedPosts',     label: 'Liked Posts',      icon: 'favorite' },
@@ -65,6 +66,7 @@ const MyActivity = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isLoggedIn } = useAuthStore();
+  const showToast = useToast();
 
   const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'likedPosts';
   const currentPage = Math.max(1, parseInt(searchParams.get('page')) || 1);
@@ -82,17 +84,22 @@ const MyActivity = () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     const load = async () => {
       setLoading(true);
-      const [p, bc, tc, lp] = await Promise.all([
-        getMyBoardPosts(),
-        getMyBoardComments(),
-        getMyTravelComments(),
-        getMyLikedPosts(),
-      ]);
-      setPosts(p);
-      setBoardComments(bc);
-      setTravelComments(tc);
-      setLikedPosts(lp);
-      setLoading(false);
+      try {
+        const [p, bc, tc, lp] = await Promise.all([
+          getMyBoardPosts(),
+          getMyBoardComments(),
+          getMyTravelComments(),
+          getMyLikedPosts(),
+        ]);
+        setPosts(p);
+        setBoardComments(bc);
+        setTravelComments(tc);
+        setLikedPosts(lp);
+      } catch {
+        showToast('활동 데이터를 불러오는 데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [isLoggedIn, navigate]);

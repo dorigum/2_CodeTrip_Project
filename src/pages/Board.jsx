@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getBoardPosts } from '../api/boardApi';
 import useAuthStore from '../store/useAuthStore';
 import useBoardWriteStore from '../store/useBoardWriteStore';
+import useToast from '../hooks/useToast';
 
 const NUM_OF_ROWS = 10;
 
@@ -10,6 +11,7 @@ const Board = () => {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuthStore();
   const resetForm = useBoardWriteStore((s) => s.resetForm);
+  const showToast = useToast();
 
   const [posts, setPosts] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -33,10 +35,11 @@ const Board = () => {
       setTotalCount(data.totalCount || 0);
     } catch (err) {
       console.error(err);
+      showToast('게시글을 불러오는 데 실패했습니다.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     fetchPosts(currentPage, keyword, sort);

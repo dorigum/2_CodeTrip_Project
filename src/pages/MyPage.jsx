@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useWishlistStore from '../store/useWishlistStore';
 import useRecentlyViewedStore from '../store/useRecentlyViewedStore';
+import useToast from '../hooks/useToast';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
@@ -11,10 +12,15 @@ const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
   
   const {
-    wishlistItems, folders, loading,
+    wishlistItems, folders, loading, syncError,
     initWishlist, toggleWishlist, createFolder, updateFolder, deleteFolder, moveItem,
     fetchNotes, addNote, toggleNote: toggleNoteAction, deleteNote: deleteNoteAction
   } = useWishlistStore();
+
+  const showToast = useToast();
+  useEffect(() => {
+    if (syncError) showToast(syncError);
+  }, [syncError]);
 
   const [sortBy, setSortBy] = useState('CREATED');
   const [selectedFolderId, setSelectedFolderId] = useState(null);

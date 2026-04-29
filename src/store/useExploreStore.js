@@ -24,6 +24,7 @@ const useExploreStore = create((set, get) => ({
   totalCount: 0,
   loading: false,
   initialized: false,
+  fetchError: null,
 
   toggleRegion: (code) => {
     const s = String(code);
@@ -111,8 +112,8 @@ const useExploreStore = create((set, get) => ({
 
   fetchPosts: async () => {
     const { appliedRegions, appliedThemes, currentPage, keyword, sort } = get();
+    set({ loading: true, fetchError: null });
     try {
-      set({ loading: true });
       const { items, totalCount } = await getTravelList({
         regions: appliedRegions,
         themes: appliedThemes,
@@ -124,6 +125,7 @@ const useExploreStore = create((set, get) => ({
       set({ posts: items, totalCount, initialized: true });
     } catch (error) {
       console.error('Failed to fetch posts:', error);
+      set({ fetchError: '여행지 데이터를 불러오는 데 실패했습니다.', initialized: true });
     } finally {
       set({ loading: false });
     }

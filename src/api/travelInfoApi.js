@@ -23,22 +23,17 @@ const fetchViaProxy = async (service, params = {}) => {
 
 // 서버 통합 조회 (멀티필터 + 서버사이드 페이지네이션 + 정렬 지원)
 export const getTravelList = async ({ regions = [''], themes = [''], pageNo = 1, numOfRows = 10, keyword = '', sort = 'default' } = {}) => {
-  try {
-    const response = await axios.get('/api/travel', {
-      params: {
-        regions: regions.join(','),
-        themes: themes.join(','),
-        pageNo,
-        numOfRows,
-        sort,
-        ...(keyword ? { keyword } : {}),
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('API Error:', error);
-    return { items: [], totalCount: 0 };
-  }
+  const response = await axios.get('/api/travel', {
+    params: {
+      regions: regions.join(','),
+      themes: themes.join(','),
+      pageNo,
+      numOfRows,
+      sort,
+      ...(keyword ? { keyword } : {}),
+    },
+  });
+  return response.data;
 };
 
 // 상세 정보 호출들을 모두 프록시 경유로 변경
