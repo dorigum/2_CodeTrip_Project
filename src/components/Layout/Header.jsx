@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import useExploreStore from '../../store/useExploreStore';
 import useWishlistStore from '../../store/useWishlistStore';
-import { getNotifications, markAllRead, markOneRead } from '../../api/notificationApi';
+import { getNotifications, markAllRead, markOneRead, deleteOneNotification, deleteReadNotifications } from '../../api/notificationApi';
 import useToast from '../../hooks/useToast';
 import useRecentSearch from '../../hooks/useRecentSearch';
 
@@ -64,6 +64,21 @@ const Header = () => {
     setUnreadCount(0);
   };
 
+  const handleDeleteOne = async (e, id) => {
+    e.stopPropagation();
+    await deleteOneNotification(id);
+    setNotifications(prev => {
+      const removed = prev.find(n => n.id === id);
+      if (removed && !removed.is_read) setUnreadCount(c => Math.max(0, c - 1));
+      return prev.filter(n => n.id !== id);
+    });
+  };
+
+  const handleDeleteRead = async () => {
+    await deleteReadNotifications();
+    setNotifications(prev => prev.filter(n => !n.is_read));
+  };
+
   const handleClickNoti = async (noti) => {
     if (!noti.is_read) {
       await markOneRead(noti.id);
@@ -71,7 +86,11 @@ const Header = () => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
     setNotiOpen(false);
-    if (noti.content_id) navigate(`/explore/${noti.content_id}`);
+    if (noti.content_id) {
+      // board 댓글 알림: content_id = '/board/123'
+      // 여행지 알림: content_id = '125276' (숫자 문자열)
+      navigate(noti.content_id.startsWith('/') ? noti.content_id : `/explore/${noti.content_id}`);
+    }
   };
 
   const handleSearchKeyDown = (e) => {
@@ -180,14 +199,24 @@ const Header = () => {
                           <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">{unreadCount}</span>
                         )}
                       </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={handleMarkAllRead}
-                          className="text-[10px] font-mono text-primary hover:underline"
-                        >
-                          모두 읽음
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] font-mono text-primary hover:underline"
+                          >
+                            모두 읽음
+                          </button>
+                        )}
+                        {notifications.some(n => n.is_read) && (
+                          <button
+                            onClick={handleDeleteRead}
+                            className="text-[10px] font-mono text-slate-400 hover:text-red-400 transition-colors"
+                          >
+                            읽은 알림 삭제
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* 알림 목록 */}
@@ -199,24 +228,35 @@ const Header = () => {
                         </div>
                       ) : (
                         notifications.map(noti => (
-                          <button
+                          <div
                             key={noti.id}
-                            onClick={() => handleClickNoti(noti)}
-                            className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!noti.is_read ? 'bg-primary/5' : ''}`}
+                            className={`relative flex items-start gap-3 px-4 py-3 border-b border-slate-50 group/noti ${!noti.is_read ? 'bg-primary/5' : ''}`}
                           >
-                            <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${!noti.is_read ? 'text-primary' : 'text-slate-300'}`}>
-                              location_on
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs leading-relaxed ${!noti.is_read ? 'text-on-surface font-bold' : 'text-slate-500'}`}>
-                                {noti.message}
-                              </p>
-                              <p className="text-[10px] font-mono text-slate-400 mt-1">{formatDate(noti.created_at)}</p>
+                            <button
+                              onClick={() => handleClickNoti(noti)}
+                              className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                            >
+                              <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${!noti.is_read ? 'text-primary' : 'text-slate-300'}`}>
+                                location_on
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs leading-relaxed ${!noti.is_read ? 'text-on-surface font-bold' : 'text-slate-500'}`}>
+                                  {noti.message}
+                                </p>
+                                <p className="text-[10px] font-mono text-slate-400 mt-1">{formatDate(noti.created_at)}</p>
+                              </div>
+                            </button>
+                            <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                              {!noti.is_read && (
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full group-hover/noti:hidden" />
+                              )}
+                              <button
+                                onClick={(e) => handleDeleteOne(e, noti.id)}
+                                className="material-symbols-outlined text-sm text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover/noti:opacity-100"
+                                title="알림 삭제"
+                              >close</button>
                             </div>
-                            {!noti.is_read && (
-                              <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shrink-0" />
-                            )}
-                          </button>
+                          </div>
                         ))
                       )}
                     </div>

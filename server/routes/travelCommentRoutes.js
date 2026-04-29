@@ -63,6 +63,24 @@ const createTravelCommentRouter = ({ pool, authenticateToken }) => {
       );
       const [rows] = await pool.query('SELECT * FROM travel_comments WHERE id = ?', [result.insertId]);
       res.status(201).json(rows[0]);
+
+      // 해당 여행지를 찜한 사용자들에게 알림 (댓글 작성자 본인 제외)
+      pool.query(
+        'SELECT DISTINCT user_id FROM wishlists WHERE content_id = ? AND user_id != ?',
+        [String(content_id), req.user.id]
+      ).then(async ([wishlistUsers]) => {
+        if (wishlistUsers.length === 0) return;
+        const displayName = nickname || '익명';
+        const values = wishlistUsers.map(({ user_id }) => [
+          user_id,
+          `${displayName}님이 회원님이 찜한 여행지에 새 댓글을 달았습니다.`,
+          String(content_id),
+        ]);
+        await pool.query(
+          'INSERT INTO notifications (user_id, message, content_id) VALUES ?',
+          [values]
+        );
+      }).catch(err => console.error('[Notification] Travel comment failed:', err.message));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-04-29 — recently_viewed.log 섹션 MyActivity 상단 고정 이동
+
+### 배경
+
+`MyPage`(위시리스트)에 구현되어 있던 `recently_viewed.log` 최근 본 여행지 섹션이 위시리스트 콘텐츠와 함께 배치되어 있어, 활동 이력 조회보다 위시리스트 관리가 목적인 페이지와 의미상 분리가 필요했다. 또한 `MyActivity` 페이지는 게시글·댓글·좋아요 이력을 한 곳에서 관리하는 활동 허브로, 최근 조회 여행지까지 포함하면 사용자 활동 전반을 한눈에 파악할 수 있는 구조가 완성된다.
+
+### 수정 내용
+
+- **`src/pages/MyActivity.jsx`**:
+  - `useRecentlyViewedStore` import 추가.
+  - `const { items: recentlyViewed, clearAll: clearRecentlyViewed } = useRecentlyViewedStore()` 훅 호출 추가.
+  - 페이지 헤더(`// my_activity.log`) 아래, 탭 바(LIKED POSTS · BOARD POSTS · BOARD COMMENTS · TRAVEL COMMENTS) 위에 `recently_viewed.log` 섹션 고정 배치.
+  - 가로 스크롤 카드 열(너비 160px × 높이 112px 썸네일 + 제목 + 주소) 구조 유지. 항목이 없으면 섹션 자체 숨김. 우측 상단 "전체 삭제" 버튼으로 이력 초기화 가능.
+  - LIKED POSTS · BOARD POSTS 등 어떤 탭을 선택해도 `recently_viewed.log` 섹션은 탭 바 위에 항상 고정 노출.
+
+- **`src/pages/MyPage.jsx`**:
+  - `useRecentlyViewedStore` import 제거.
+  - `const { items: recentlyViewed, clearAll: clearRecentlyViewed } = useRecentlyViewedStore()` 훅 호출 제거.
+  - `recently_viewed.log` JSX 섹션 블록 완전 제거.
+
+---
+
 ## 2026-04-28 — 최근 본 여행지 및 최근 검색어 기능 추가
 
 ### 1. 최근 본 여행지 (Recently Viewed)

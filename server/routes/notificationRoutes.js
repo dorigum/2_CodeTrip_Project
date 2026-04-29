@@ -44,6 +44,30 @@ const createNotificationRouter = ({ pool, authenticateToken }) => {
     }
   });
 
+  router.delete('/notifications/read', authenticateToken, async (req, res) => {
+    try {
+      await pool.query(
+        'DELETE FROM notifications WHERE user_id = ? AND is_read = TRUE',
+        [req.user.id]
+      );
+      res.json({ message: '읽은 알림이 삭제되었습니다.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/notifications/:id', authenticateToken, async (req, res) => {
+    try {
+      await pool.query(
+        'DELETE FROM notifications WHERE id = ? AND user_id = ?',
+        [req.params.id, req.user.id]
+      );
+      res.json({ message: '알림이 삭제되었습니다.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };
 

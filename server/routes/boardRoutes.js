@@ -226,7 +226,10 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
     if (!body?.trim()) return res.status(400).json({ message: '내용을 입력해주세요.' });
 
     try {
-      const [postRows] = await pool.query('SELECT id FROM board_posts WHERE id = ?', [req.params.id]);
+      const [postRows] = await pool.query(
+        'SELECT id, user_id, title FROM board_posts WHERE id = ?',
+        [req.params.id]
+      );
       if (postRows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
 
       const [userRows] = await pool.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
@@ -238,6 +241,21 @@ const createBoardRouter = ({ pool, authenticateToken }) => {
       );
       const [rows] = await pool.query('SELECT * FROM board_comments WHERE id = ?', [result.insertId]);
       res.status(201).json({ ...rows[0], likes: 0, liked: false });
+
+      // 게시글 작성자에게 알림 (본인 댓글 제외)
+      if (postRows[0].user_id !== req.user.id) {
+        const title = postRows[0].title.length > 20
+          ? postRows[0].title.slice(0, 20) + '…'
+          : postRows[0].title;
+        pool.query(
+          'INSERT INTO notifications (user_id, message, content_id) VALUES (?, ?, ?)',
+          [
+            postRows[0].user_id,
+            `${nickname}님이 회원님의 게시글 '${title}'에 댓글을 달았습니다.`,
+            `/board/${req.params.id}`,
+          ]
+        ).catch(err => console.error('[Notification] Board comment failed:', err.message));
+      }
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
