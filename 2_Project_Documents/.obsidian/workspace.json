@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CHANGELOG.md",
+                "file": "Project_Sketch.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CHANGELOG"
+              "title": "Project_Sketch"
             }
           }
         ]
@@ -183,18 +183,18 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "8f239bae5c743501",
+  "active": "cabc9d870566ad19",
   "lastOpenFiles": [
+    "CHANGELOG.md",
+    "Project_Specification.md",
     "Project_Specification.md.tmp.22212.1777338112309",
     "Project_Specification.md.tmp.22212.1777338088282",
     "Project_Specification.md.tmp.22212.1777338040984",
     "Architecture_Analysis.md",
-    "CHANGELOG.md",
     "AWS_EC2_Docker_Deployment.md",
     "2_Code_Trip/환영합니다!.md",
     "2_Code_Trip",
     "Project_Sketch.md",
-    "Project_Specification.md",
     "DESIGN.md",
     "GEMINI.md",
     "CHANGELOG.md.tmp.14700.1777268775758",
@@ -206,7 +206,6 @@
     "img/Pasted image 20260423174039.png",
     "무제.md",
     "Project_Specification.md.tmp.24300.1776828872971",
-    "Project_Specification.md.tmp.24300.1776828867724",
     "프로젝트 기획 끄적끄적......✍🏻.md",
     "Project_Specification 1.md",
     "프로젝트_상세명세서.md",

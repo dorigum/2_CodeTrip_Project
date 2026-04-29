@@ -9,7 +9,131 @@ const AREA_NAME_MAP = {
   '47': '경북', '48': '경남', '50': '제주', '51': '강원', '52': '전북',
 };
 
-const createTravelRouter = ({ travelCache }) => {
+const REGION_META = {
+  11: { name: '서울', areaCode: '1', lat: 37.5665, lon: 126.9780 },
+  26: { name: '부산', areaCode: '6', lat: 35.1796, lon: 129.0756 },
+  27: { name: '대구', areaCode: '4', lat: 35.8714, lon: 128.6014 },
+  28: { name: '인천', areaCode: '2', lat: 37.4563, lon: 126.7052 },
+  29: { name: '광주', areaCode: '5', lat: 35.1595, lon: 126.8526 },
+  30: { name: '대전', areaCode: '3', lat: 36.3504, lon: 127.3845 },
+  31: { name: '울산', areaCode: '7', lat: 35.5384, lon: 129.3114 },
+  41: { name: '경기', areaCode: '31', lat: 37.4138, lon: 127.5183 },
+  43: { name: '충북', areaCode: '33', lat: 36.8, lon: 127.7 },
+  44: { name: '충남', areaCode: '34', lat: 36.5184, lon: 126.8 },
+  46: { name: '전남', areaCode: '38', lat: 34.8679, lon: 126.991 },
+  47: { name: '경북', areaCode: '35', lat: 36.4919, lon: 128.8889 },
+  48: { name: '경남', areaCode: '36', lat: 35.4606, lon: 128.2132 },
+  50: { name: '제주', areaCode: '39', lat: 33.4996, lon: 126.5312 },
+  51: { name: '강원', areaCode: '32', lat: 37.8228, lon: 128.1555 },
+  52: { name: '전북', areaCode: '37', lat: 35.7175, lon: 127.153 },
+  36110: { name: '세종', areaCode: '8', lat: 36.4801, lon: 127.289 },
+};
+
+const WEATHER_KEYWORDS = {
+  Sunny: ['해변', '바다', '공원', '산책', '전망대', '정원', '섬', '수목원'],
+  Clear: ['해변', '바다', '공원', '산책', '전망대', '정원', '섬', '수목원'],
+  'Partly Cloudy': ['공원', '산책', '전망대', '정원', '카페', '거리'],
+  Cloudy: ['박물관', '미술관', '전시', '문화', '카페', '시장'],
+  Rainy: ['박물관', '미술관', '전시', '문화', '아쿠아리움', '실내'],
+  Snowy: ['박물관', '미술관', '전시', '온천', '카페', '시장'],
+  Stormy: ['박물관', '미술관', '전시', '문화', '실내'],
+};
+
+const parseWeatherCode = (code, cloudcover = 0, precipitation = 0) => {
+  let effectiveCode = Number(code);
+  if (precipitation > 0 && effectiveCode < 51) effectiveCode = 61;
+  if ((effectiveCode === 0 || effectiveCode === 1) && cloudcover >= 75) effectiveCode = 3;
+  if (effectiveCode === 0 && cloudcover >= 40) effectiveCode = 2;
+
+  if (effectiveCode === 0) return { label: 'Sunny', icon: 'sunny' };
+  if (effectiveCode === 1 || effectiveCode === 2) return { label: 'Partly Cloudy', icon: 'partly_cloudy_day' };
+  if (effectiveCode === 3) return { label: 'Cloudy', icon: 'cloud' };
+  if ((effectiveCode >= 51 && effectiveCode <= 67) || (effectiveCode >= 80 && effectiveCode <= 82)) {
+    return { label: 'Rainy', icon: 'rainy' };
+  }
+  if ((effectiveCode >= 71 && effectiveCode <= 77) || effectiveCode === 85 || effectiveCode === 86) {
+    return { label: 'Snowy', icon: 'ac_unit' };
+  }
+  if (effectiveCode >= 95 && effectiveCode <= 99) return { label: 'Stormy', icon: 'thunderstorm' };
+  return { label: 'Clear', icon: 'sunny' };
+};
+
+const fetchRegionWeather = async (region) => {
+  try {
+    const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
+      params: {
+        latitude: region.lat,
+        longitude: region.lon,
+        current: 'temperature_2m,weathercode,cloudcover,precipitation',
+        timezone: 'Asia/Seoul',
+        models: 'jma_seamless',
+      },
+      timeout: 4000,
+    });
+    const current = response.data.current || {};
+    return {
+      temp: Math.round(current.temperature_2m ?? 24),
+      ...parseWeatherCode(current.weathercode, current.cloudcover, current.precipitation),
+    };
+  } catch {
+    return { temp: 24, label: 'Sunny', icon: 'sunny' };
+  }
+};
+
+const getItemRegionCode = (item) => String(item.lDongRegnCd || item.areacode || item.areaCode || '');
+
+const getCandidateRegionCodes = (regions) => {
+  const codes = new Set();
+  regions.forEach((code) => {
+    codes.add(String(code));
+    const meta = REGION_META[code];
+    if (meta?.areaCode) codes.add(String(meta.areaCode));
+  });
+  return codes;
+};
+
+const getWeatherKeywords = (weather) => WEATHER_KEYWORDS[weather.label] || [];
+
+const isWeatherMatchedItem = (item, weather) => {
+  const text = `${item.title || ''} ${item.addr1 || ''}`;
+  return getWeatherKeywords(weather).some(keyword => text.includes(keyword));
+};
+
+const scoreTravelItem = (item, context) => {
+  const reasons = [];
+  let score = 0;
+  const title = item.title || '';
+  const addr = item.addr1 || '';
+  const text = `${title} ${addr}`;
+  const typeId = String(item.contenttypeid || item.contentTypeId || '');
+  const weatherKeywords = getWeatherKeywords(context.weather);
+
+  if (item.firstimage) score += 20;
+  if (typeId === '12') score += 12;
+  if (typeId === '14') score += 10;
+
+  if (weatherKeywords.some(keyword => text.includes(keyword))) {
+    score += 24;
+    reasons.push(`${context.region.name}의 현재 날씨와 어울리는 키워드가 포함되어 있어요.`);
+  }
+
+  if (addr.includes(context.region.name)) {
+    score += 16;
+    reasons.push(`관심 지역인 ${context.region.name}에 있는 여행지예요.`);
+  }
+
+  if (typeId === '15' || ['축제', '행사', '페스티벌'].some(keyword => text.includes(keyword))) {
+    score -= 10;
+  }
+
+  if (!reasons.length) {
+    reasons.push(`${context.region.name} 관심 지역 후보 중에서 즉흥 여행지로 추천했어요.`);
+  }
+
+  return { item, score, reasons };
+};
+
+const createTravelRouter = ({ travelCache, pool, authenticateToken }) => {
   const router = express.Router();
   const proxyCache = new Map();
   const CACHE_TTL = 1000 * 60 * 60 * 2;
@@ -97,6 +221,89 @@ const createTravelRouter = ({ travelCache }) => {
       return item.firstimage && typeId === '12';
     });
     res.json(filtered.sort(() => 0.5 - Math.random()).slice(0, 30));
+  });
+
+  router.get('/travel/spontaneous', authenticateToken, async (req, res) => {
+    const { allTravelItems } = travelCache.getCache();
+    if (!allTravelItems) return res.status(503).json({ message: 'Loading...' });
+
+    try {
+      const [favoriteRows] = await pool.query(
+        'SELECT region_code FROM user_favorite_regions WHERE user_id = ?',
+        [req.user.id]
+      );
+      const preferredRegions = favoriteRows.map(row => String(row.region_code));
+      const hasPreferences = preferredRegions.length > 0;
+      const targetRegions = preferredRegions.length ? preferredRegions : ['11'];
+      const selectedRegionCode = targetRegions[Math.floor(Math.random() * targetRegions.length)];
+      const region = REGION_META[selectedRegionCode] || REGION_META[11];
+      const selectedRegionCodes = getCandidateRegionCodes([selectedRegionCode]);
+      const preferredRegionCodes = getCandidateRegionCodes(targetRegions);
+      const weather = await fetchRegionWeather(region);
+
+      let fallbackUsed = false;
+      let candidates = allTravelItems.filter(item => {
+        const typeId = String(item.contenttypeid || item.contentTypeId || '');
+        return item.firstimage && ['12', '14'].includes(typeId) && selectedRegionCodes.has(getItemRegionCode(item));
+      });
+
+      if (candidates.length === 0) {
+        fallbackUsed = true;
+        candidates = allTravelItems.filter(item => {
+          const typeId = String(item.contenttypeid || item.contentTypeId || '');
+          return item.firstimage && ['12', '14'].includes(typeId) && preferredRegionCodes.has(getItemRegionCode(item));
+        });
+      }
+
+      if (candidates.length === 0) {
+        fallbackUsed = true;
+        candidates = allTravelItems.filter(item => {
+          const typeId = String(item.contenttypeid || item.contentTypeId || '');
+          return item.firstimage && ['12', '14'].includes(typeId);
+        });
+      }
+
+      const weatherMatchedCandidates = candidates.filter(item => isWeatherMatchedItem(item, weather));
+      const minWeatherCandidateCount = Math.min(5, candidates.length);
+      const weatherFilterApplied = candidates.length > 0 && weatherMatchedCandidates.length >= minWeatherCandidateCount;
+      if (weatherFilterApplied) {
+        candidates = weatherMatchedCandidates;
+      }
+
+      const ranked = candidates
+        .map(item => scoreTravelItem(item, { region, weather }))
+        .sort((a, b) => b.score - a.score);
+
+      const poolSize = Math.min(parseInt(req.query.poolSize) || 20, ranked.length);
+      const topPool = ranked.slice(0, Math.max(poolSize, 1));
+      const selected = topPool[Math.floor(Math.random() * topPool.length)];
+
+      if (!selected) {
+        return res.status(404).json({ message: 'No travel candidates found.' });
+      }
+
+      res.json({
+        item: selected.item,
+        score: selected.score,
+        reasons: selected.reasons,
+        weather: {
+          ...weather,
+          regionCode: String(selectedRegionCode),
+          regionName: region.name,
+        },
+        hasPreferences,
+        preferredRegions,
+        activeRegion: String(selectedRegionCode),
+        fallbackUsed,
+        weatherFilter: {
+          applied: weatherFilterApplied,
+          matchedCount: weatherMatchedCandidates.length,
+          keywords: getWeatherKeywords(weather),
+        },
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.get('/travel/proxy/:service', async (req, res) => {
