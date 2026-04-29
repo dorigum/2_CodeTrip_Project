@@ -305,7 +305,7 @@ const Info = () => {
                 title: 'SRT (수서고속철도)', 
                 desc: '수서에서 출발하는 고속열차 SRT 전용 예매 시스템으로 연결합니다.',
                 icon: 'directions_railway',
-                url: 'https://etk.srtc.kr/'
+                url: 'https://etk.srail.kr/'
               },
               { 
                 id: 'bus', 
