@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getWeather, getLocationName } from '../api/weatherApi';
-import { getPhotoList, getFestivalList, getCityBasedPlaces, searchKeywordPlaces } from '../api/travelApi';
+import { getPhotoList, getFestivalList, getCityBasedPlaces, searchKeywordPlaces, getSpontaneousTravel } from '../api/travelApi';
+import useAuthStore from '../store/useAuthStore';
 
 const MOCK_NODE_HEADER = [
   { galContentId: 'm1', galTitle: '감성 여행', galPhotographyLocation: '대한민국', galWebImageUrl: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?q=80&w=2070' },
   { galContentId: 'm2', galTitle: '평화로운 산책', galPhotographyLocation: '전국 팔도', galWebImageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=2094' }
 ];
 
+const FALLBACK_TRAVEL_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070';
+
 const Home = () => {
+  const { isLoggedIn } = useAuthStore();
   const [weather, setWeather] = useState({ temp: 24, label: 'Sunny', icon: 'sunny', keywords: ['여행'], location: '서울' });
   const [province, setProvince] = useState('서울');
   const [topImgList, setTopImgList] = useState(MOCK_NODE_HEADER);
@@ -16,7 +20,8 @@ const Home = () => {
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [nearbyIndex, setNearbyIndex] = useState(0);
   const [weatherRec, setWeatherRec] = useState(null);
-  const [slotImg, setSlotImg] = useState('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070'); 
+  const [spontaneousMeta, setSpontaneousMeta] = useState(null);
+  const [slotImg, setSlotImg] = useState(FALLBACK_TRAVEL_IMAGE); 
   const [trendingItems, setTrendingItems] = useState([]);
   
   const [loading, setLoading] = useState({ nearby: true, trending: true, weather: true });
@@ -120,18 +125,31 @@ const Home = () => {
     if (isSlotSpinning) return;
     setIsSlotSpinning(true);
     setHasPicked(false);
+    setSpontaneousMeta(null);
+    let didPick = false;
+
+    if (isLoggedIn) {
+      const result = await getSpontaneousTravel();
+      if (result?.item) {
+        await new Promise(r => setTimeout(r, 500));
+        setWeatherRec(result.item);
+        setSlotImg(result.item.firstimage || FALLBACK_TRAVEL_IMAGE);
+        setSpontaneousMeta(result);
+        didPick = true;
+      }
+    }
     
-    const candidates = await searchKeywordPlaces(weather.keywords[0], 15);
+    const candidates = didPick ? [] : await searchKeywordPlaces(weather.keywords[0], 15);
     
     if (candidates && candidates.length > 0) {
       const spinCount = 15;
       for (let i = 0; i < spinCount; i++) {
-        setSlotImg(candidates[i % candidates.length].firstimage);
+        setSlotImg(candidates[i % candidates.length].firstimage || FALLBACK_TRAVEL_IMAGE);
         await new Promise(r => setTimeout(r, 80)); // 스핀 속도 증가
       }
       const finalResult = candidates[Math.floor(Math.random() * candidates.length)];
       setWeatherRec(finalResult);
-      setSlotImg(finalResult.firstimage);
+      setSlotImg(finalResult.firstimage || FALLBACK_TRAVEL_IMAGE);
     }
     
     setIsSlotSpinning(false);
@@ -146,6 +164,23 @@ const Home = () => {
   }, [topImgList]);
 
   const currentNodeHeader = topImgList[topImgIndex] || MOCK_NODE_HEADER[0];
+  const slotModeLabel = isLoggedIn ? 'PERSONAL RANDOM' : 'GUEST PREVIEW';
+  const slotTitle = isLoggedIn
+    ? (spontaneousMeta?.hasPreferences === false ? '관심 지역 설정 전 랜덤 추천' : '관심 지역 기반 즉흥 추천')
+    : '전국 랜덤 여행지 미리보기';
+  const slotSubtitle = isLoggedIn
+    ? (spontaneousMeta?.hasPreferences === false
+      ? '관심 지역을 설정하면 지역과 날씨를 반영해 더 정확히 추천합니다.'
+      : '회원님의 관심 지역과 현재 날씨를 반영해 추천합니다.')
+    : '로그인하면 관심 지역 기반 맞춤 추천을 사용할 수 있습니다.';
+  const slotAddress = isSlotSpinning
+    ? '추천 후보를 계산하는 중입니다...'
+    : (hasPicked ? weatherRec?.addr1 : slotSubtitle);
+  const slotWeather = spontaneousMeta?.weather || weather;
+  const slotWeatherRegion = spontaneousMeta?.weather?.regionName || `${province} ${weather.location}`;
+  const slotWeatherLabel = slotWeather?.label || 'Weather';
+  const slotWeatherTemp = Number.isFinite(slotWeather?.temp) ? `${slotWeather.temp}°C` : '--°C';
+  const slotWeatherIcon = slotWeather?.icon || weather.icon || 'partly_cloudy_day';
 
   return (
     <div className="p-6 lg:p-10 space-y-6 flex-1 flex flex-col bg-background overflow-hidden">
@@ -199,8 +234,15 @@ const Home = () => {
             <div className="flex-1 flex flex-col space-y-5">
               <div className="flex justify-between items-start">
                 <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-primary font-bold"><span className="material-symbols-outlined text-sm">casino</span><p className="text-[9px] uppercase tracking-widest font-label">SLOT MACHINE (WEATHER)</p></div>
-                  <h3 className="font-headline text-xl font-bold text-slate-900 truncate">🎲날씨 기반 뽑기: {weather.label}</h3>
+                  <div className="flex items-center gap-2 text-primary font-bold"><span className="material-symbols-outlined text-sm">casino</span><p className="text-[9px] uppercase tracking-widest font-label">{slotModeLabel}</p></div>
+                  <h3 className="font-headline text-xl font-bold text-slate-900 truncate">{slotTitle}</h3>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-3 py-1 text-[10px] font-bold text-primary font-label uppercase tracking-widest">
+                    <span className="material-symbols-outlined text-sm" style={{fontVariationSettings: "'FILL' 1"}}>{slotWeatherIcon}</span>
+                    <span>{slotWeatherRegion}</span>
+                    <span className="text-slate-300">|</span>
+                    <span>{slotWeatherLabel}</span>
+                    <span>{slotWeatherTemp}</span>
+                  </div>
                 </div>
                 <button onClick={handleSlotSpin} disabled={isSlotSpinning} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-md ${isSlotSpinning ? 'bg-primary text-white animate-pulse' : 'bg-slate-50 text-slate-900 hover:bg-primary hover:text-white'}`}><span className={`material-symbols-outlined ${isSlotSpinning ? 'animate-bounce' : ''}`}>casino</span></button>
               </div>
@@ -211,15 +253,23 @@ const Home = () => {
                   alt="w" 
                   onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070'; }} 
                 />
+                {hasPicked && !isSlotSpinning && (
+                  <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-white/85 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-slate-900 shadow-md">
+                    <span className="material-symbols-outlined text-sm text-primary" style={{fontVariationSettings: "'FILL' 1"}}>{slotWeatherIcon}</span>
+                    <span>{slotWeatherRegion}</span>
+                    <span className="text-slate-300">|</span>
+                    <span>{slotWeatherTemp}</span>
+                  </div>
+                )}
                 {isSlotSpinning ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white space-y-3 bg-black/30 backdrop-blur-[2px]">
                     <div className="flex gap-2">{[1, 2, 3].map(i => <div key={i} className="w-2 h-2 bg-primary-container rounded-full animate-bounce" style={{animationDelay: `${i * 0.15}s`}}></div>)}</div>
-                    <div className="font-bold text-xs tracking-widest font-label uppercase animate-pulse">여행지를 뽑는 중...</div>
+                    <div className="font-bold text-xs tracking-widest font-label uppercase animate-pulse">추천 여행지를 뽑는 중...</div>
                   </div>
                 ) : !hasPicked && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-500">
                     <div className="bg-black/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/20 text-center">
-                      <p className="text-white text-[11px] font-bold leading-relaxed drop-shadow-md">주사위를 눌러서<br/>여행지를 뽑아보세요!</p>
+                      <p className="text-white text-[11px] font-bold leading-relaxed drop-shadow-md">버튼을 눌러<br/>여행지를 뽑아보세요</p>
                     </div>
                   </div>
                 )}
@@ -233,8 +283,27 @@ const Home = () => {
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-slate-400 font-mono text-xs italic">
                   <span className="text-primary-container">//</span>
-                  <p className="truncate">{isSlotSpinning ? '행운의 여행지를 찾는 중입니다...' : (hasPicked ? weatherRec?.addr1 : '현재 날씨와 어울리는 여행지 탐색')}</p>
+                  <p className="truncate">{slotAddress}</p>
                 </div>
+                {spontaneousMeta?.reasons?.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {spontaneousMeta.reasons.slice(0, 2).map((reason, index) => (
+                      <p key={index} className="text-[11px] text-slate-500 leading-relaxed truncate">
+                        {reason}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {isLoggedIn && spontaneousMeta?.hasPreferences === false && (
+                  <Link to="/settings" className="inline-flex mt-3 text-[10px] font-bold text-primary hover:underline uppercase tracking-widest font-label">
+                    Set_Preference
+                  </Link>
+                )}
+                {!isLoggedIn && (
+                  <Link to="/login" className="inline-flex mt-3 text-[10px] font-bold text-primary hover:underline uppercase tracking-widest font-label">
+                    Sign_In_For_Personal_Picks
+                  </Link>
+                )}
               </div>
             </div>
           </div>
