@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import authApi from '../api/authApi';
 import { DEFAULT_REGIONS } from '../constants/regions';
-import Toast from '../components/Toast';
 import useToast from '../hooks/useToast';
 
 const SELECTABLE_REGIONS = DEFAULT_REGIONS.filter(r => r.code !== '');
@@ -26,8 +25,7 @@ const Settings = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
 
-  // Toast
-  const { toast, showToast } = useToast();
+  const showToast = useToast();
 
   // Favorite Regions State
   const [selectedRegions, setSelectedRegions] = useState([]);
@@ -140,7 +138,6 @@ const Settings = () => {
 
   return (
     <div className="flex-1 bg-background overflow-y-auto custom-scrollbar p-10">
-      <Toast visible={toast.visible} text={toast.text} type={toast.type} />
       <div className="max-w-4xl mx-auto space-y-10">
         
         {/* Page Title */}
