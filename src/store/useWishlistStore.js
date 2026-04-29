@@ -35,6 +35,10 @@ const useWishlistStore = create((set, get) => ({
     }
   },
 
+  clearWishlist: () => {
+    set({ wishlistItems: [], folders: [], wishlistIds: new Set(), initialized: false });
+  },
+
   toggleWishlist: async (itemData) => {
     const { contentid, title, firstimage, folder_id } = itemData;
     const cid = String(contentid);
