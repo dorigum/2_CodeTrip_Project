@@ -42,7 +42,7 @@ const Settings = () => {
       }
     };
     load();
-  }, []);
+  }, [showToast]);
 
   const handleToggleRegion = (code) => {
     setSelectedRegions(prev => {

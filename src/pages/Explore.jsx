@@ -29,13 +29,13 @@ const Explore = () => {
     keyword, clearKeyword,
     sort, setSort,
     initialized, fetchError,
-    fetchPosts, applyFilter, changePage, applyFavoriteRegions, resetFilter,
+    applyFilter, changePage, applyFavoriteRegions, resetFilter,
   } = useExploreStore();
 
   const showToast = useToast();
   useEffect(() => {
     if (fetchError) showToast(fetchError);
-  }, [fetchError]);
+  }, [fetchError, showToast]);
 
   const [wishlistLoadingId, setWishlistLoadingId] = useState(null);
   const [selectedTravel, setSelectedTravel] = useState(null); // 모달용
@@ -92,7 +92,7 @@ const Explore = () => {
     const init = async () => {
       let favCodes = [];
       if (isLoggedIn) {
-        try { favCodes = await authApi.getFavoriteRegions(); } catch {}
+        try { favCodes = await authApi.getFavoriteRegions(); } catch { /* 비로그인 시 무시 */ }
       }
       setFavoriteRegions(favCodes);
       if (!initialized) applyFavoriteRegions(favCodes);

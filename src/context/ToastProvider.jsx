@@ -1,7 +1,6 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Toast from '../components/Toast';
-
-const ToastContext = createContext(null);
+import { ToastContext } from './toastContext';
 
 export const ToastProvider = ({ children }) => {
   const [toast, setToast] = useState({ visible: false, text: '', type: 'error' });
@@ -20,5 +19,3 @@ export const ToastProvider = ({ children }) => {
     </ToastContext.Provider>
   );
 };
-
-export const useToast = () => useContext(ToastContext);

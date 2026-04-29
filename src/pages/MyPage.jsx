@@ -20,7 +20,7 @@ const MyPage = () => {
   const showToast = useToast();
   useEffect(() => {
     if (syncError) showToast(syncError);
-  }, [syncError]);
+  }, [syncError, showToast]);
 
   const [sortBy, setSortBy] = useState('CREATED');
   const [selectedFolderId, setSelectedFolderId] = useState(null);

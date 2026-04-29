@@ -4,7 +4,7 @@ import Header from './components/Layout/Header';
 import SideBar from './components/Layout/SideBar';
 import Footer from './components/Layout/Footer';
 import useRegionStore from './store/useRegionStore';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider } from './context/ToastProvider';
 import './App.css';
 
 const App = () => {

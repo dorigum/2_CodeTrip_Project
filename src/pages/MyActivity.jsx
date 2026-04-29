@@ -102,7 +102,7 @@ const MyActivity = () => {
       }
     };
     load();
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, showToast]);
 
   const handleDeletePost = async (id) => {
     if (!window.confirm('게시글을 삭제하시겠습니까?')) return;

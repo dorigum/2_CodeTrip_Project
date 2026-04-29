@@ -40,7 +40,7 @@ const Festivals = () => {
       }
     };
     fetchFestivals();
-  }, [page, sortOrder]);
+  }, [page, sortOrder, showToast]);
 
   useEffect(() => {
     if (isLoggedIn && !wishlistInitialized) {
