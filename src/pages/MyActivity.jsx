@@ -4,6 +4,7 @@ import useAuthStore from '../store/useAuthStore';
 import { getMyBoardPosts, getMyBoardComments, getMyTravelComments, getMyLikedPosts, deleteBoardPost, deleteBoardComment, toggleBoardPostLike } from '../api/boardApi';
 import { deleteTravelComment } from '../api/travelCommentApi';
 import useToast from '../hooks/useToast';
+import useRecentlyViewedStore from '../store/useRecentlyViewedStore';
 
 const TABS = [
   { key: 'likedPosts',     label: 'Liked Posts',      icon: 'favorite' },
@@ -67,6 +68,8 @@ const MyActivity = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isLoggedIn } = useAuthStore();
   const showToast = useToast();
+
+  const { items: recentlyViewed, clearAll: clearRecentlyViewed } = useRecentlyViewedStore();
 
   const activeTab = VALID_TABS.has(searchParams.get('tab')) ? searchParams.get('tab') : 'likedPosts';
   const currentPage = Math.max(1, parseInt(searchParams.get('page')) || 1);
@@ -155,6 +158,44 @@ const MyActivity = () => {
           내 활동 <span className="text-primary">.</span>
         </h1>
       </header>
+
+      {/* Recently Viewed — pinned above tabs */}
+      {recentlyViewed.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm text-primary">history</span>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">recently_viewed.log</span>
+            </div>
+            <button
+              onClick={clearRecentlyViewed}
+              className="text-[10px] font-mono text-slate-400 hover:text-red-400 transition-colors"
+            >
+              전체 삭제
+            </button>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+            {recentlyViewed.map((item) => (
+              <Link
+                key={item.contentid}
+                to={`/explore/${item.contentid}`}
+                className="shrink-0 w-40 group"
+              >
+                <div className="relative h-28 rounded-xl overflow-hidden mb-2 border border-outline-variant/10 group-hover:border-primary/30 transition-all shadow-sm">
+                  <img
+                    src={item.firstimage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=400&auto=format&fit=crop'}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=400&auto=format&fit=crop'; }}
+                  />
+                </div>
+                <p className="text-xs font-bold text-on-surface truncate group-hover:text-primary transition-colors">{item.title}</p>
+                <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{item.addr1 || '주소 정보 없음'}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-8 bg-surface-container-low p-1 rounded-xl border border-outline-variant/10 w-fit">
