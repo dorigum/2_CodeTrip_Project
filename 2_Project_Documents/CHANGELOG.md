@@ -5,6 +5,145 @@
 
 ---
 
+## 2026-04-29 — Info 페이지 SRT 링크 수정
+
+### 수정 내용
+
+- **`src/pages/Info.jsx`**: 교통 허브 섹션의 SRT(수서고속철도) 예매 링크 URL 오류 수정. 잘못된 URL을 SRT 공식 예매 사이트 주소로 교체.
+
+---
+
+## 2026-04-29 — 알림 삭제 기능 추가
+
+### 배경
+
+알림 드롭다운에 쌓인 읽은 알림이나 특정 알림을 개별 또는 일괄 삭제할 수 없어 알림 목록이 누적되는 UX 문제 해결 필요.
+
+### 수정 내용
+
+- **`server/routes/notificationRoutes.js`**:
+  - `DELETE /api/notifications/:id` 엔드포인트 추가: 특정 알림 1개 삭제. `WHERE user_id = ?` 조건으로 본인 알림만 삭제 가능.
+  - `DELETE /api/notifications/read` 엔드포인트 추가: 읽은 알림(`is_read = TRUE`) 전체 일괄 삭제.
+
+- **`src/api/notificationApi.js`**:
+  - `deleteOneNotification(id)`: 특정 알림 삭제 API 함수 추가.
+  - `deleteReadNotifications()`: 읽은 알림 전체 삭제 API 함수 추가.
+
+- **`src/components/Layout/Header.jsx`**:
+  - 알림 드롭다운 헤더에 "읽은 알림 삭제" 버튼 추가.
+  - 각 알림 아이템에 개별 삭제 버튼(×) 추가 — 클릭 시 `deleteOneNotification` 호출 후 로컬 상태에서도 해당 알림 제거.
+  - 삭제 처리 후 `unreadCount` 값 자동 재계산.
+
+---
+
+## 2026-04-29 — 알림 기능 안정화 (알림 트리거 및 UI 오류 수정)
+
+### 1. 알림 생성 트리거 누락 수정 (`fix: 알림 기능이 제대로 동작하지 않던 문제 수정`)
+
+**배경**: 게시판 댓글 및 여행지 댓글 작성 시 작성자에게 알림이 전송되지 않던 문제. 알림 라우터가 `notificationRoutes.js`로 분리되어 있었으나 게시판/여행지 댓글 라우트에서 알림 INSERT 쿼리가 실행되지 않고 있었음.
+
+**수정 내용**:
+
+- **`server/routes/boardRoutes.js`**:
+  - 게시판 댓글 작성(`POST /api/board/posts/:id/comments`) 시 게시글 작성자에게 알림 INSERT 쿼리 추가. 본인 댓글에는 알림 미발송(`WHERE post_author_id != commenter_id`).
+
+- **`server/routes/travelCommentRoutes.js`**:
+  - 여행지 댓글 작성 시 동일한 알림 INSERT 패턴 적용.
+
+- **`src/components/Layout/Header.jsx`**:
+  - 알림 드롭다운 렌더링 오류 수정(UI 버그 패치).
+
+### 2. useWishlistStore clearWishlist 미정의 버그 수정
+
+**배경**: 로그아웃 시 `Header.jsx`에서 `clearWishlist()`를 호출하는데, `useWishlistStore`에 해당 함수가 정의되어 있지 않아 런타임 에러 발생.
+
+**수정 내용**:
+
+- **`src/store/useWishlistStore.js`**: `clearWishlist` 액션 추가. 호출 시 `wishlistIds`, `wishlistItems`, `folders` 상태를 모두 초기값으로 리셋.
+
+---
+
+## 2026-04-29 — 프로필 사진 업로드 클라이언트 사이드 압축
+
+### 배경
+
+사용자가 대용량 사진(수 MB 이상의 DSLR·스마트폰 원본 이미지)을 프로필로 업로드할 경우 서버 Multer의 5MB 제한에 걸려 업로드가 실패하거나, 성공하더라도 DB·네트워크에 불필요하게 큰 파일이 저장되는 문제.
+
+### 수정 내용
+
+- **`src/pages/Settings.jsx`**:
+  - `compressImage(file)` 비동기 함수 추가: Canvas API를 활용한 클라이언트 사이드 이미지 압축.
+    - 1MB 이하 파일은 압축 없이 원본 그대로 사용.
+    - 최대 해상도 1920px 이하로 비율 유지하며 리사이즈.
+    - JPEG quality `0.85`부터 시작하여 1MB 이하가 될 때까지 `0.1`씩 감소 반복(최소 `0.05`).
+    - 결과물을 `.jpg` 확장자 `File` 객체로 변환하여 기존 FormData에 주입.
+  - 파일 선택(`handleFileChange`) 직후 `compressImage()` 적용, 압축된 파일로 서버 업로드 진행.
+  - 상수: `MAX_UPLOAD_BYTES = 1MB`, `MAX_DIMENSION = 1920px`.
+
+---
+
+## 2026-04-29 — 서버 오류 시 토스트 메시지 전역 표시 및 Toast 아키텍처 개선
+
+### 1. Toast 시스템 Context 기반으로 개편 (`fix: 토스트 메시지 관련 오류 수정`)
+
+**배경**: 기존 `useToast` 훅이 각 컴포넌트마다 독립적인 `toast` 상태와 타이머를 생성하는 구조여서, 여러 컴포넌트에서 토스트를 띄울 경우 동시에 여러 토스트가 표시되거나 화면에서 겹치는 문제 발생. 전역 단일 Toast 인스턴스가 필요.
+
+**수정 내용**:
+
+- **`src/context/ToastContext.jsx`** (신규 파일):
+  - `ToastContext` Context 생성.
+  - `ToastProvider` 컴포넌트: 전역 단일 `toast` 상태·타이머(`timerRef`) 관리. 앱 루트에 `<Toast>` 컴포넌트를 한 번만 렌더링.
+  - `showToast(text, type)` 콜백을 Context value로 제공.
+
+- **`src/hooks/useToast.js`**:
+  - 기존 훅 로직 완전 삭제. `ToastContext`의 `useToast`를 재수출(`re-export`)하는 단일 라인으로 대체. 기존 import 경로(`hooks/useToast`) 그대로 유지하여 하위 호환성 보장.
+
+- **`src/App.jsx`**:
+  - `<ToastProvider>`를 라우터 외부 최상위에 감싸 전역 Toast 컨텍스트 활성화.
+  - 기존 `Header.jsx` 내부에서 직접 `<Toast>`를 렌더링하던 코드 제거.
+
+- **`src/components/Toast.jsx`**: 스타일·구조 소폭 개선.
+
+### 2. 전 페이지 서버 오류 토스트 표시 (`feat: 다른 페이지에서 서버 호출에 실패하면 토스트 메시지 표시`)
+
+**배경**: 네트워크 오류나 서버 500 에러가 발생해도 별도 UI 피드백이 없어 사용자가 오류 상황을 인지하기 어려웠음.
+
+**수정 내용**:
+
+- **`src/api/travelApi.js`**, **`src/api/travelInfoApi.js`**: API 함수 catch 블록에서 `null` 반환 대신 toast 메시지 표시.
+- **`src/pages/Board.jsx`**, **`src/pages/Explore.jsx`**, **`src/pages/Festivals.jsx`**, **`src/pages/MyActivity.jsx`**, **`src/pages/MyPage.jsx`**: 각 페이지의 데이터 페칭 실패 시 `useToast`로 사용자에게 오류 알림 표시.
+- **`src/store/useExploreStore.js`**, **`src/store/useWishlistStore.js`**: 스토어 레벨 API 실패 시에도 토스트 알림 전달.
+
+---
+
+## 2026-04-29 — 여행지 검색 및 메인 페이지 관심지역 날씨 연동 개선
+
+### 1. `REGION_META` 확장 및 날씨 연동 개선 (`server/routes/travelRoutes.js`)
+
+**배경**: 관심지역 기반 즉흥 추천 API가 관심지역의 날씨를 함께 표시하기 위해 행정구역 코드(`lDongRegnCd`) 기준 메타데이터가 필요했으나, 기존 `REGION_META`에는 일부 지역이 누락되어 있었음.
+
+**수정 내용**:
+
+- **`server/routes/travelRoutes.js`**:
+  - `REGION_META` 상수 확장: 전국 17개 시도 + 세종시(`36110`)를 포함한 완전한 지역 코드·이름·TourAPI areaCode·위도·경도 매핑 완성.
+  - `WEATHER_KEYWORDS` 상수 확장: 날씨 유형별(`Sunny`, `Partly Cloudy`, `Cloudy`, `Rainy`, `Snowy`, `Stormy`) 추천 키워드 배열로 개선.
+  - `parseWeatherCode(code, cloudcover, precipitation)` 함수 추가: 구름량·강수량 보정 로직 포함한 WMO 코드 → 날씨 레이블 변환.
+  - `fetchRegionWeather(region)` 함수 추가: Open-Meteo API 호출하여 관심지역 실시간 날씨 반환. timeout 4초 설정.
+
+- **`src/api/travelApi.js`**:
+  - `getSpontaneousTravel(poolSize)` API 함수 추가: `/api/travel/spontaneous` 호출 후 실패 시 `null` 반환.
+
+### 2. 메인 페이지 즉흥 추천 카드 개선 (`src/pages/Home.jsx`)
+
+**수정 내용**:
+
+- `useAuthStore`에서 `isLoggedIn` 구독 추가.
+- `spontaneousMeta` 상태 추가: 즉흥 추천 API 응답 메타데이터(날씨 정보, 관심지역 포함).
+- 뽑기 버튼 클릭 시 로그인 사용자는 `getSpontaneousTravel()` 우선 호출. 성공하면 관심지역·날씨 기반 추천 결과 표시. 비로그인 또는 API 실패 시 기존 날씨 키워드 기반 랜덤 추천으로 폴백.
+- 추천 카드에 기준 지역의 날씨 정보(기온, 날씨 레이블) 표시.
+
+---
+
 ## 2026-04-29 — recently_viewed.log 섹션 MyActivity 상단 고정 이동
 
 ### 배경
@@ -24,6 +163,134 @@
   - `useRecentlyViewedStore` import 제거.
   - `const { items: recentlyViewed, clearAll: clearRecentlyViewed } = useRecentlyViewedStore()` 훅 호출 제거.
   - `recently_viewed.log` JSX 섹션 블록 완전 제거.
+
+---
+
+## 2026-04-28 — 알림 시스템 구현 (게시글·댓글 알림 + 헤더 드롭다운)
+
+### 1. 알림 DB 및 백엔드 (`feat: 알림 기능 구현 및 지역코드 lDongRegnCd로 변경`)
+
+**배경**: 다른 사용자가 내 게시글에 댓글을 달거나 좋아요를 누를 때 알림을 받을 수 없어 커뮤니티 상호작용이 단절되는 문제.
+
+**수정 내용**:
+
+- **`server/db/init.js`**:
+  - `notifications` 테이블 신설: `id`, `user_id`, `message`, `content_id`, `is_read`, `created_at` 컬럼 구성. 알림 대상 사용자 기준으로 최신순 조회 가능하도록 인덱스 설계.
+
+- **`server/routes/notificationRoutes.js`** (신규 파일):
+  - `GET /api/notifications`: 로그인 사용자의 알림 목록 최대 30개 조회 + `unreadCount` 포함 응답.
+  - `PUT /api/notifications/read-all`: 해당 사용자의 미읽은 알림 전체 읽음 처리.
+  - `PUT /api/notifications/:id/read`: 개별 알림 읽음 처리.
+
+- **`server/routes/boardRoutes.js`**:
+  - 게시판 댓글 작성 시 게시글 작성자에게 알림 INSERT. 본인 댓글 제외.
+
+- **`server/routes/travelRoutes.js`**:
+  - 관심지역 조회 API에서 행정동 코드(`lDongRegnCd`)를 사용하도록 지역코드 처리 방식 변경.
+
+- **`server/services/travelCache.js`**: 여행지 캐시 초기화 로직 개선.
+
+- **`src/api/notificationApi.js`** (신규 파일):
+  - `getNotifications()`, `markAllRead()`, `markOneRead(id)` 함수 export.
+
+### 2. 헤더 알림 드롭다운 UI (`src/components/Layout/Header.jsx`)
+
+- `getNotifications`, `markAllRead`, `markOneRead` 함수 import.
+- `notifications`, `unreadCount`, `notiOpen` 상태 추가. `notiRef` ref 추가.
+- `fetchNotifications()`: 로그인 시 알림 목록 조회 useEffect.
+- 외부 클릭 시 드롭다운 닫힘 처리(`notiRef` 기반).
+- 알림 벨 버튼: 미읽은 알림 있을 때 붉은 점(`w-2 h-2 bg-red-500`) 표시.
+- 알림 드롭다운 패널: 헤더(Notifications 레이블 + 미읽은 수 뱃지 + "모두 읽음" 버튼) + 알림 목록(최대 높이 `max-h-80` 스크롤). 알림 없으면 `notifications_off` 아이콘 표시.
+- 각 알림 클릭 시 `markOneRead` 호출 → 해당 알림 `content_id`가 있으면 `/explore/{content_id}`로 이동.
+
+---
+
+## 2026-04-28 — 관심지역 설정 기능 추가 (Settings 페이지)
+
+### 배경
+
+사용자가 자신의 선호 지역을 설정하면 메인 페이지 즉흥 추천 및 Explore 자동 필터에 활용할 수 있도록, Settings 페이지에 관심지역 선택·저장 UI와 백엔드 API가 필요.
+
+### 수정 내용
+
+- **`2_Project_Documents/codetrip_mysql.sql`**:
+  - `user_favorite_regions` 테이블 스키마 추가: `id`, `user_id`, `region_code`, `created_at` 컬럼. `user_id + region_code` 유니크 제약으로 중복 등록 방지.
+
+- **`server/db/init.js`**:
+  - `user_favorite_regions` 테이블 자동 생성 로직 추가.
+
+- **`server/routes/userRoutes.js`**:
+  - `GET /api/user/favorite-regions`: 로그인 사용자의 관심지역 코드 목록 조회.
+  - `PUT /api/user/favorite-regions`: 관심지역 코드 배열 받아 기존 데이터 전체 삭제 후 재삽입(최대 3개 제한 적용).
+
+- **`src/api/authApi.js`**:
+  - `getFavoriteRegions()`: 관심지역 목록 조회 함수 추가.
+  - `setFavoriteRegions(codes)`: 관심지역 저장 함수 추가.
+
+- **`src/pages/Settings.jsx`**:
+  - 관심지역 설정 섹션 신규 추가: 17개 시도 중 최대 3개까지 체크박스로 선택 가능. 선택 초과 시 추가 선택 비활성화.
+  - 페이지 마운트 시 `getFavoriteRegions()` 호출하여 저장된 관심지역 초기값 표시.
+  - 저장 버튼 클릭 시 `setFavoriteRegions(selectedCodes)` 호출 후 성공/실패 토스트 메시지 표시.
+
+### 관련 후속 커밋
+
+- **`feat: 관심지역을 불러오는 데 실패하면 토스트 메시지 표시`**: `Toast.jsx` 컴포넌트 신규 작성 + Settings 페이지에서 API 실패 시 오류 토스트 표시 추가.
+
+---
+
+## 2026-04-28 — 게시글 좋아요 기능 추가 및 MyActivity 개선
+
+### 1. 게시글 좋아요 기능 구현 (`feat: 게시글 좋아요 기능 추가`)
+
+**수정 내용**:
+
+- **`2_Project_Documents/codetrip_mysql.sql`**:
+  - `board_post_likes` 테이블 스키마 추가: `id`, `post_id`, `user_id`, `created_at`. `post_id + user_id` 유니크 제약으로 중복 좋아요 방지.
+
+- **`server/db/init.js`**:
+  - `board_post_likes` 테이블 자동 생성 추가.
+
+- **`server/routes/boardRoutes.js`**:
+  - `POST /api/board/posts/:id/like`: 좋아요 토글(추가/취소). 이미 좋아요한 경우 DELETE, 아닌 경우 INSERT.
+  - `GET /api/board/posts` 응답에 `like_count`, `is_liked`(현재 사용자 기준) 필드 추가.
+  - `GET /api/board/posts/:id` 응답에도 동일 필드 추가.
+
+- **`src/api/boardApi.js`**:
+  - `togglePostLike(postId)` 함수 추가.
+  - `getLikedPosts()` 함수 추가: 내가 좋아요한 게시글 목록 조회.
+
+- **`src/pages/Board.jsx`**: 게시글 카드에 좋아요 수 표시 및 좋아요 버튼 추가. 클릭 시 `togglePostLike` 호출.
+
+- **`src/pages/BoardDetail.jsx`**: 상세 페이지에도 좋아요 버튼 추가. 좋아요 상태에 따라 `fill-1` 아이콘 토글.
+
+### 2. MyActivity 개선 — 좋아요한 게시글 탭 추가 및 좋아요 수 표시
+
+- **`server/routes/activityRoutes.js`**:
+  - `GET /api/my/liked-posts`: 내가 좋아요한 게시글 목록 + 각 게시글의 좋아요 수 조회 엔드포인트 추가.
+  - `GET /api/my/board-posts`: 내가 작성한 게시글 목록에 `like_count` 필드 추가.
+
+- **`src/pages/MyActivity.jsx`**:
+  - `LIKED POSTS` 탭 신규 추가 (기존 탭: `BOARD POSTS` · `BOARD COMMENTS` · `TRAVEL COMMENTS`).
+  - 좋아요한 게시글 목록 조회(`getLikedPosts`) 및 렌더링.
+  - 게시글 카드에 좋아요 수(`♥ N`) 표시.
+
+---
+
+## 2026-04-28 — BoardWrite 로그아웃 리디렉션 및 로그아웃 확인 팝업
+
+- **`src/pages/BoardWrite.jsx`**: 게시글 작성 중 로그아웃 감지 시 `/board` 경로로 자동 이동. 인증 상태 변경을 `useEffect`로 감지하여 처리.
+
+- **`src/components/Layout/Header.jsx`**, **`src/components/Layout/SideBar.jsx`**: 로그아웃 버튼 클릭 시 `window.confirm()`으로 로그아웃 여부 확인 팝업 표시. 취소 선택 시 로그아웃 취소.
+
+---
+
+## 2026-04-28 — TravelDetail 지도 중심 창 크기 반응형 수정
+
+**배경**: TravelDetail 페이지에서 브라우저 창 크기를 변경하면 Kakao Map의 중심 좌표가 어긋나는 현상.
+
+**수정 내용**:
+
+- **`src/pages/TravelDetail.jsx`**: `window.resize` 이벤트 리스너 추가. 창 크기 변경 시 `mapRef.current.relayout()` 및 `setCenter(new window.kakao.maps.LatLng(...))` 재호출로 지도 중심 재정렬.
 
 ---
 

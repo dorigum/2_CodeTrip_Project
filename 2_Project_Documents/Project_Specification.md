@@ -30,6 +30,12 @@
 	- **[2026-04-28]** 회원 관심 지역과 해당 지역의 현재 날씨를 반영한 메인 페이지 즉흥 여행지 랜덤 추천 기능 추가. 관심 지역 미설정 회원은 기본 지역으로 폴백하고, 비회원은 전국 랜덤 미리보기 흐름을 유지.
 	- **[2026-04-28]** 최근 본 여행지(`recently_viewed.log`) 가로 스크롤 카드 섹션 및 최근 검색어 드롭다운 UX 추가.
 	- **[2026-04-29]** `recently_viewed.log` 섹션을 `MyPage`에서 `MyActivity` 페이지 상단으로 이동. 탭(LIKED POSTS·BOARD POSTS 등) 전환 시에도 항상 고정 표시되도록 탭 바 위에 배치.
+	- **[2026-04-28]** 알림 시스템 구현: `notifications` DB 테이블, `notificationRoutes.js`, 헤더 알림 벨 드롭다운(읽음 처리·삭제·게시글 이동) 완료.
+	- **[2026-04-28]** 게시글 좋아요 기능(`board_post_likes`), 내 활동 `LIKED POSTS` 탭, 게시글 카드 좋아요 수 표시 완료.
+	- **[2026-04-28]** Settings 페이지 관심지역 설정 UI 및 `user_favorite_regions` 저장 API 완료.
+	- **[2026-04-28]** Toast 시스템을 React Context(`ToastContext`) 기반 전역 단일 인스턴스로 개편. 전 페이지 서버 오류 시 토스트 알림 표시.
+	- **[2026-04-29]** 프로필 사진 업로드 시 클라이언트 사이드 Canvas 압축(1MB 초과 시 JPEG 품질 조정) 적용.
+	- **[2026-04-29]** Info 페이지 SRT 링크 URL 수정.
 
 ### 1.1 기술 스택 (Technical Stack)
 - **Frontend**: React 19, Vite 8, Axios, Tailwind CSS v4, React Router DOM v7, Zustand
@@ -61,6 +67,8 @@
 - **board_post_tags**: 게시글 태그 정규화 테이블 (`post_id`, `tag` VARCHAR). *(2026-04-27 신규)*
 - **board_comments**: 게시판 댓글 (`post_id`, `user_id`, `content`, `created_at`). *(2026-04-27 신규)*
 - **board_comment_likes**: 게시판 댓글 좋아요 (`comment_id`, `user_id`, `UNIQUE KEY`). *(2026-04-27 신규)*
+- **board_post_likes**: 게시글 좋아요 (`post_id`, `user_id`, `UNIQUE KEY`로 중복 방지). *(2026-04-28 신규)*
+- **notifications**: 알림 테이블 (`user_id`, `message`, `content_id`, `is_read BOOLEAN`, `created_at`). 게시글·댓글 작성 시 대상 사용자에게 자동 INSERT. *(2026-04-28 신규)*
 
 ### 1.3 개발 환경 설정 및 프로젝트 구조
 프로젝트 구동을 위해 다음 환경 변수가 설정되어야 하며, 전체 파일 구조는 다음과 같습니다.
@@ -83,33 +91,40 @@
 │   │   ├── activityRoutes.js     # 내 활동 API [2026-04-27 신규]
 │   │   ├── authRoutes.js         # 회원가입·로그인·비밀번호 재설정 [2026-04-27 신규]
 │   │   ├── boardRoutes.js        # 게시판 및 댓글 API [2026-04-27 신규]
+│   │   ├── notificationRoutes.js  # 알림 조회·읽음처리·삭제 API [2026-04-28 신규]
 │   │   ├── travelCommentRoutes.js # 여행지 댓글 API [2026-04-27 신규]
-│   │   ├── travelRoutes.js       # 여행지·축제·TourAPI 프록시 API [2026-04-27 신규]
-│   │   ├── userRoutes.js         # 프로필·이미지 업로드·비밀번호 변경 [2026-04-27 신규]
+│   │   ├── travelRoutes.js       # 여행지·축제·TourAPI 프록시·즉흥추천 API [2026-04-27 신규]
+│   │   ├── userRoutes.js         # 프로필·이미지 업로드·비밀번호 변경·관심지역 API [2026-04-27 신규]
 │   │   └── wishlistRoutes.js     # 위시리스트·폴더·메모·체크리스트 API [2026-04-27 신규]
 │   └── services/
 │       ├── tourApiService.js     # TourAPI 호출 및 응답 정규화 [2026-04-27 신규]
 │       └── travelCache.js        # 서버 메모리 캐시 및 일일 갱신 스케줄 [2026-04-27 신규]
 ├── src/
 │   ├── api/
-│   │   ├── authApi.js            # 로그인/회원가입/정보수정 API
+│   │   ├── authApi.js            # 로그인/회원가입/정보수정/관심지역 API
 │   │   ├── axiosInstance.js      # 공통 Axios 설정 (인터셉터, 토큰 처리)
-│   │   ├── boardApi.js           # 게시판 CRUD API (게시글·댓글·좋아요) [2026-04-27 통합]
+│   │   ├── boardApi.js           # 게시판 CRUD API (게시글·댓글·좋아요·좋아요한 게시글) [2026-04-27 통합]
+│   │   ├── notificationApi.js    # 알림 조회·읽음처리·삭제 API [2026-04-28 신규]
 │   │   ├── travelCommentApi.js   # 여행지 댓글/좋아요 API [2026-04-27 명칭 통일, 구: commentApi.js]
-│   │   ├── travelApi.js          # 관광공사 API 연동 (서버 캐시 활용)
+│   │   ├── travelApi.js          # 관광공사 API 연동 (서버 캐시 활용, 즉흥추천 포함)
 │   │   ├── travelInfoApi.js      # 상세 여행지 정보 API
 │   │   ├── weatherApi.js         # 실시간 날씨, 역지오코딩 ({ name, state } 반환)
 │   │   ├── wishlistApi.js        # 폴더 및 위시리스트 관리 API
 │   ├── constants/
 │   │   ├── themes.js             # DEFAULT_THEMES 상수 (탐색 테마 목록) [2026-04-27 통합]
 │   │   └── regions.js            # REGIONS 상수 (TourAPI areacode 기반) [2026-04-27 통합]
+│   ├── context/
+│   │   └── ToastContext.jsx           # 전역 단일 Toast 상태 Context Provider [2026-04-29 신규]
+│   ├── hooks/
+│   │   ├── useRecentSearch.js         # 최근 검색어 이력 커스텀 훅 (localStorage, 최대 5개) [2026-04-28 신규]
+│   │   └── useToast.js                # ToastContext re-export (하위 호환 유지) [2026-04-29 개편]
 │   ├── store/
 │   │   ├── useAuthStore.js            # 사용자 인증 스토어
 │   │   ├── useBoardWriteStore.js      # 게시글 작성 상태 스토어 [2026-04-27 통합]
-│   │   ├── useExploreStore.js         # 여행 탐색/필터 상태 스토어
+│   │   ├── useExploreStore.js         # 여행 탐색/필터 상태 스토어 (applyFavoriteRegions·resetFilter 포함)
 │   │   ├── useRecentlyViewedStore.js  # 최근 본 여행지 이력 (localStorage, 최대 10개) [2026-04-28 신규]
 │   │   ├── useRegionStore.js          # 지역 선택 상태 스토어 [2026-04-27 통합]
-│   │   └── useWishlistStore.js        # 위시리스트(아이템+폴더) 통합 동기화 스토어
+│   │   └── useWishlistStore.js        # 위시리스트(아이템+폴더) 통합 동기화 스토어 (clearWishlist 포함)
 │   ├── pages/
 │   │   ├── Home.jsx              # 메인 페이지 (슬라이더, 슬롯머신)
 │   │   ├── Explore.jsx           # 여행지 탐색 (필터링, 무한스크롤)
@@ -1023,3 +1038,159 @@ Header 검색창 포커스 시 최근 검색어 목록을 드롭다운으로 표
 #### 드롭다운 표시 조건
 
 - `searchFocused === true` AND `recents.length > 0`
+
+---
+
+## 16. 알림 시스템 (2026-04-28 추가)
+
+### 16.1 개요
+
+게시판·여행지 댓글 작성 시 게시글 작성자에게 서버 사이드 알림을 INSERT하고, 헤더 알림 벨 드롭다운에서 조회·읽음처리·삭제할 수 있는 실시간 알림 시스템.
+
+### 16.2 DB 스키마 (`notifications`)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | INT AUTO_INCREMENT | PK |
+| `user_id` | INT | 알림 수신 대상 사용자 |
+| `message` | TEXT | 알림 메시지 |
+| `content_id` | VARCHAR | 관련 게시글/여행지 ID (클릭 시 이동 대상) |
+| `is_read` | BOOLEAN DEFAULT FALSE | 읽음 여부 |
+| `created_at` | DATETIME | 생성 시각 |
+
+### 16.3 백엔드 API (`server/routes/notificationRoutes.js`)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/notifications` | GET | 최신 30개 조회 + `unreadCount` |
+| `/api/notifications/read-all` | PUT | 전체 읽음 처리 |
+| `/api/notifications/:id/read` | PUT | 개별 읽음 처리 |
+| `/api/notifications/:id` | DELETE | 개별 삭제 |
+| `/api/notifications/read` | DELETE | 읽은 알림 전체 삭제 |
+
+모든 엔드포인트는 `authenticateToken` 미들웨어로 보호. 본인 알림만 조회·수정·삭제 가능.
+
+### 16.4 알림 트리거
+
+| 이벤트 | 트리거 위치 | 조건 |
+|--------|-----------|------|
+| 게시판 댓글 작성 | `boardRoutes.js` | 댓글 작성자 ≠ 게시글 작성자 |
+| 여행지 댓글 작성 | `travelCommentRoutes.js` | 동일 조건 |
+
+### 16.5 프론트엔드 (`src/api/notificationApi.js`, `src/components/Layout/Header.jsx`)
+
+- `getNotifications()`, `markAllRead()`, `markOneRead(id)`, `deleteOneNotification(id)`, `deleteReadNotifications()` 함수.
+- 헤더 알림 벨 버튼: 미읽은 알림 수 > 0일 때 붉은 점 표시.
+- 드롭다운: 알림 목록 최대 `max-h-80` 스크롤, 개별 삭제 버튼, "읽은 알림 삭제" 버튼.
+- 알림 클릭 시 `markOneRead` → `content_id` 있으면 `/explore/{content_id}` 이동.
+
+---
+
+## 17. 게시글 좋아요 기능 (2026-04-28 추가)
+
+### 17.1 개요
+
+게시판 게시글에 좋아요를 토글할 수 있는 기능. 유저당 1회 제한, 취소 가능.
+
+### 17.2 DB 스키마 (`board_post_likes`)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | INT AUTO_INCREMENT | PK |
+| `post_id` | INT | 게시글 FK |
+| `user_id` | INT | 사용자 FK |
+| `created_at` | DATETIME | 생성 시각 |
+
+- `UNIQUE KEY (post_id, user_id)` — 중복 좋아요 DB 레벨 방지.
+
+### 17.3 API
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/board/posts/:id/like` | POST | 좋아요 토글 (추가/취소) |
+| `/api/my/liked-posts` | GET | 내가 좋아요한 게시글 목록 |
+
+`GET /api/board/posts` 및 `/api/board/posts/:id` 응답에 `like_count`, `is_liked` 필드 포함.
+
+### 17.4 프론트엔드
+
+- **`src/api/boardApi.js`**: `togglePostLike(postId)`, `getLikedPosts()` 추가.
+- **`src/pages/Board.jsx`**: 게시글 카드 좋아요 버튼 + 좋아요 수 표시.
+- **`src/pages/BoardDetail.jsx`**: 상세 페이지 좋아요 버튼, `fill-1` 아이콘으로 상태 시각화.
+- **`src/pages/MyActivity.jsx`**: `LIKED POSTS` 탭 추가, 좋아요한 게시글 목록 조회·렌더링.
+
+---
+
+## 18. 관심지역 설정 기능 (2026-04-28 추가)
+
+### 18.1 개요
+
+Settings 페이지에서 사용자가 최대 3개의 관심지역을 체크박스로 선택·저장. 저장된 관심지역은 메인 페이지 즉흥 추천(`/api/travel/spontaneous`)과 Explore 자동 필터(`applyFavoriteRegions`)에 활용.
+
+### 18.2 DB 스키마 (`user_favorite_regions`)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | INT AUTO_INCREMENT | PK |
+| `user_id` | INT | 사용자 FK |
+| `region_code` | VARCHAR | 행정구역 코드 (예: `'11'` = 서울) |
+| `created_at` | DATETIME | 생성 시각 |
+
+- `UNIQUE KEY (user_id, region_code)` — 중복 등록 방지.
+
+### 18.3 API
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/user/favorite-regions` | GET | 관심지역 코드 목록 조회 |
+| `/api/user/favorite-regions` | PUT | 코드 배열 저장 (최대 3개, 기존 데이터 전체 교체) |
+
+### 18.4 프론트엔드 (`src/pages/Settings.jsx`, `src/api/authApi.js`)
+
+- 마운트 시 `getFavoriteRegions()` 로 초기값 복원.
+- 17개 시도 체크박스, 3개 초과 선택 비활성화.
+- 저장 시 `setFavoriteRegions(codes)` 후 성공/실패 토스트.
+
+---
+
+## 19. Toast 시스템 Context 기반 전역 개편 (2026-04-29)
+
+### 개요
+
+기존 `useToast` 훅이 컴포넌트마다 독립 상태를 생성하여 복수 Toast가 동시 표시되는 문제를 해결. React Context로 전역 단일 인스턴스화.
+
+### 파일 변경
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/context/ToastContext.jsx` | 신규: `ToastProvider`, `ToastContext` 정의. `showToast` 콜백 전역 제공. |
+| `src/hooks/useToast.js` | `ToastContext.useToast` re-export로 대체. 기존 import 경로 유지. |
+| `src/App.jsx` | 라우터 외부 최상위에 `<ToastProvider>` 래핑. |
+| `src/components/Toast.jsx` | `ToastProvider` 내부에서 단일 렌더링. |
+
+### 적용 범위
+
+`Board.jsx`, `Explore.jsx`, `Festivals.jsx`, `MyActivity.jsx`, `MyPage.jsx`, `useExploreStore.js`, `useWishlistStore.js`, `travelApi.js`, `travelInfoApi.js` 등 전 페이지·스토어에서 서버 오류 시 `useToast()`로 토스트 메시지 표시.
+
+---
+
+## 20. 프로필 사진 클라이언트 사이드 압축 (2026-04-29)
+
+### 개요
+
+1MB를 초과하는 이미지를 업로드하기 전에 브라우저 Canvas API로 압축하여 서버 Multer 5MB 제한 도달 없이 안전하게 업로드.
+
+### 구현 (`src/pages/Settings.jsx` — `compressImage` 함수)
+
+| 파라미터 | 값 |
+|---------|---|
+| 임계 크기 | 1MB (`MAX_UPLOAD_BYTES`) |
+| 최대 해상도 | 1920px (`MAX_DIMENSION`) |
+| 초기 JPEG 품질 | 0.85 |
+| 품질 감소 단계 | 0.1씩 감소, 최소 0.05 |
+| 출력 형식 | `image/jpeg`, 확장자 `.jpg`로 변환 |
+
+- 1MB 이하 파일은 원본 그대로 사용.
+- 해상도 비율 유지하며 리사이즈 후 `canvas.toBlob()` 반복 호출.
+- 결과 `File` 객체를 FormData에 주입하여 기존 업로드 흐름 유지.
+
