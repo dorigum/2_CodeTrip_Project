@@ -71,7 +71,11 @@ const Header = () => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
     setNotiOpen(false);
-    if (noti.content_id) navigate(`/explore/${noti.content_id}`);
+    if (noti.content_id) {
+      // board 댓글 알림: content_id = '/board/123'
+      // 여행지 알림: content_id = '125276' (숫자 문자열)
+      navigate(noti.content_id.startsWith('/') ? noti.content_id : `/explore/${noti.content_id}`);
+    }
   };
 
   const handleSearchKeyDown = (e) => {
