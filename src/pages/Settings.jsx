@@ -7,6 +7,54 @@ import useToast from '../hooks/useToast';
 
 const SELECTABLE_REGIONS = DEFAULT_REGIONS.filter(r => r.code !== '');
 
+const MAX_UPLOAD_BYTES = 1024 * 1024; // 1MB
+const MAX_DIMENSION = 1920;
+
+const compressImage = (file) =>
+  new Promise((resolve) => {
+    // 이미 1MB 이하면 압축 없이 그대로 반환
+    if (file.size <= MAX_UPLOAD_BYTES) { resolve(file); return; }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > MAX_DIMENSION || h > MAX_DIMENSION) {
+        if (w >= h) { h = Math.round(h * MAX_DIMENSION / w); w = MAX_DIMENSION; }
+        else { w = Math.round(w * MAX_DIMENSION / h); h = MAX_DIMENSION; }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      let quality = 0.85;
+      const tryBlob = () => {
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(file); return; }
+          if (blob.size <= MAX_UPLOAD_BYTES || quality < 0.1) {
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            }));
+          } else {
+            quality = Math.max(0.05, quality - 0.1);
+            tryBlob();
+          }
+        }, 'image/jpeg', quality);
+      };
+      tryBlob();
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+
 const Settings = () => {
   const { user, updateUser, isLoggedIn } = useAuthStore();
   const navigate = useNavigate();
@@ -100,12 +148,12 @@ const Settings = () => {
     setProfileLoading(true);
     setProfileMessage({ type: '', text: '' });
 
-    const formData = new FormData();
-    formData.append('profileImage', file);
-
     try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append('profileImage', compressed);
       const response = await authApi.uploadImage(formData);
-      setProfileImg(response.url); // 서버에서 받은 URL로 상태 업데이트
+      setProfileImg(response.url);
       setProfileMessage({ type: 'success', text: '이미지가 업로드되었습니다. 저장 버튼을 눌러 확정하세요.' });
     } catch {
       setProfileMessage({ type: 'error', text: '이미지 업로드에 실패했습니다.' });
