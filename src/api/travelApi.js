@@ -1,83 +1,76 @@
-import axiosInstance from './axiosInstance';
+import axios from 'axios';
+import { getTravelInfo, getTravelInfoByKeyword } from './travelInfoApi';
 
-const KTO_BASE_URL = '/B551011/PhotoGalleryService1';
-const TOUR_BASE_URL = '/B551011/KorService2';
-const SERVICE_KEY = decodeURIComponent(import.meta.env.VITE_GALLERY_API_KEY);
+const PHOTO_BASE_URL = 'https://apis.data.go.kr/B551011/PhotoGalleryService1';
+const GALLERY_KEY = decodeURIComponent(import.meta.env.VITE_GALLERY_API_KEY || '');
 
-const LDONG_REGN_CD_MAP = {
-  '11': '서울', '26': '부산', '27': '대구', '28': '인천',
-  '29': '광주', '30': '대전', '31': '울산', '36110': '세종',
-  '41': '경기', '43': '충북', '44': '충남', '46': '전남',
-  '47': '경북', '48': '경남', '50': '제주', '51': '강원', '52': '전북',
+const normalizeImage = (url) => url?.replace('http://', 'https://') || '';
+
+const fetchGallery = async (service, params = {}) => {
+  const response = await axios.get(`${PHOTO_BASE_URL}/${service}`, {
+    params: {
+      serviceKey: GALLERY_KEY,
+      MobileOS: 'ETC',
+      MobileApp: 'CodeTrip',
+      _type: 'json',
+      ...params,
+    },
+  });
+  return response.data;
 };
 
-// 메인 슬라이더용 사진 가져오기 (우리 서버 캐시 활용)
+const normalizeItems = (items) => {
+  if (!items) return [];
+  const list = Array.isArray(items) ? items : [items];
+  return list.map((item) => ({
+    ...item,
+    firstimage: normalizeImage(item.firstimage || item.originimgurl || item.galWebImageUrl),
+    galWebImageUrl: normalizeImage(item.galWebImageUrl),
+  }));
+};
+
 export const getPhotoList = async () => {
   try {
-    const response = await axiosInstance.get('/travel/top-images');
-    return response.data;
+    const data = await fetchGallery('galleryList1', { numOfRows: 12, pageNo: 1, arrange: 'A' });
+    return normalizeItems(data?.response?.body?.items?.item);
   } catch (error) {
-    console.error('Photo cache error:', error);
+    console.error('Photo API error:', error);
     return [];
   }
 };
 
-// 지역 기반 추천 (우리 서버 캐시 활용)
-export const getCityBasedPlaces = async (areaName) => {
+export const getCityBasedPlaces = async (areaCode) => {
   try {
-    let lDongRegnCd = '11'; // 기본값 서울
-    const nameStr = String(areaName || '서울');
-
-    for (const [code, name] of Object.entries(LDONG_REGN_CD_MAP)) {
-      if (nameStr.includes(name)) {
-        lDongRegnCd = code;
-        break;
-      }
-    }
-
-    console.log(`📍 Requesting near places for: ${nameStr} (Code: ${lDongRegnCd})`);
-    const response = await axiosInstance.get('/travel/near', { params: { lDongRegnCd } });
-    return response.data;
+    const { items } = await getTravelInfo({ pageNo: 1, numOfRows: 8, lDongRegnCd: String(areaCode || '11') });
+    return items;
   } catch (error) {
     console.error('City based places error:', error);
     return [];
   }
 };
 
-// 랜덤 추천 (우리 서버 캐시 활용)
-export const searchKeywordPlaces = async () => {
+export const searchKeywordPlaces = async (keyword = '여행') => {
   try {
-    const response = await axiosInstance.get('/travel/random');
-    return response.data;
+    const { items } = await getTravelInfoByKeyword({ keyword, pageNo: 1, numOfRows: 20 });
+    return items;
   } catch {
     return [];
   }
 };
 
-// 나머지 유틸리티 함수들 유지...
-// 축제/행사 정보 (우리 서버 캐시 활용)
 export const getSpontaneousTravel = async (poolSize = 20) => {
-  try {
-    const response = await axiosInstance.get('/travel/spontaneous', {
-      params: { poolSize },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Spontaneous travel error:', error);
-    return null;
-  }
+  const items = await searchKeywordPlaces('여행');
+  if (!items.length) return null;
+  return items[Math.floor(Math.random() * Math.min(items.length, poolSize))];
 };
 
 export const getFestivalList = async (page = 1, limit = 8, sort = 'default') => {
-  const response = await axiosInstance.get('/travel/festivals', {
-    params: { page, limit, sort }
-  });
-  return response.data;
+  const { items, totalCount } = await getTravelInfo({ pageNo: page, numOfRows: limit, contentTypeId: '15' });
+  return { items, totalCount, page, limit, sort };
 };
 
 export const getWeatherRecommendations = async (_keyword) => {
-  const items = await searchKeywordPlaces();
+  const items = await searchKeywordPlaces('여행');
   if (items.length > 0) return items[Math.floor(Math.random() * items.length)];
   return null;
 };
-

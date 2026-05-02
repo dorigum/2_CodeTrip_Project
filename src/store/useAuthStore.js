@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { firebaseAuth } from '../firebase';
 
 const useAuthStore = create((set) => ({
   user: JSON.parse(localStorage.getItem('trip_user')) || null,
@@ -11,6 +12,7 @@ const useAuthStore = create((set) => ({
   },
 
   logout: () => {
+    firebaseAuth.signOut().catch(() => {});
     localStorage.removeItem('trip_user');
     localStorage.removeItem('trip_token');
     set({ user: null, isLoggedIn: false });
