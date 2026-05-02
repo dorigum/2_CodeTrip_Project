@@ -61,23 +61,23 @@ export const getLocationName = async (lat, lon) => {
 };
 
 const parseWeatherCode = (code) => {
-  if (code === 0) return { label: 'Sunny', icon: 'sunny', keyword: KEYWORDS.scenery };
-  if (code === 1 || code === 2) return { label: 'Partly Cloudy', icon: 'partly_cloudy_day', keyword: KEYWORDS.beach };
-  if (code === 3) return { label: 'Cloudy', icon: 'cloud', keyword: KEYWORDS.cafe };
-  if (code === 45 || code === 48) return { label: 'Foggy', icon: 'foggy', keyword: KEYWORDS.drive };
+  if (code === 0) return { label: 'Sunny', korLabel: '맑음', icon: 'sunny', keyword: KEYWORDS.scenery };
+  if (code === 1 || code === 2) return { label: 'Partly Cloudy', korLabel: '구름 조금', icon: 'partly_cloudy_day', keyword: KEYWORDS.beach };
+  if (code === 3) return { label: 'Cloudy', korLabel: '흐림', icon: 'cloud', keyword: KEYWORDS.cafe };
+  if (code === 45 || code === 48) return { label: 'Foggy', korLabel: '안개', icon: 'foggy', keyword: KEYWORDS.drive };
 
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
-    return { label: 'Rainy', icon: 'rainy', keyword: KEYWORDS.museum };
+    return { label: 'Rainy', korLabel: '비', icon: 'rainy', keyword: KEYWORDS.museum };
   }
 
   if ((code >= 71 && code <= 77) || code === 85 || code === 86) {
-    return { label: 'Snowy', icon: 'ac_unit', keyword: KEYWORDS.snow };
+    return { label: 'Snowy', korLabel: '눈', icon: 'ac_unit', keyword: KEYWORDS.snow };
   }
 
   if (code >= 95 && code <= 99) {
-    return { label: 'Stormy', icon: 'thunderstorm', keyword: KEYWORDS.indoorDate };
+    return { label: 'Stormy', korLabel: '폭풍우', icon: 'thunderstorm', keyword: KEYWORDS.indoorDate };
   }
 
-  return { label: 'Clear', icon: 'sunny', keyword: KEYWORDS.travel };
+  return { label: 'Clear', korLabel: '맑음', icon: 'sunny', keyword: KEYWORDS.travel };
 };
 

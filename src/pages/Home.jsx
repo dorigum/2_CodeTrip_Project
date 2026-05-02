@@ -129,7 +129,7 @@ const Home = () => {
     let didPick = false;
 
     if (isLoggedIn) {
-      const result = await getSpontaneousTravel(weather.keywords[0]);
+      const result = await getSpontaneousTravel(weather.keywords[0], weather.korLabel);
       if (result?.item) {
         await new Promise(r => setTimeout(r, 500));
         setWeatherRec(result.item);

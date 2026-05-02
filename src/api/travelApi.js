@@ -107,7 +107,7 @@ export const searchKeywordPlaces = async (keyword = DEFAULT_KEYWORD, pageNo = 1,
   }
 };
 
-export const getSpontaneousTravel = async (weatherKeyword = DEFAULT_KEYWORD, poolSize = 20) => {
+export const getSpontaneousTravel = async (weatherKeyword = DEFAULT_KEYWORD, weatherKorLabel = '', poolSize = 20) => {
   let favoriteRegions = [];
   try {
     favoriteRegions = await authApi.getFavoriteRegions();
@@ -146,7 +146,7 @@ export const getSpontaneousTravel = async (weatherKeyword = DEFAULT_KEYWORD, poo
       hasPreferences
         ? '\uC124\uC815\uD55C \uC120\uD638 \uC9C0\uC5ED\uC744 \uBC18\uC601\uD588\uC2B5\uB2C8\uB2E4.'
         : '\uC120\uD638 \uC9C0\uC5ED\uC774 \uC5C6\uC5B4 \uAE30\uBCF8 \uC9C0\uC5ED\uC73C\uB85C \uCD94\uCC9C\uD588\uC2B5\uB2C8\uB2E4.',
-      `\uD604\uC7AC \uB0A0\uC528 \uD0A4\uC6CC\uB4DC "${keyword}"\uB97C \uD65C\uC6A9\uD588\uC2B5\uB2C8\uB2E4.`,
+      `\uD604\uC7AC \uB0A0\uC528 \uD0A4\uC6CC\uB4DC "${weather?.korLabel || weatherKorLabel || keyword}"\uB97C \uD65C\uC6A9\uD588\uC2B5\uB2C8\uB2E4.`,
     ],
   };
 };
