@@ -59,6 +59,10 @@
   }
 }
 
+/* Hide scrollbar visually while keeping scroll functionality */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Sidebar Text Cursor Prevention */
 aside, 
 aside button, 

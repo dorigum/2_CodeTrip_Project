@@ -178,7 +178,7 @@ const Explore = () => {
       <div className="grid grid-cols-12 gap-8">
         {/* Sidebar Filters */}
         <aside className="col-span-12 lg:col-span-3 xl:col-span-2 self-start">
-          <div className="bg-surface-container-low rounded-xl p-5 sticky top-8 border border-outline-variant/10 shadow-sm">
+          <div className="bg-surface-container-low rounded-xl p-5 sticky top-8 max-h-[calc(100vh-5rem)] overflow-y-auto no-scrollbar border border-outline-variant/10 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-outline-variant/20 pb-4">
               <span className="material-symbols-outlined text-primary text-lg">settings_ethernet</span>
               <span className="font-bold text-on-surface font-mono text-sm uppercase tracking-tight">FILTERS.CONFIG</span>
