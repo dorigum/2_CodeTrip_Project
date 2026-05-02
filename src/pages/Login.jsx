@@ -18,7 +18,7 @@ const Login = () => {
     
     try {
       setIsLoading(true);
-      const data = await authApi.login({ email, password });
+      const data = await authApi.login({ email: email.trim(), password });
       
       // Handle Remember Me
       if (rememberMe) {
@@ -65,6 +65,7 @@ const Login = () => {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-surface-container-low border-none rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"
@@ -80,6 +81,7 @@ const Login = () => {
               <input
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface-container-low border-none rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"

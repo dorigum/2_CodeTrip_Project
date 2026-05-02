@@ -30,9 +30,9 @@ const SignUp = () => {
     try {
       setIsLoading(true);
       await authApi.signup({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
-        name: formData.name
+        name: formData.name.trim()
       });
       alert('Account created successfully! Please sign in.');
       navigate('/login');
@@ -103,6 +103,8 @@ const SignUp = () => {
                 name="password"
                 type="password"
                 required
+                minLength={6}
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full bg-surface-container-low border-none rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"
@@ -119,6 +121,8 @@ const SignUp = () => {
                 name="confirmPassword"
                 type="password"
                 required
+                minLength={6}
+                autoComplete="new-password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className="w-full bg-surface-container-low border-none rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"
