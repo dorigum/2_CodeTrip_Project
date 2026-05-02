@@ -128,7 +128,7 @@ const MyPage = () => {
     if (selectedFolderId === 'UNCATEGORIZED') {
       items = items.filter(item => !item.folder_id);
     } else if (selectedFolderId) {
-      items = items.filter(item => Number(item.folder_id) === Number(selectedFolderId));
+      items = items.filter(item => String(item.folder_id) === String(selectedFolderId));
     }
     return items;
   }, [wishlistItems, selectedFolderId]);
@@ -148,7 +148,7 @@ const MyPage = () => {
     const folderCount = folders.length;
     const uncategorized = wishlistItems.filter(i => !i.folder_id).length;
     const topFolder = folders.reduce((acc, f) => {
-      const count = wishlistItems.filter(i => Number(i.folder_id) === Number(f.id)).length;
+      const count = wishlistItems.filter(i => String(i.folder_id) === String(f.id)).length;
       return count > (acc?.count ?? 0) ? { name: f.name, count } : acc;
     }, null);
     return { total, folderCount, uncategorized, topFolder };
@@ -196,7 +196,7 @@ const MyPage = () => {
     return `${startLabel}\n~ ${endLabel}\n: ${nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`}`;
   };
 
-  const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
+  const selectedFolder = selectedFolderId ? folders.find(f => String(f.id) === String(selectedFolderId)) : null;
 
   if (!isLoggedIn) return null;
 
@@ -328,7 +328,7 @@ const MyPage = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-1 font-mono text-[11px] shrink-0 ml-2 mt-0.5">
-                    <span className="opacity-60">{wishlistItems.filter(i => Number(i.folder_id) === Number(folder.id)).length}</span>
+                    <span className="opacity-60">{wishlistItems.filter(i => String(i.folder_id) === String(folder.id)).length}</span>
                     <span onClick={(e) => { e.stopPropagation(); openEditModal(folder); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-white/80' : 'hover:text-primary'}`}>edit</span>
                     <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-red-300' : 'hover:text-red-500'}`}>delete</span>
                   </div>
@@ -466,7 +466,7 @@ const MyPage = () => {
                           {folders.map(f => (
                             <button key={f.id} onClick={() => { moveItem(itemId, f.id); setMovingItemId(null); }} className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-50 rounded-lg flex justify-between">
                               <span>// {f.name}</span>
-                              {Number(item.folder_id) === Number(f.id) && <span className="material-symbols-outlined text-xs text-emerald-500">check</span>}
+                              {String(item.folder_id) === String(f.id) && <span className="material-symbols-outlined text-xs text-emerald-500">check</span>}
                             </button>
                           ))}
                         </div>
@@ -483,7 +483,7 @@ const MyPage = () => {
                       <h3 className="font-headline text-base font-bold truncate mb-1">{itemTitle}</h3>
                       <p className="text-[10px] text-slate-400 font-mono mb-4 truncate">{item.addr1 || '주소 정보 없음'}</p>
                       <div className="flex justify-between items-center mt-4">
-                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">FOLDER: {item.folder_id ? (folders.find(f => Number(f.id) === Number(item.folder_id))?.name || '...') : 'UNCATEGORIZED'}</span>
+                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">FOLDER: {item.folder_id ? (folders.find(f => String(f.id) === String(item.folder_id))?.name || '...') : 'UNCATEGORIZED'}</span>
                         <Link to={`/explore/${itemId}`} className="bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary hover:text-white transition-all border border-slate-100">VIEW_DATA</Link>
                       </div>
                     </div>

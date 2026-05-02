@@ -63,7 +63,14 @@ export const createFolder = async (name, startDate, endDate) => {
     created_at,
     updated_at: created_at,
   });
-  return { id: folderRef.key, name, start_date: startDate || null, end_date: endDate || null };
+  return {
+    id: folderRef.key,
+    name,
+    start_date: startDate || null,
+    end_date: endDate || null,
+    created_at,
+    updated_at: created_at,
+  };
 };
 
 export const updateFolder = async (folderId, name, startDate, endDate) => {

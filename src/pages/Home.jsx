@@ -129,7 +129,7 @@ const Home = () => {
     let didPick = false;
 
     if (isLoggedIn) {
-      const result = await getSpontaneousTravel();
+      const result = await getSpontaneousTravel(weather.keywords[0]);
       if (result?.item) {
         await new Promise(r => setTimeout(r, 500));
         setWeatherRec(result.item);
@@ -139,7 +139,7 @@ const Home = () => {
       }
     }
     
-    const candidates = didPick ? [] : await searchKeywordPlaces(weather.keywords[0], 15);
+    const candidates = didPick ? [] : await searchKeywordPlaces(weather.keywords[0], 1);
     
     if (candidates && candidates.length > 0) {
       const spinCount = 15;
