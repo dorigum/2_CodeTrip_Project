@@ -973,11 +973,11 @@ try { await conn.query('ALTER TABLE wishlist_folders ADD COLUMN end_date DATE NU
 - **`INFO_ITEM` 상수 분리**: 서브메뉴 로직이 필요한 Info 항목을 기존 `NAV_ITEMS` 배열에서 독립 상수(`INFO_ITEM`)로 분리.
 - **`INFO_SUB_ITEMS` 상수 추가**: 3개 서브메뉴 항목 정의.
 
-  | 항목 | 아이콘 | 유형 | 링크 |
-  |------|--------|------|------|
-  | Public_Wifi | `wifi` | 외부 | `wififree.kr` |
-  | Safestay | `health_and_safety` | 외부 | `safestay.visitkorea.or.kr` |
-  | About_CodeTrip | `info` | 내부 | `/info` |
+| 항목             | 아이콘                 | 유형  | 링크                          |
+| -------------- | ------------------- | --- | --------------------------- |
+| Public_Wifi    | `wifi`              | 외부  | `wififree.kr`               |
+| Safestay       | `health_and_safety` | 외부  | `safestay.visitkorea.or.kr` |
+| About_CodeTrip | `info`              | 내부  | `/info`                     |
 
 - **외부/내부 링크 분기 렌더링**: `external` 플래그로 외부 링크는 `<a target="_blank">` + `open_in_new` 아이콘으로, 내부 링크는 `<Link>`로 렌더링. 현재 경로 활성화 스타일(`text-primary`) 적용.
 - **`infoSubOpen` 상태 추가** (`useState`): 서브메뉴 열림/닫힘 상태 관리.

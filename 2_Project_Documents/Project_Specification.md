@@ -243,14 +243,14 @@
 - **라우팅 등록**: `/info` 경로를 `main.jsx`에 추가하여 내비게이션 연결 완료.
 - **사이드바 메뉴별 고유 컬러 글로우 애니메이션 전면 교체** (`SideBar.jsx`, `App.css`): 기존 단순 Tailwind transform 클래스를 각 메뉴 고유의 CSS `@keyframes` 애니메이션과 반원형 후광(halo) 레이어로 전면 교체하여 프리미엄 인터랙션 확립.
 
-    | 메뉴 | 클래스명 | 컬러 | 효과 |
-    |------|----------|------|------|
-    | Home | `home-glow` | 오렌지 `#f97316` | 바운스 + 원형 후광 |
-    | Explore | `explore-spin` | 파란색 `#3b82f6` | 나침반 180도 회전 + 원형 후광 |
-    | Festivals | `fest-glow` | 핑크↔앰버 교차 | 색상 교차 글로우 (폭죽 스파크 유지) |
-    | Wishlist | `heart-glow` | 레드 `#ef4444` | 심장박동 pulse 글로우 (하트 버블 유지) |
-    | UserInfo Edit | `account-shake` | 에메랄드 `#10b981` | 좌우 쉐이크 + 원형 후광 |
-    | Info | `bulb-flicker` | 앰버 `#fbbf24` | 전구 깜빡임 + 원형 후광 |
+| 메뉴            | 클래스명            | 컬러             | 효과                        |
+| ------------- | --------------- | -------------- | ------------------------- |
+| Home          | `home-glow`     | 오렌지 `#f97316`  | 바운스 + 원형 후광               |
+| Explore       | `explore-spin`  | 파란색 `#3b82f6`  | 나침반 180도 회전 + 원형 후광       |
+| Festivals     | `fest-glow`     | 핑크↔앰버 교차       | 색상 교차 글로우 (폭죽 스파크 유지)     |
+| Wishlist      | `heart-glow`    | 레드 `#ef4444`   | 심장박동 pulse 글로우 (하트 버블 유지) |
+| UserInfo Edit | `account-shake` | 에메랄드 `#10b981` | 좌우 쉐이크 + 원형 후광            |
+| Info          | `bulb-flicker`  | 앰버 `#fbbf24`   | 전구 깜빡임 + 원형 후광            |
 
 - **폭죽 입자 경량화**: Festivals 호버 시 스파크 입자를 `4px` → `2px`, `box-shadow` `8px` → `4px`로 축소하고 이동 범위를 줄여 더 정밀한 효과로 개선.
 - **푸터(`Footer.jsx`) 링크 개편**: `Privacy` → `Public_Wifi`(공공 와이파이 정보 사이트, 새 탭 오픈), `Terms` → `Info`(내부 라우팅, React Router `<Link>`)로 교체.

@@ -13,30 +13,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Project_Sketch.md",
+                "file": "발표 추가 내용.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Project_Sketch"
-            }
-          },
-          {
-            "id": "71bf88065eaa3782",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "프로젝트 기획 끄적끄적......✍🏻.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "프로젝트 기획 끄적끄적......✍🏻"
+              "title": "발표 추가 내용"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -189,40 +174,42 @@
   },
   "left-ribbon": {
     "hiddenItems": {
-      "daily-notes:오늘의 일일 노트 열기": false,
       "switcher:빠른 전환기 열기": false,
       "graph:그래프 뷰 열기": false,
       "canvas:새 캔버스 만들기": false,
+      "daily-notes:오늘의 일일 노트 열기": false,
       "templates:템플릿 삽입": false,
       "command-palette:명령어 팔레트 열기": false,
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "71bf88065eaa3782",
+  "active": "cabc9d870566ad19",
   "lastOpenFiles": [
-    "2026-04-29.md",
-    "프로젝트 기획 끄적끄적......✍🏻.md",
-    "무제.md",
-    "Project_Sketch.md",
-    "Project_Specification.md",
     "CHANGELOG.md",
+    "발표 추가 내용.md",
+    "Project_Specification.md",
+    "CodeTrip_트러블슈팅_정건.md",
+    "Project_Sketch.md",
+    "Project_Specification.md.tmp.11044.1777472773788",
+    "Project_Specification.md.tmp.11044.1777472708763",
+    "Project_Specification.md.tmp.11044.1777472695466",
+    "Project_Specification.md.tmp.11044.1777472682632",
+    "Project_Specification.md.tmp.11044.1777472671647",
+    "Project_Specification.md.tmp.11044.1777472664196",
+    "CHANGELOG.md.tmp.11044.1777472635849",
+    "2026-04-29.md",
     "Project_Specification.md.tmp.22212.1777338112309",
     "Project_Specification.md.tmp.22212.1777338088282",
     "Project_Specification.md.tmp.22212.1777338040984",
     "Architecture_Analysis.md",
     "AWS_EC2_Docker_Deployment.md",
     "2_Code_Trip/환영합니다!.md",
-    "2_Code_Trip",
     "DESIGN.md",
     "GEMINI.md",
-    "CHANGELOG.md.tmp.14700.1777268775758",
-    "Project_Specification.md.bak",
-    "Project_Specification.md.tmp.20388.1777251658439",
-    "codetrip_mysql.sql",
     "무제.canvas",
-    "img",
     "img/Pasted image 20260423174039.png",
-    "Project_Specification.md.tmp.24300.1776828872971",
+    "무제.md",
+    "프로젝트 기획 끄적끄적......✍🏻.md",
     "Project_Specification 1.md",
     "프로젝트_상세명세서.md",
     "환영합니다!.md"
