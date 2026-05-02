@@ -356,12 +356,35 @@ src/api/travelInfoApi.js
 
 기존에는 Express 서버가 공공데이터 API 프록시 및 캐시 역할을 했습니다.
 
-Firebase 무료 배포 버전에서는 서버를 제거했으므로 브라우저에서 공공데이터 API를 직접 호출하도록 변경했습니다.
+Firebase 무료 배포 버전에서는 서버를 제거했으므로 브라우저에서 공공데이터 API를 호출해야 하지만, 429 오류를 줄이기 위해 Realtime Database 공유 캐시를 추가했습니다.
+
+캐시 조회 순서:
+
+```text
+메모리 캐시
+-> localStorage 캐시
+-> Realtime Database apiCache
+-> 공공데이터 API 직접 호출
+-> 성공 시 Realtime Database + localStorage + 메모리에 저장
+```
+
+캐시 TTL:
+
+```text
+지역 코드 목록: 30일
+여행지 목록: 12시간
+키워드 검색: 6시간
+상세 정보/이미지: 14일
+포토 갤러리: 1일
+```
+
+공공데이터 API 호출이 실패하면 만료된 캐시라도 존재할 경우 fallback 데이터로 사용합니다.
 
 주의:
 
-- 서버 캐시가 사라졌으므로 API 호출량이 많아지면 429 또는 CORS 문제가 발생할 수 있습니다.
-- 소규모 시연에서는 허용 가능한 수준으로 판단했습니다.
+- 첫 요청 또는 캐시 만료 이후에는 외부 API 호출이 발생합니다.
+- 서버 프록시가 없으므로 API 키를 완전히 숨길 수는 없습니다.
+- `apiCache`는 비로그인 사용자도 읽고 쓸 수 있게 열어 두었습니다. 소규모 시연용 구조이며, 실제 운영 서비스라면 Cloud Functions 또는 Cloud Run 프록시로 이전하는 것이 안전합니다.
 
 ---
 
@@ -456,6 +479,13 @@ Firebase 무료 배포 버전에서는 서버를 제거했으므로 브라우저
       "is_read": false,
       "created_at": "2026-05-02T00:00:00.000Z"
     }
+  },
+  "apiCache": {
+    "tour_xxxxx": {
+      "data": {},
+      "expiresAt": 1770000000000,
+      "updatedAt": 1769900000000
+    }
   }
 }
 ```
@@ -479,6 +509,7 @@ boardComments: 누구나 읽기, 로그인 사용자만 쓰기
 travelComments: 누구나 읽기, 로그인 사용자만 쓰기
 wishlists: 로그인 사용자만 읽기, 본인 데이터만 쓰기
 wishlistFolders: 로그인 사용자만 읽기, 본인 데이터만 쓰기
+apiCache: 누구나 읽기/쓰기, expiresAt/updatedAt 숫자 필드 검증
 wishlistNotes: 로그인 사용자만 읽기, 본인 데이터만 쓰기
 notifications: 로그인 사용자만 읽기, 본인 데이터만 쓰기
 ```
@@ -783,4 +814,3 @@ git push origin firebase
 
 Firebase 전환 버전은 CodeTrip을 무료로 배포하고 시연하기 위한 개인 배포 브랜치입니다.  
 `main` 브랜치의 팀 협업용 Express/MySQL 구조와 병합하지 않고, `firebase` 브랜치에서 별도 운영하는 것이 가장 안전합니다.
-

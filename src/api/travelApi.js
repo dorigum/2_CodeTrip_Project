@@ -1,22 +1,34 @@
 import axios from 'axios';
+import { cachedApiRequest } from './apiCache';
 import { getTravelInfo, getTravelInfoByKeyword } from './travelInfoApi';
 
 const PHOTO_BASE_URL = 'https://apis.data.go.kr/B551011/PhotoGalleryService1';
 const GALLERY_KEY = decodeURIComponent(import.meta.env.VITE_GALLERY_API_KEY || '');
+const DAY = 24 * 60 * 60 * 1000;
 
 const normalizeImage = (url) => url?.replace('http://', 'https://') || '';
 
 const fetchGallery = async (service, params = {}) => {
-  const response = await axios.get(`${PHOTO_BASE_URL}/${service}`, {
-    params: {
-      serviceKey: GALLERY_KEY,
-      MobileOS: 'ETC',
-      MobileApp: 'CodeTrip',
-      _type: 'json',
-      ...params,
+  const requestParams = {
+    serviceKey: GALLERY_KEY,
+    MobileOS: 'ETC',
+    MobileApp: 'CodeTrip',
+    _type: 'json',
+    ...params,
+  };
+
+  return cachedApiRequest({
+    scope: 'gallery',
+    service,
+    params: requestParams,
+    ttlMs: DAY,
+    fetcher: async () => {
+      const response = await axios.get(`${PHOTO_BASE_URL}/${service}`, {
+        params: requestParams,
+      });
+      return response.data;
     },
   });
-  return response.data;
 };
 
 const normalizeItems = (items) => {

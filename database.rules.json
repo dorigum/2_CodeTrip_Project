@@ -47,6 +47,13 @@
       "$notificationId": {
         ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
       }
+    },
+    "apiCache": {
+      ".read": true,
+      "$cacheKey": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['data', 'expiresAt', 'updatedAt']) && newData.child('expiresAt').isNumber() && newData.child('updatedAt').isNumber()"
+      }
     }
   }
 }
