@@ -197,6 +197,17 @@ const MyPage = () => {
   };
 
   const selectedFolder = selectedFolderId ? folders.find(f => String(f.id) === String(selectedFolderId)) : null;
+  const currentFolderName = selectedFolderId === 'UNCATEGORIZED' ? 'UNCATEGORIZED' : (selectedFolder?.name || 'UNKNOWN');
+  const openExploreForCurrentFolder = () => {
+    navigate('/explore', {
+      state: {
+        targetWishlistFolder: {
+          id: selectedFolderId === 'UNCATEGORIZED' ? null : selectedFolderId,
+          name: currentFolderName,
+        },
+      },
+    });
+  };
 
   if (!isLoggedIn) return null;
 
@@ -432,17 +443,29 @@ const MyPage = () => {
               <h3 className="font-headline text-xl font-bold">{selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}</h3>
               {selectedFolder?.start_date && <p className="text-[11px] font-mono text-primary mt-1">{formatScheduleShort(selectedFolder.start_date, selectedFolder.end_date)}</p>}
             </div>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
-              <option value="CREATED">NEWEST</option>
-              <option value="TITLE">TITLE A-Z</option>
-              <option value="TITLE_DESC">TITLE Z-A</option>
-            </select>
+            <div className="flex items-center gap-2">
+              {selectedFolderId && (
+                <button
+                  type="button"
+                  onClick={openExploreForCurrentFolder}
+                  className="px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-bold hover:brightness-110 transition-all flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">travel_explore</span>
+                  EXPLORE_ADD
+                </button>
+              )}
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
+                <option value="CREATED">NEWEST</option>
+                <option value="TITLE">TITLE A-Z</option>
+                <option value="TITLE_DESC">TITLE Z-A</option>
+              </select>
+            </div>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" /></div>
           ) : sortedWishList.length === 0 ? (
-            <div className="border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center p-20 cursor-pointer" onClick={() => navigate('/explore')}>
+            <div className="border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center p-20 cursor-pointer" onClick={selectedFolderId ? openExploreForCurrentFolder : () => navigate('/explore')}>
               <span className="material-symbols-outlined text-4xl text-primary mb-4">add_location_alt</span>
               <p className="text-xs font-mono text-slate-400">// empty_data_node</p>
             </div>

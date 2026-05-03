@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../App.css';
 import useExploreStore, { NUM_OF_ROWS, getExploreScrollY, setExploreScrollY } from '../store/useExploreStore';
 import useWishlistStore from '../store/useWishlistStore';
@@ -11,6 +11,8 @@ import useToast from '../hooks/useToast';
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop';
 
 const Explore = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm] = useState('');
   const [regionOpen, setRegionOpen] = useState(true);
   const [themeOpen, setThemeOpen] = useState(true);
@@ -41,6 +43,7 @@ const Explore = () => {
   const [selectedTravel, setSelectedTravel] = useState(null); // 모달용
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setShowLoginDialog] = useState(false);
+  const targetWishlistFolder = location.state?.targetWishlistFolder || null;
 
   const handleHeartToggle = async (post) => {
     if (!isLoggedIn) {
@@ -63,6 +66,22 @@ const Explore = () => {
         setWishlistLoadingId(null);
       }
     } else {
+      if (targetWishlistFolder) {
+        try {
+          setWishlistLoadingId(postId);
+          await toggleWishlist({
+            ...post,
+            folder_id: targetWishlistFolder.id || null,
+          });
+          alert(`${targetWishlistFolder.name} 폴더에 추가되었습니다.`);
+        } catch (error) {
+          console.error('Wishlist error:', error);
+        } finally {
+          setWishlistLoadingId(null);
+        }
+        return;
+      }
+
       // 처음 찜하는 상태라면 폴더 선택 모달 오픈
       setSelectedTravel(post);
       setIsModalOpen(true);
@@ -178,7 +197,7 @@ const Explore = () => {
       <div className="grid grid-cols-12 gap-8">
         {/* Sidebar Filters */}
         <aside className="col-span-12 lg:col-span-3 xl:col-span-2 self-start">
-          <div className="bg-surface-container-low rounded-xl p-5 sticky top-8 max-h-[calc(100vh-5rem)] overflow-y-auto no-scrollbar border border-outline-variant/10 shadow-sm">
+          <div className="bg-surface-container-low rounded-xl p-5 sticky top-8 border border-outline-variant/10 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-outline-variant/20 pb-4">
               <span className="material-symbols-outlined text-primary text-lg">settings_ethernet</span>
               <span className="font-bold text-on-surface font-mono text-sm uppercase tracking-tight">FILTERS.CONFIG</span>
@@ -277,6 +296,24 @@ const Explore = () => {
 
         {/* Content */}
         <div className="col-span-12 lg:col-span-9 xl:col-span-10">
+          {targetWishlistFolder && (
+            <section className="mb-6 bg-primary/10 border border-primary/20 rounded-xl px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-primary">ADD_TO_WISHLIST_FOLDER</h2>
+                <p className="text-[12px] text-slate-500 mt-1">
+                  하트 버튼을 누르면 <span className="font-bold text-on-surface">{targetWishlistFolder.name}</span> 폴더로 바로 추가됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/mypage')}
+                className="w-full sm:w-auto px-4 py-2 bg-white border border-primary/20 text-primary rounded-lg text-[11px] font-bold hover:bg-primary hover:text-white transition-all"
+              >
+                BACK_TO_WISHLIST
+              </button>
+            </section>
+          )}
+
           {/* Sort Bar */}
           <div className="flex items-center justify-between mb-6">
             <span className="text-[11px] font-mono text-outline">
