@@ -128,7 +128,7 @@ const MyPage = () => {
     if (selectedFolderId === 'UNCATEGORIZED') {
       items = items.filter(item => !item.folder_id);
     } else if (selectedFolderId) {
-      items = items.filter(item => Number(item.folder_id) === Number(selectedFolderId));
+      items = items.filter(item => String(item.folder_id) === String(selectedFolderId));
     }
     return items;
   }, [wishlistItems, selectedFolderId]);
@@ -148,7 +148,7 @@ const MyPage = () => {
     const folderCount = folders.length;
     const uncategorized = wishlistItems.filter(i => !i.folder_id).length;
     const topFolder = folders.reduce((acc, f) => {
-      const count = wishlistItems.filter(i => Number(i.folder_id) === Number(f.id)).length;
+      const count = wishlistItems.filter(i => String(i.folder_id) === String(f.id)).length;
       return count > (acc?.count ?? 0) ? { name: f.name, count } : acc;
     }, null);
     return { total, folderCount, uncategorized, topFolder };
@@ -196,7 +196,18 @@ const MyPage = () => {
     return `${startLabel}\n~ ${endLabel}\n: ${nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`}`;
   };
 
-  const selectedFolder = selectedFolderId ? folders.find(f => Number(f.id) === Number(selectedFolderId)) : null;
+  const selectedFolder = selectedFolderId ? folders.find(f => String(f.id) === String(selectedFolderId)) : null;
+  const currentFolderName = selectedFolderId === 'UNCATEGORIZED' ? 'UNCATEGORIZED' : (selectedFolder?.name || 'UNKNOWN');
+  const openExploreForCurrentFolder = () => {
+    navigate('/explore', {
+      state: {
+        targetWishlistFolder: {
+          id: selectedFolderId === 'UNCATEGORIZED' ? null : selectedFolderId,
+          name: currentFolderName,
+        },
+      },
+    });
+  };
 
   if (!isLoggedIn) return null;
 
@@ -328,7 +339,7 @@ const MyPage = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-1 font-mono text-[11px] shrink-0 ml-2 mt-0.5">
-                    <span className="opacity-60">{wishlistItems.filter(i => Number(i.folder_id) === Number(folder.id)).length}</span>
+                    <span className="opacity-60">{wishlistItems.filter(i => String(i.folder_id) === String(folder.id)).length}</span>
                     <span onClick={(e) => { e.stopPropagation(); openEditModal(folder); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-white/80' : 'hover:text-primary'}`}>edit</span>
                     <span onClick={(e) => { e.stopPropagation(); deleteFolder(folder.id); }} className={`material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity ${selectedFolderId === folder.id ? 'hover:text-red-300' : 'hover:text-red-500'}`}>delete</span>
                   </div>
@@ -432,17 +443,29 @@ const MyPage = () => {
               <h3 className="font-headline text-xl font-bold">{selectedFolderId === 'UNCATEGORIZED' ? '미분류' : selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : '전체 위시리스트'}</h3>
               {selectedFolder?.start_date && <p className="text-[11px] font-mono text-primary mt-1">{formatScheduleShort(selectedFolder.start_date, selectedFolder.end_date)}</p>}
             </div>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
-              <option value="CREATED">NEWEST</option>
-              <option value="TITLE">TITLE A-Z</option>
-              <option value="TITLE_DESC">TITLE Z-A</option>
-            </select>
+            <div className="flex items-center gap-2">
+              {selectedFolderId && (
+                <button
+                  type="button"
+                  onClick={openExploreForCurrentFolder}
+                  className="px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-bold hover:brightness-110 transition-all flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">travel_explore</span>
+                  EXPLORE_ADD
+                </button>
+              )}
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-container-low text-[10px] font-mono px-3 py-1.5 rounded-lg outline-none border border-outline-variant/10">
+                <option value="CREATED">NEWEST</option>
+                <option value="TITLE">TITLE A-Z</option>
+                <option value="TITLE_DESC">TITLE Z-A</option>
+              </select>
+            </div>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" /></div>
           ) : sortedWishList.length === 0 ? (
-            <div className="border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center p-20 cursor-pointer" onClick={() => navigate('/explore')}>
+            <div className="border-2 border-dashed border-outline-variant/30 rounded-xl flex flex-col items-center justify-center p-20 cursor-pointer" onClick={selectedFolderId ? openExploreForCurrentFolder : () => navigate('/explore')}>
               <span className="material-symbols-outlined text-4xl text-primary mb-4">add_location_alt</span>
               <p className="text-xs font-mono text-slate-400">// empty_data_node</p>
             </div>
@@ -466,7 +489,7 @@ const MyPage = () => {
                           {folders.map(f => (
                             <button key={f.id} onClick={() => { moveItem(itemId, f.id); setMovingItemId(null); }} className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-50 rounded-lg flex justify-between">
                               <span>// {f.name}</span>
-                              {Number(item.folder_id) === Number(f.id) && <span className="material-symbols-outlined text-xs text-emerald-500">check</span>}
+                              {String(item.folder_id) === String(f.id) && <span className="material-symbols-outlined text-xs text-emerald-500">check</span>}
                             </button>
                           ))}
                         </div>
@@ -483,7 +506,7 @@ const MyPage = () => {
                       <h3 className="font-headline text-base font-bold truncate mb-1">{itemTitle}</h3>
                       <p className="text-[10px] text-slate-400 font-mono mb-4 truncate">{item.addr1 || '주소 정보 없음'}</p>
                       <div className="flex justify-between items-center mt-4">
-                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">FOLDER: {item.folder_id ? (folders.find(f => Number(f.id) === Number(item.folder_id))?.name || '...') : 'UNCATEGORIZED'}</span>
+                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">FOLDER: {item.folder_id ? (folders.find(f => String(f.id) === String(item.folder_id))?.name || '...') : 'UNCATEGORIZED'}</span>
                         <Link to={`/explore/${itemId}`} className="bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary hover:text-white transition-all border border-slate-100">VIEW_DATA</Link>
                       </div>
                     </div>

@@ -54,10 +54,12 @@ const useWishlistStore = create((set, get) => ({
 
   createFolder: async (name, startDate, endDate) => {
     try {
-      await wishlistApi.createFolder(name, startDate, endDate);
+      const folder = await wishlistApi.createFolder(name, startDate, endDate);
       await get().syncWithServer();
+      return folder;
     } catch (err) {
       console.error('Create folder failed:', err);
+      return null;
     }
   },
 

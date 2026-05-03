@@ -1,112 +1,143 @@
-import axios from 'axios';
+import {
+  createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  updatePassword as updateFirebasePassword,
+  updateProfile as updateFirebaseProfile,
+} from 'firebase/auth';
+import { get, ref, set, update } from 'firebase/database';
+import { firebaseAuth, realtimeDb } from '../firebase';
+import { getCurrentUser, nowIso } from './firebaseHelpers';
 
-// Vite Proxy 설정을 사용하여 통신 (/api로 시작하는 요청은 localhost:8080으로 전달됨)
-const API_URL = '/api';
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
-// 토큰 헤더 구성을 위한 헬퍼 함수
-const getAuthHeader = () => {
-  const token = localStorage.getItem('trip_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+const userPayload = (authUser, profile = {}) => ({
+  id: authUser.uid,
+  email: authUser.email,
+  name: profile.name || authUser.displayName || authUser.email,
+  profileImg: profile.profileImg || authUser.photoURL || '',
+});
+
+const authErrorMessage = (error, fallback) => {
+  switch (error?.code) {
+    case 'auth/email-already-in-use':
+      return '이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용해 주세요.';
+    case 'auth/invalid-email':
+      return '이메일 형식이 올바르지 않습니다.';
+    case 'auth/weak-password':
+      return '비밀번호는 최소 6자 이상이어야 합니다.';
+    case 'auth/operation-not-allowed':
+      return 'Firebase 콘솔에서 이메일/비밀번호 로그인을 활성화해야 합니다.';
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    case 'auth/too-many-requests':
+      return '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+    case 'auth/network-request-failed':
+      return '네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
+    default:
+      return error?.message || fallback;
+  }
 };
 
 const authApi = {
-  // 회원가입
-  signup: async (userData) => {
+  signup: async ({ email, password, name }) => {
     try {
-      const response = await axios.post(`${API_URL}/signup`, userData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Signup failed' };
-    }
-  },
-
-  // 로그인
-  login: async (credentials) => {
-    try {
-      const response = await axios.post(`${API_URL}/login`, credentials);
-      // 로그인 성공 시 토큰 저장
-      if (response.data.token) {
-        localStorage.setItem('trip_token', response.data.token);
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Login API Error:', error.response?.data || error.message);
-      throw error.response?.data || { message: 'Login failed' };
-    }
-  },
-
-  // 프로필 정보 수정 (이름, 이미지)
-  updateProfile: async (profileData) => {
-    try {
-      const response = await axios.put(`${API_URL}/user/update`, profileData, {
-        headers: getAuthHeader()
+      const normalizedEmail = email.trim();
+      const normalizedName = name.trim();
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, normalizedEmail, password);
+      await updateFirebaseProfile(credential.user, { displayName: normalizedName });
+      await set(ref(realtimeDb, `users/${credential.user.uid}`), {
+        email: normalizedEmail,
+        name: normalizedName,
+        profileImg: '',
+        favoriteRegions: [],
+        created_at: nowIso(),
+        updated_at: nowIso(),
       });
-      return response.data;
+      await firebaseAuth.signOut();
+      return { message: 'Success' };
     } catch (error) {
-      throw error.response?.data || { message: 'Update failed' };
+      throw { message: authErrorMessage(error, '회원가입에 실패했습니다.') };
     }
   },
 
-  // 이미지 파일 직접 업로드
+  login: async ({ email, password }) => {
+    try {
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const token = await credential.user.getIdToken();
+      const profileSnap = await get(ref(realtimeDb, `users/${credential.user.uid}`));
+      const profile = profileSnap.exists() ? profileSnap.val() : {};
+      const user = userPayload(credential.user, profile);
+
+      localStorage.setItem('trip_token', token);
+      return { token, user };
+    } catch (error) {
+      throw { message: authErrorMessage(error, '로그인에 실패했습니다.') };
+    }
+  },
+
+  updateProfile: async ({ name, profileImg }) => {
+    const user = getCurrentUser();
+    await updateFirebaseProfile(firebaseAuth.currentUser, {
+      displayName: name,
+      photoURL: profileImg || '',
+    });
+    await update(ref(realtimeDb, `users/${user.id}`), {
+      name,
+      profileImg: profileImg || '',
+      updated_at: nowIso(),
+    });
+    return { message: 'Profile updated successfully' };
+  },
+
   uploadImage: async (formData) => {
-    try {
-      const response = await axios.post(`${API_URL}/user/upload`, formData, {
-        headers: {
-          ...getAuthHeader(),
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data; // { url: '...' } 반환
-    } catch (error) {
-      throw error.response?.data || { message: 'Upload failed' };
-    }
+    const file = formData.get('profileImage');
+    if (!file) throw { message: 'No file uploaded' };
+    return { url: await readFileAsDataUrl(file) };
   },
 
-  // 비밀번호 변경
-  updatePassword: async (passwordData) => {
-    try {
-      const response = await axios.put(`${API_URL}/user/password`, passwordData, {
-        headers: getAuthHeader()
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Password change failed' };
-    }
+  updatePassword: async ({ currentPassword, newPassword }) => {
+    const authUser = firebaseAuth.currentUser;
+    if (!authUser?.email) throw { message: '로그인이 필요합니다.' };
+
+    const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
+    await reauthenticateWithCredential(authUser, credential);
+    await updateFirebasePassword(authUser, newPassword);
+    return { message: 'Password changed successfully' };
   },
 
-  // 관심지역 조회
   getFavoriteRegions: async () => {
-    try {
-      const response = await axios.get(`${API_URL}/user/favorite-regions`, {
-        headers: getAuthHeader()
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch favorite regions' };
-    }
+    const user = getCurrentUser();
+    const profileSnap = await get(ref(realtimeDb, `users/${user.id}/favoriteRegions`));
+    return profileSnap.exists() ? profileSnap.val() || [] : [];
   },
 
-  // 관심지역 저장
   updateFavoriteRegions: async (codes) => {
-    try {
-      const response = await axios.put(`${API_URL}/user/favorite-regions`, { codes }, {
-        headers: getAuthHeader()
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to update favorite regions' };
+    const user = getCurrentUser();
+    if (codes.length > 3) {
+      throw { message: '관심 지역은 최대 3개까지 선택할 수 있습니다.' };
     }
+    await update(ref(realtimeDb, `users/${user.id}`), {
+      favoriteRegions: codes,
+      updated_at: nowIso(),
+    });
+    return { message: '관심 지역이 저장되었습니다.' };
   },
 
-  // 비밀번호 찾기 (재설정)
-  forgotPassword: async (resetData) => {
-    try {
-      const response = await axios.post(`${API_URL}/auth/forgot-password`, resetData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Password reset failed' };
-    }
-  }
+  forgotPassword: async ({ email }) => {
+    await sendPasswordResetEmail(firebaseAuth, email);
+    return { message: '비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해 주세요.' };
+  },
 };
 
 export default authApi;

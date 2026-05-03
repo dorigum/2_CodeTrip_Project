@@ -59,6 +59,24 @@
   }
 }
 
+/* Hide scrollbar visually while keeping scroll functionality */
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-color: transparent transparent !important;
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent !important;
+}
+
 /* Sidebar Text Cursor Prevention */
 aside, 
 aside button, 

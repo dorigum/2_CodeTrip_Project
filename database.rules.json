@@ -1,0 +1,59 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "boardPosts": {
+      ".read": true,
+      "$postId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "boardComments": {
+      ".read": true,
+      "$commentId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "travelComments": {
+      ".read": true,
+      "$commentId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "wishlists": {
+      ".read": "auth != null",
+      "$wishlistId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "wishlistFolders": {
+      ".read": "auth != null",
+      "$folderId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "wishlistNotes": {
+      ".read": "auth != null",
+      "$noteId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "notifications": {
+      ".read": "auth != null",
+      "$notificationId": {
+        ".write": "auth != null && (!data.exists() || data.child('user_id').val() === auth.uid || newData.child('user_id').val() === auth.uid)"
+      }
+    },
+    "apiCache": {
+      ".read": true,
+      "$cacheKey": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['data', 'expiresAt', 'updatedAt']) && newData.child('expiresAt').isNumber() && newData.child('updatedAt').isNumber()"
+      }
+    }
+  }
+}

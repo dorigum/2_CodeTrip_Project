@@ -1,5 +1,16 @@
 import axios from 'axios';
 
+const getStoredUser = () => {
+  try {
+    const rawUser = localStorage.getItem('trip_user');
+    if (!rawUser || rawUser === 'undefined') return null;
+    return JSON.parse(rawUser);
+  } catch {
+    localStorage.removeItem('trip_user');
+    return null;
+  }
+};
+
 const axiosInstance = axios.create({
   baseURL: '/api',
   headers: {
@@ -16,7 +27,7 @@ axiosInstance.interceptors.request.use(
     
     // 2. Fallback to trip_user object (legacy support)
     if (!token) {
-      const user = JSON.parse(localStorage.getItem('trip_user') || 'null');
+      const user = getStoredUser();
       token = user?.token;
     }
 
